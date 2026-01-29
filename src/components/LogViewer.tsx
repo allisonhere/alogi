@@ -45,10 +45,10 @@ function LogLine({ line, index }: { line: string; index: number }) {
                 // Brackets [Timestamp] or [Component] -> Zinc 500 (Gray)
                 if (part.startsWith('[') && part.endsWith(']')) return <span key={i} className="text-zinc-500">{part}</span>;
                 
-                // Keywords matching vibrant pic.png colors - NOW AS PILLS
-                if (part === 'INFO') return <span key={i} className="inline-block mx-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#00f5d4]/10 text-[#00f5d4] leading-none select-none">{part}</span>;
-                if (part === 'WARN' || part === 'WARNING') return <span key={i} className="inline-block mx-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#ff9f1c]/10 text-[#ff9f1c] leading-none select-none">{part}</span>;
-                if (['ERROR', 'CRITICAL', 'FATAL', 'Failed', 'failed'].includes(part)) return <span key={i} className="inline-block mx-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#ff5d5d]/10 text-[#ff5d5d] leading-none select-none">{part}</span>;
+                // Keywords matching vibrant pic.png colors - NOW AS LARGER, BRIGHTER PILLS
+                if (part === 'INFO') return <span key={i} className="inline-block mx-2 px-2.5 py-1 rounded-md text-[11px] font-black bg-[#00f5d4]/20 text-[#00f5d4] leading-none select-none tracking-tight uppercase shadow-sm shadow-[#00f5d4]/10">{part}</span>;
+                if (part === 'WARN' || part === 'WARNING') return <span key={i} className="inline-block mx-2 px-2.5 py-1 rounded-md text-[11px] font-black bg-[#ff9f1c]/25 text-[#ff9f1c] leading-none select-none tracking-tight uppercase shadow-sm shadow-[#ff9f1c]/10">{part}</span>;
+                if (['ERROR', 'CRITICAL', 'FATAL', 'Failed', 'failed'].includes(part)) return <span key={i} className="inline-block mx-2 px-2.5 py-1 rounded-md text-[11px] font-black bg-[#ff5d5d]/25 text-[#ff5d5d] leading-none select-none tracking-tight uppercase shadow-sm shadow-[#ff5d5d]/10">{part}</span>;
 
                 // HTTP Methods & Positive Actions
                 if (['GET', 'POST', 'PUT', 'DELETE', 'Accepted', 'Started'].includes(part)) return <span key={i} className="text-indigo-400">{part}</span>;
