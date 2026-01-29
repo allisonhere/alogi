@@ -36,7 +36,7 @@ export function VibeCheckBar({ lines, onScrollTo }: VibeCheckBarProps) {
                 onScrollTo(spot.index);
             }}
             className={`absolute top-0 bottom-0 w-[2px] cursor-pointer hover:w-[4px] hover:z-10 transition-all
-                ${spot.type === 'error' ? 'bg-red-500' : 'bg-amber-400'}
+                ${spot.type === 'error' ? 'bg-red-500' : 'bg-orange-500'}
             `}
             style={{
                 left: `${(spot.index / lines.length) * 100}%`

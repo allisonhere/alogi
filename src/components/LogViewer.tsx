@@ -36,27 +36,20 @@ function LogLine({ line, index }: { line: string; index: number }) {
     <div className={cn(
         "flex hover:bg-zinc-900/50 -mx-4 px-4 py-0.5 border-l-2 transition-colors",
         isError ? "bg-red-500/10 border-red-500/50" : 
-        isWarn ? "bg-amber-500/15 border-amber-500/50" :
+        isWarn ? "bg-orange-500/5 border-orange-500/40" :
         "border-transparent hover:border-zinc-700"
     )}>
         <span className="w-8 text-zinc-700 select-none text-right mr-4 flex-shrink-0 text-xs mt-[3px]">{index + 1}</span>
         <span className="text-zinc-300 break-all whitespace-pre-wrap flex-1">
             {parts.map((part, i) => {
-                // Brackets [Date]
+                // ... (keep logic)
                 if (part.startsWith('[') && part.endsWith(']')) return <span key={i} className="text-zinc-500">{part}</span>;
-                
-                // Syslog Date (Jan 01 ...)
                 if (/^\w{3}\s+\d+\s+\d{2}:\d{2}:\d{2}/.test(part)) return <span key={i} className="text-zinc-500 font-mono">{part}</span>;
-
-                // Service Name (sshd[123]:)
                 if (/[a-zA-Z0-9_\-\.]+(?:\[\d+\])?:/.test(part) && part.length < 50) return <span key={i} className="text-indigo-400">{part}</span>;
-
-                // Keywords
                 if (part === 'INFO') return <span key={i} className="text-emerald-400 font-semibold">{part}</span>;
-                if (part === 'WARN' || part === 'WARNING') return <span key={i} className="text-amber-400 font-semibold underline decoration-amber-500/50">{part}</span>;
+                if (part === 'WARN' || part === 'WARNING') return <span key={i} className="text-orange-400 font-semibold underline decoration-orange-500/30">{part}</span>;
                 if (['ERROR', 'CRITICAL', 'FATAL', 'Failed', 'failed'].includes(part)) return <span key={i} className="text-red-400 font-bold underline decoration-red-500/50">{part}</span>;
                 if (['Accepted', 'Started'].includes(part)) return <span key={i} className="text-emerald-300">{part}</span>;
-                
                 return part;
             })}
         </span>
