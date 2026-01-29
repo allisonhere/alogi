@@ -15,11 +15,11 @@ function LogLine({ line, index }: { line: string; index: number }) {
           const obj = JSON.parse(line);
           return (
              <div className={cn(
-                "flex hover:bg-zinc-900/50 -mx-4 px-4 py-1 border-l-2 transition-colors",
-                isError ? "bg-red-500/5 border-red-500" : "border-transparent hover:border-indigo-500/50"
+                "flex hover:bg-zinc-800/30 -mx-4 px-4 py-1 transition-colors",
+                isError ? "bg-red-950/20" : "bg-transparent"
              )}>
-                <span className="w-8 text-zinc-700 select-none text-right mr-4 flex-shrink-0 text-xs mt-0.5">{index + 1}</span>
-                <pre className="text-xs font-mono text-emerald-300 bg-zinc-900/50 p-2 rounded w-full overflow-x-auto">
+                <span className="w-10 text-zinc-600 select-none text-right mr-4 flex-shrink-0 text-xs mt-0.5 font-mono">{index + 1}</span>
+                <pre className="text-xs font-mono text-emerald-400 bg-zinc-900/50 p-2 rounded w-full overflow-x-auto border border-zinc-800">
                     {JSON.stringify(obj, null, 2)}
                 </pre>
              </div>
@@ -29,27 +29,30 @@ function LogLine({ line, index }: { line: string; index: number }) {
       }
   }
 
-  // 2. Standard Highlighting
-  const parts = line.split(/(\[.*?\]|^\w{3}\s+\d+\s+\d{2}:\d{2}:\d{2}|ERROR|WARN|WARNING|INFO|CRITICAL|FATAL|debug|Failed|failed|Accepted|Started|Stopped|[a-zA-Z0-9_\-\.]+(?:\[\d+\])?:)/g);
+  // 2. Standard Highlighting matching pic.png style
+  const parts = line.split(/(\[.*?\]|ERROR|WARN|WARNING|INFO|CRITICAL|FATAL|debug|Failed|failed|GET|POST|PUT|DELETE|Accepted|Started|Stopped)/g);
 
   return (
     <div className={cn(
-        "flex hover:bg-zinc-900/50 -mx-4 px-4 py-0.5 border-l-2 transition-colors",
-        isError ? "bg-red-500/10 border-red-500/50" : 
-        isWarn ? "bg-orange-500/5 border-orange-500/40" :
-        "border-transparent hover:border-zinc-700"
+        "flex hover:bg-zinc-800/40 -mx-4 px-4 py-0.5 transition-colors group border-l-2",
+        isError ? "bg-red-950/30 border-red-500/50" : 
+        isWarn ? "bg-orange-950/20 border-orange-500/40" :
+        "bg-transparent border-transparent"
     )}>
-        <span className="w-8 text-zinc-700 select-none text-right mr-4 flex-shrink-0 text-xs mt-[3px]">{index + 1}</span>
-        <span className="text-zinc-300 break-all whitespace-pre-wrap flex-1">
+        <span className="w-10 text-zinc-700 select-none text-right mr-4 flex-shrink-0 text-xs mt-[3px] font-mono group-hover:text-zinc-500">{index + 1}</span>
+        <span className="text-zinc-300 break-all whitespace-pre-wrap flex-1 font-mono text-[13px] leading-tight tracking-tight">
             {parts.map((part, i) => {
-                // ... (keep logic)
+                // Brackets [Timestamp] or [Component] -> Zinc 500 (Gray)
                 if (part.startsWith('[') && part.endsWith(']')) return <span key={i} className="text-zinc-500">{part}</span>;
-                if (/^\w{3}\s+\d+\s+\d{2}:\d{2}:\d{2}/.test(part)) return <span key={i} className="text-zinc-500 font-mono">{part}</span>;
-                if (/[a-zA-Z0-9_\-\.]+(?:\[\d+\])?:/.test(part) && part.length < 50) return <span key={i} className="text-indigo-400">{part}</span>;
-                if (part === 'INFO') return <span key={i} className="text-emerald-400 font-semibold">{part}</span>;
-                if (part === 'WARN' || part === 'WARNING') return <span key={i} className="text-orange-400 font-semibold underline decoration-orange-500/30">{part}</span>;
-                if (['ERROR', 'CRITICAL', 'FATAL', 'Failed', 'failed'].includes(part)) return <span key={i} className="text-red-400 font-bold underline decoration-red-500/50">{part}</span>;
-                if (['Accepted', 'Started'].includes(part)) return <span key={i} className="text-emerald-300">{part}</span>;
+                
+                // Keywords matching vibrant pic.png colors
+                if (part === 'INFO') return <span key={i} className="text-[#00f5d4] font-medium">{part}</span>;
+                if (part === 'WARN' || part === 'WARNING') return <span key={i} className="text-[#ff9f1c] font-medium">{part}</span>;
+                if (['ERROR', 'CRITICAL', 'FATAL', 'Failed', 'failed'].includes(part)) return <span key={i} className="text-[#ff5d5d] font-semibold">{part}</span>;
+
+                // HTTP Methods & Positive Actions
+                if (['GET', 'POST', 'PUT', 'DELETE', 'Accepted', 'Started'].includes(part)) return <span key={i} className="text-indigo-400">{part}</span>;
+                
                 return part;
             })}
         </span>
