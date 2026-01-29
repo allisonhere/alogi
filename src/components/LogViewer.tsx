@@ -30,7 +30,8 @@ function LogLine({ line, index }: { line: string; index: number }) {
   }
 
   // 2. Standard Highlighting matching pic.png style
-  const parts = line.split(/(\[.*?\]|ERROR|WARN|WARNING|INFO|CRITICAL|FATAL|debug|Failed|failed|GET|POST|PUT|DELETE|Accepted|Started|Stopped)/g);
+  // Catching: [Timestamp], [Component], Keywords, and HTTP Methods
+  const parts = line.split(/(\[.*?\]|ERROR|WARN|WARNING|INFO|CRITICAL|FATAL|debug|Failed|failed|GET|POST|PUT|DELETE|Accepted|Started|Stopped|BLOCK|conflict|timeout|retrying)/gi);
 
   return (
     <div className={cn(
@@ -42,13 +43,21 @@ function LogLine({ line, index }: { line: string; index: number }) {
         <span className="w-10 text-zinc-700 select-none text-right mr-4 flex-shrink-0 text-xs mt-[3px] font-mono group-hover:text-zinc-500">{index + 1}</span>
         <span className="text-zinc-300 break-all whitespace-pre-wrap flex-1 font-mono text-[13px] leading-tight tracking-tight">
             {parts.map((part, i) => {
+                const lowerPart = part.toLowerCase();
+                
                 // Brackets [Timestamp] or [Component] -> Zinc 500 (Gray)
                 if (part.startsWith('[') && part.endsWith(']')) return <span key={i} className="text-zinc-500">{part}</span>;
                 
                 // Keywords matching vibrant pic.png colors - NOW AS LARGER, BRIGHTER PILLS
-                if (part === 'INFO') return <span key={i} className="inline-block mx-2 px-2.5 py-1 rounded-md text-[11px] font-black bg-[#00f5d4]/20 text-[#00f5d4] leading-none select-none tracking-tight uppercase shadow-sm shadow-[#00f5d4]/10">{part}</span>;
-                if (part === 'WARN' || part === 'WARNING') return <span key={i} className="inline-block mx-2 px-2.5 py-1 rounded-md text-[11px] font-black bg-[#ff9f1c]/25 text-[#ff9f1c] leading-none select-none tracking-tight uppercase shadow-sm shadow-[#ff9f1c]/10">{part}</span>;
-                if (['ERROR', 'CRITICAL', 'FATAL', 'Failed', 'failed'].includes(part)) return <span key={i} className="inline-block mx-2 px-2.5 py-1 rounded-md text-[11px] font-black bg-[#ff5d5d]/25 text-[#ff5d5d] leading-none select-none tracking-tight uppercase shadow-sm shadow-[#ff5d5d]/10">{part}</span>;
+                if (lowerPart === 'info') return <span key={i} className="inline-block mx-2 px-2.5 py-1 rounded-md text-[11px] font-black bg-[#00f5d4]/20 text-[#00f5d4] leading-none select-none tracking-tight uppercase shadow-sm shadow-[#00f5d4]/10">{part}</span>;
+                
+                if (['warn', 'warning', 'block', 'conflict', 'timeout', 'retrying'].includes(lowerPart)) {
+                    return <span key={i} className="inline-block mx-2 px-2.5 py-1 rounded-md text-[11px] font-black bg-[#ff9f1c]/25 text-[#ff9f1c] leading-none select-none tracking-tight uppercase shadow-sm shadow-[#ff9f1c]/10">{part}</span>;
+                }
+                
+                if (['error', 'critical', 'fatal', 'failed'].includes(lowerPart)) {
+                    return <span key={i} className="inline-block mx-2 px-2.5 py-1 rounded-md text-[11px] font-black bg-[#ff5d5d]/25 text-[#ff5d5d] leading-none select-none tracking-tight uppercase shadow-sm shadow-[#ff5d5d]/10">{part}</span>;
+                }
 
                 // HTTP Methods & Positive Actions
                 if (['GET', 'POST', 'PUT', 'DELETE', 'Accepted', 'Started'].includes(part)) return <span key={i} className="text-indigo-400">{part}</span>;
