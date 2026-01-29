@@ -31,7 +31,7 @@ function LogLine({ line, index }: { line: string; index: number }) {
 
   // 2. Standard Highlighting matching pic.png style
   // Catching: [Timestamp], [Component], Keywords, and HTTP Methods
-  const parts = line.split(/(\[.*?\]|ERROR|WARN|WARNING|INFO|CRITICAL|FATAL|debug|Failed|failed|GET|POST|PUT|DELETE|Accepted|Started|Stopped|BLOCK|conflict|timeout|retrying)/gi);
+  const parts = line.split(/(\[.*?\]|ERROR|WARN|WARNING|INFO|CRITICAL|FATAL|debug|Failed|failed|GET|POST|PUT|DELETE|Accepted|Started|Stopped|BLOCK|conflict|timeout|retrying|Reached|Listening|Created|Mounted|Connected)/gi);
 
   return (
     <div className={cn(
@@ -49,7 +49,9 @@ function LogLine({ line, index }: { line: string; index: number }) {
                 if (part.startsWith('[') && part.endsWith(']')) return <span key={i} className="text-zinc-500">{part}</span>;
                 
                 // Keywords matching vibrant pic.png colors - NOW AS LARGER, BRIGHTER PILLS
-                if (lowerPart === 'info') return <span key={i} className="inline-block mx-2 px-2.5 py-1 rounded-md text-[11px] font-black bg-[#00f5d4]/20 text-[#00f5d4] leading-none select-none tracking-tight uppercase shadow-sm shadow-[#00f5d4]/10">{part}</span>;
+                if (['info', 'started', 'reached', 'listening', 'created', 'mounted', 'accepted', 'connected'].includes(lowerPart)) {
+                    return <span key={i} className="inline-block mx-2 px-2.5 py-1 rounded-md text-[11px] font-black bg-[#00f5d4]/20 text-[#00f5d4] leading-none select-none tracking-tight uppercase shadow-sm shadow-[#00f5d4]/10">{part}</span>;
+                }
                 
                 if (['warn', 'warning', 'block', 'conflict', 'timeout', 'retrying'].includes(lowerPart)) {
                     return <span key={i} className="inline-block mx-2 px-2.5 py-1 rounded-md text-[11px] font-black bg-[#ff9f1c]/25 text-[#ff9f1c] leading-none select-none tracking-tight uppercase shadow-sm shadow-[#ff9f1c]/10">{part}</span>;
@@ -59,8 +61,8 @@ function LogLine({ line, index }: { line: string; index: number }) {
                     return <span key={i} className="inline-block mx-2 px-2.5 py-1 rounded-md text-[11px] font-black bg-[#ff5d5d]/25 text-[#ff5d5d] leading-none select-none tracking-tight uppercase shadow-sm shadow-[#ff5d5d]/10">{part}</span>;
                 }
 
-                // HTTP Methods & Positive Actions
-                if (['GET', 'POST', 'PUT', 'DELETE', 'Accepted', 'Started'].includes(part)) return <span key={i} className="text-indigo-400">{part}</span>;
+                // HTTP Methods & Positive Actions (Remaining ones not covered by pills)
+                if (['GET', 'POST', 'PUT', 'DELETE', 'Stopped'].includes(part)) return <span key={i} className="text-indigo-400">{part}</span>;
                 
                 return part;
             })}
