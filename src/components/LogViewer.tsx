@@ -23,17 +23,33 @@ function LogLine({ line, index }: { line: string; index: number }) {
   }
 
   // 2. Standard Highlighting
-  const parts = line.split(/(\[.*?\]|ERROR|WARN|INFO|CRITICAL|FATAL|debug)/g);
+  // Matches:
+  // - [Date] brackets
+  // - Syslog dates (Jan 01 00:00:00) at start of line
+  // - Keywords (ERROR, WARN, etc)
+  // - Service names (sshd[123]:)
+  const parts = line.split(/(\[.*?\]|^\w{3}\s+\d+\s+\d{2}:\d{2}:\d{2}|ERROR|WARN|INFO|CRITICAL|FATAL|debug|Failed|failed|Accepted|Started|Stopped|[a-zA-Z0-9_\-\.]+(?:\[\d+\])?:)/g);
 
   return (
     <div className="flex hover:bg-zinc-900/50 -mx-4 px-4 py-0.5 border-l-2 border-transparent hover:border-zinc-700">
         <span className="w-8 text-zinc-700 select-none text-right mr-4 flex-shrink-0 text-xs mt-[3px]">{index + 1}</span>
         <span className="text-zinc-300 break-all whitespace-pre-wrap">
             {parts.map((part, i) => {
+                // Brackets [Date]
                 if (part.startsWith('[') && part.endsWith(']')) return <span key={i} className="text-zinc-500">{part}</span>;
+                
+                // Syslog Date (Jan 01 ...)
+                if (/^\w{3}\s+\d+\s+\d{2}:\d{2}:\d{2}/.test(part)) return <span key={i} className="text-zinc-500 font-mono">{part}</span>;
+
+                // Service Name (sshd[123]:)
+                if (/[a-zA-Z0-9_\-\.]+(?:\[\d+\])?:/.test(part) && part.length < 50) return <span key={i} className="text-indigo-400">{part}</span>;
+
+                // Keywords
                 if (part === 'INFO') return <span key={i} className="text-emerald-400 font-semibold">{part}</span>;
                 if (part === 'WARN') return <span key={i} className="text-amber-400 font-semibold">{part}</span>;
-                if (['ERROR', 'CRITICAL', 'FATAL'].includes(part)) return <span key={i} className="text-red-500 font-bold glow-red">{part}</span>;
+                if (['ERROR', 'CRITICAL', 'FATAL', 'Failed', 'failed'].includes(part)) return <span key={i} className="text-red-500 font-bold glow-red">{part}</span>;
+                if (['Accepted', 'Started'].includes(part)) return <span key={i} className="text-emerald-300">{part}</span>;
+                
                 return part;
             })}
         </span>
