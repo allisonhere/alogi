@@ -6,8 +6,8 @@ import { VibeCheckBar } from './VibeCheckBar';
 // Helper to highlight log parts
 function LogLine({ line, index }: { line: string; index: number }) {
   const lower = line.toLowerCase();
-  const isError = lower.includes('error') || lower.includes('critical') || lower.includes('fatal') || lower.includes('failed');
-  const isWarn = lower.includes('warn') || lower.includes('warning');
+  const isError = lower.includes('error') || lower.includes('critical') || lower.includes('fatal') || lower.includes('failed') || lower.includes('denied');
+  const isWarn = lower.includes('warn') || lower.includes('warning') || lower.includes('block') || lower.includes('conflict') || lower.includes('timeout') || lower.includes('retrying');
 
   // 1. Try JSON
   if (line.trim().startsWith('{') && line.trim().endsWith('}')) {
