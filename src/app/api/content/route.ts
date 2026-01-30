@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
+import { getConfig } from '@/lib/config';
+import { sshExec } from '@/lib/ssh';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +14,26 @@ export async function GET(request: Request) {
 
   if (!host || !file) {
     return NextResponse.json({ error: 'Host and file parameters are required' }, { status: 400 });
+  }
+
+  // Handle Remote Hosts
+  if (host.startsWith('remote:')) {
+      const alias = host.replace('remote:', '');
+      const config = getConfig();
+      const hostConfig = config.hosts.find(h => h.alias === alias);
+
+      if (!hostConfig) {
+          return NextResponse.json({ error: 'Remote host not found' }, { status: 404 });
+      }
+
+      try {
+          // Fetch last 2000 lines
+          const safeFile = file.replace(/[^a-zA-Z0-9\.\-\_\@]/g, ''); 
+          const content = await sshExec(hostConfig, `tail -n 2000 /var/log/${safeFile}`);
+          return NextResponse.json({ content });
+      } catch (error: any) {
+          return NextResponse.json({ error: `SSH Read Failed: ${error.message}` }, { status: 500 });
+      }
   }
 
   // Handle System Journal - Fetch Logs
@@ -40,7 +62,8 @@ export async function GET(request: Request) {
      return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 });
   }
 
-  const baseDir = process.env.LOG_ROOT_DIR || path.join(process.cwd(), 'mock-logs');
+  const config = getConfig();
+  const baseDir = config.general.logPath || path.join(process.cwd(), 'mock-logs');
   const filePath = path.join(baseDir, host, file);
   
   try {

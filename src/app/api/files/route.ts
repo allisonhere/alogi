@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
+import { getConfig } from '@/lib/config';
+import { sshExec } from '@/lib/ssh';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -9,6 +11,36 @@ export async function GET(request: Request) {
 
   if (!host) {
     return NextResponse.json({ error: 'Host parameter is required' }, { status: 400 });
+  }
+
+  // Handle Remote Hosts
+  if (host.startsWith('remote:')) {
+      const alias = host.replace('remote:', '');
+      const config = getConfig();
+      const hostConfig = config.hosts.find(h => h.alias === alias);
+
+      if (!hostConfig) {
+          return NextResponse.json({ error: 'Remote host not found in config' }, { status: 404 });
+      }
+
+      try {
+          // List /var/log (simple ls for now, could be improved to find .log files recursively)
+          // Using -p to put / at end of dirs
+          const stdout = await sshExec(hostConfig, 'ls -p /var/log');
+          
+          const files = stdout.split('\n')
+            .filter(line => line.trim() && !line.endsWith('/')) // Filter dirs for now (simple viewer)
+            .map(line => ({
+                name: line.trim(),
+                size: 0,
+                updated: new Date().toISOString() // Unknown without parsing ls -l
+            }));
+          
+          return NextResponse.json({ files });
+      } catch (error: any) {
+          console.error(error);
+          return NextResponse.json({ error: `SSH Connection Failed: ${error.message}` }, { status: 500 });
+      }
   }
 
   // Handle System Journal - List Services
@@ -40,7 +72,8 @@ export async function GET(request: Request) {
      return NextResponse.json({ error: 'Invalid host' }, { status: 400 });
   }
 
-  const baseDir = process.env.LOG_ROOT_DIR || path.join(process.cwd(), 'mock-logs');
+  const config = getConfig();
+  const baseDir = config.general.logPath || path.join(process.cwd(), 'mock-logs');
   const hostDir = path.join(baseDir, host);
   
   try {

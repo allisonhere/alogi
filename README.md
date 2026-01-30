@@ -2,7 +2,7 @@
 
 **Alogi** (AI + Logi) is a modern, local-first log viewer built for DevOps engineers and developers who are tired of `grep` and `tail`. It combines a sleek, high-contrast UI with the power of Google Gemini AI to analyze logs, detect patterns, and explain errors in plain English.
 
-![Alogi Dashboard](https://github.com/allisonhere/alogi/blob/main/pic.png?raw=true)
+![Alogi Dashboard](https://github.com/allisonhere/alogi/blob/main/screenshot.png?raw=true)
 
 ## 🚀 Features
 

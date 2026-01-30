@@ -84,6 +84,7 @@ export default function SettingsPage() {
                     <Cpu className="w-4 h-4" /> AI Configuration
                 </h2>
                 <div className="space-y-4">
+                    {/* ... (keep AI inputs) ... */}
                     <div>
                         <label className="block text-sm font-medium text-zinc-300 mb-1">Gemini API Key</label>
                         <div className="relative">
@@ -108,6 +109,101 @@ export default function SettingsPage() {
                             <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
                         </select>
                     </div>
+                </div>
+            </div>
+
+            {/* Remote Hosts Section */}
+            <div>
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                        <Server className="w-4 h-4" /> Remote Hosts (SSH)
+                    </h2>
+                    <button
+                        onClick={() => setConfig({
+                            ...config, 
+                            hosts: [...config.hosts, { id: crypto.randomUUID(), alias: 'New Server', hostname: '', username: 'root', keyPath: '~/.ssh/id_rsa' }] 
+                        })}
+                        className="text-xs bg-zinc-800 hover:bg-zinc-700 px-2 py-1 rounded text-zinc-300 transition-colors"
+                    >
+                        + Add Host
+                    </button>
+                </div>
+                
+                <div className="space-y-4">
+                    {config.hosts.length === 0 && (
+                        <div className="text-zinc-500 text-sm italic text-center p-4 border border-dashed border-zinc-800 rounded">
+                            No remote hosts configured.
+                        </div>
+                    )}
+                    {config.hosts.map((host: any, index: number) => (
+                        <div key={host.id} className="bg-zinc-900/50 border border-zinc-800 rounded-md p-4 relative group">
+                            <button 
+                                onClick={() => {
+                                    const newHosts = [...config.hosts];
+                                    newHosts.splice(index, 1);
+                                    setConfig({...config, hosts: newHosts});
+                                }}
+                                className="absolute top-2 right-2 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                                Remove
+                            </button>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs text-zinc-500 mb-1">Alias</label>
+                                    <input 
+                                        type="text" 
+                                        value={host.alias}
+                                        onChange={(e) => {
+                                            const newHosts = [...config.hosts];
+                                            newHosts[index].alias = e.target.value;
+                                            setConfig({...config, hosts: newHosts});
+                                        }}
+                                        className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-sm text-zinc-200"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-zinc-500 mb-1">Hostname / IP</label>
+                                    <input 
+                                        type="text" 
+                                        value={host.hostname}
+                                        placeholder="192.168.1.1"
+                                        onChange={(e) => {
+                                            const newHosts = [...config.hosts];
+                                            newHosts[index].hostname = e.target.value;
+                                            setConfig({...config, hosts: newHosts});
+                                        }}
+                                        className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-sm text-zinc-200"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-zinc-500 mb-1">Username</label>
+                                    <input 
+                                        type="text" 
+                                        value={host.username}
+                                        onChange={(e) => {
+                                            const newHosts = [...config.hosts];
+                                            newHosts[index].username = e.target.value;
+                                            setConfig({...config, hosts: newHosts});
+                                        }}
+                                        className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-sm text-zinc-200"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-zinc-500 mb-1">Private Key Path</label>
+                                    <input 
+                                        type="text" 
+                                        value={host.keyPath}
+                                        onChange={(e) => {
+                                            const newHosts = [...config.hosts];
+                                            newHosts[index].keyPath = e.target.value;
+                                            setConfig({...config, hosts: newHosts});
+                                        }}
+                                        className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-sm text-zinc-200"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
 
