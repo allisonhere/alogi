@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import zlib from 'zlib';
 import { execSync } from 'child_process';
 import { getConfig } from '@/lib/config';
 import { sshExec } from '@/lib/ssh';
@@ -27,9 +28,13 @@ export async function GET(request: Request) {
       }
 
       try {
-          // Fetch last 2000 lines
+          // Fetch last 2000 lines. Use zcat for compressed files.
           const safeFile = file.replace(/[^a-zA-Z0-9\.\-\_\@]/g, ''); 
-          const content = await sshExec(hostConfig, `tail -n 2000 /var/log/${safeFile}`);
+          const command = file.endsWith('.gz') 
+            ? `zcat /var/log/${safeFile} | tail -n 2000` 
+            : `tail -n 2000 /var/log/${safeFile}`;
+          
+          const content = await sshExec(hostConfig, command);
           return NextResponse.json({ content });
       } catch (error: any) {
           return NextResponse.json({ error: `SSH Read Failed: ${error.message}` }, { status: 500 });
@@ -42,13 +47,10 @@ export async function GET(request: Request) {
           let command = 'journalctl -n 200 --no-pager';
           
           if (file !== 'ALL_SYSTEM_LOGS') {
-              // file is the service name (e.g. ssh.service)
-              // Sanitize input slightly to prevent injection (though only select from list)
               const service = file.replace(/[^a-zA-Z0-9\.\-\_\@]/g, '');
               command += ` -u ${service}`;
           }
 
-          // Execute
           const content = execSync(command, { encoding: 'utf-8' });
           return NextResponse.json({ content: content || "(No logs found for this period)" });
       } catch (error) {
@@ -57,7 +59,7 @@ export async function GET(request: Request) {
       }
   }
 
-  // Security: prevent directory traversal
+  // Handle Local Files
   if (host.includes('..') || file.includes('..') || host.includes('/') || file.includes('/')) {
      return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 });
   }
@@ -71,9 +73,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'File not found' }, { status: 404 });
     }
 
-    const content = fs.readFileSync(filePath, 'utf-8');
+    let content;
+    if (file.endsWith('.gz')) {
+        const buffer = fs.readFileSync(filePath);
+        content = zlib.gunzipSync(buffer).toString('utf-8');
+    } else {
+        content = fs.readFileSync(filePath, 'utf-8');
+    }
+
     return NextResponse.json({ content });
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed to read file' }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json({ error: 'Failed to read file: ' + error.message }, { status: 500 });
   }
 }
