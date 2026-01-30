@@ -25,7 +25,7 @@ export interface AlogiConfig {
 
 const DEFAULT_CONFIG: AlogiConfig = {
   general: {
-    logPath: process.env.LOG_ROOT_DIR || path.join(process.cwd(), 'mock-logs'),
+    logPath: process.env.LOG_ROOT_DIR || '/var/log',
   },
   ai: {
     apiKey: process.env.GEMINI_API_KEY || '',
