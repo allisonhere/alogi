@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Alogi - AI-Powered Log Viewer
 
-## Getting Started
+**Alogi** (AI + Logi) is a modern, local-first log viewer built for DevOps engineers and developers who are tired of `grep` and `tail`. It combines a sleek, high-contrast UI with the power of Google Gemini AI to analyze logs, detect patterns, and explain errors in plain English.
 
-First, run the development server:
+![Alogi Dashboard](https://github.com/allisonhere/alogi/blob/main/pic.png?raw=true)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🚀 Features
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+*   **⚡️ Live Tailing:** Watch logs stream in real-time (like `tail -f`) with auto-scrolling.
+*   **🧠 AI Analysis:** Click "Analyze" to have Google Gemini 2.0 scan your logs for errors, root causes, and actionable recommendations.
+*   **🎨 Smart Highlighting:**
+    *   **Vibe Check Bar:** A visual heatmap at the top of the screen showing where errors (Red) and warnings (Orange) are buried.
+    *   **Syntax Highlighting:** Dates, IPs, and Keywords are color-coded.
+    *   **JSON Pretty-Printing:** Automatically detects and formats JSON log lines.
+    *   **Pills:** Visual badges for INFO, WARN, and ERROR levels.
+*   **📓 System Journal:** Integrated support for `journalctl` to browse system services and logs alongside files.
+*   **⚙️ Configurable:** Manage your log paths and AI settings via a dedicated Settings UI (persisted to `~/.config/alogi/config.json`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🛠️ Tech Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+*   **Framework:** Next.js 15 (App Router)
+*   **Styling:** Tailwind CSS (Cyberpunk/Terminal aesthetic)
+*   **Icons:** Lucide React
+*   **AI:** Google Generative AI SDK (Gemini Flash)
+*   **Backend:** Node.js (Local FS & Child Process)
 
-## Learn More
+## 📦 Installation
 
-To learn more about Next.js, take a look at the following resources:
+1.  **Clone the repo:**
+    ```bash
+    git clone https://github.com/allisonhere/alogi.git
+    cd alogi
+    ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3.  **Run the development server:**
+    ```bash
+    npm run dev
+    ```
 
-## Deploy on Vercel
+4.  **Open in Browser:**
+    Go to `http://localhost:3000`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🔑 Configuration
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+You can configure Alogi via the **Settings** page (Gear icon in bottom left), or via environment variables:
+
+1.  **AI Key:** Get a [Google Gemini API Key](https://aistudio.google.com/app/apikey).
+2.  **Setup:** Enter the key in the Settings page.
+
+## 🖥️ Usage
+
+*   **Select a Host:** Click a folder on the left (or `(system-journal)`).
+*   **Select a File:** Click a log file to view it.
+*   **Analyze:** Click the **Sparkles** button to generate an AI summary.
+*   **Go Live:** Toggle "Go Live" to stream updates automatically.
+*   **Filter:** Use the search bar to filter lines instantly.
+
+##  license
+
+MIT
