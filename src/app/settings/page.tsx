@@ -121,7 +121,7 @@ export default function SettingsPage() {
                     <button
                         onClick={() => setConfig({
                             ...config, 
-                            hosts: [...config.hosts, { id: crypto.randomUUID(), alias: 'New Server', hostname: '', username: 'root', keyPath: '~/.ssh/id_rsa' }] 
+                            hosts: [...config.hosts, { id: Math.random().toString(36).substring(2, 9), alias: 'New Server', hostname: '', username: 'root', keyPath: '~/.ssh/id_rsa' }] 
                         })}
                         className="text-xs bg-zinc-800 hover:bg-zinc-700 px-2 py-1 rounded text-zinc-300 transition-colors"
                     >
