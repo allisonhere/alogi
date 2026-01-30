@@ -2,7 +2,7 @@
   "name": "alogi",
   "version": "0.1.0",
   "description": "AI-powered log viewer for local and remote logs",
-  "author": "allisonhere",
+  "author": "allisonhere <allisonhere@users.noreply.github.com>",
   "homepage": "https://allisonhere.github.io/alogi/",
   "repository": {
     "type": "git",
@@ -70,6 +70,7 @@
     ],
     "linux": {
       "artifactName": "Alogi-${arch}.${ext}",
+      "maintainer": "allisonhere <allisonhere@users.noreply.github.com>",
       "target": [
         "AppImage",
         "deb"
