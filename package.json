@@ -17,9 +17,9 @@
     "build:desktop": "next build",
     "start": "next start",
     "lint": "eslint",
-    "dist:linux": "npm run build:desktop && electron-builder --linux AppImage deb",
-    "dist:linux:dir": "npm run build:desktop && electron-builder --linux dir",
-    "dist:linux:all": "npm run build:desktop && electron-builder --linux AppImage deb dir"
+    "dist:linux": "npm run build:desktop && electron-builder --linux AppImage deb --publish never",
+    "dist:linux:dir": "npm run build:desktop && electron-builder --linux dir --publish never",
+    "dist:linux:all": "npm run build:desktop && electron-builder --linux AppImage deb dir --publish never"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -52,7 +52,6 @@
     "appId": "com.allisonhere.alogi",
     "productName": "Alogi",
     "executableName": "alogi",
-    "publish": "never",
     "directories": {
       "output": "dist-electron"
     },
