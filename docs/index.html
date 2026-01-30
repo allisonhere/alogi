@@ -21,31 +21,34 @@
         </p>
         <div class="actions">
           <a class="btn primary" href="https://github.com/allisonhere/alogi/releases/latest">Latest Release</a>
-          <a class="btn" href="https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x64.AppImage">AppImage</a>
-          <a class="btn" href="https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x64.deb">Ubuntu deb</a>
-          <a class="btn" href="#arch">Pacman</a>
+          <a class="btn" href="https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x86_64.AppImage">AppImage</a>
+          <a class="btn" href="https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb">Ubuntu deb</a>
+          <a class="btn" href="https://github.com/allisonhere/alogi/releases/latest/download/alogi-arch.pkg.tar.zst">Pacman pkg</a>
         </div>
       </header>
 
       <section id="appimage" class="card">
         <h2>AppImage (portable)</h2>
         <p>Works on most Linux distros, no root required.</p>
-        <pre><code>curl -L -o Alogi-x64.AppImage https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x64.AppImage
-chmod +x Alogi-x64.AppImage
-./Alogi-x64.AppImage</code></pre>
+        <pre><code>curl -L -o Alogi-x86_64.AppImage https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x86_64.AppImage
+chmod +x Alogi-x86_64.AppImage
+./Alogi-x86_64.AppImage</code></pre>
         <p class="note">Direct download link to the latest AppImage.</p>
       </section>
 
       <section id="deb" class="card">
         <h2>Ubuntu / Debian (.deb)</h2>
-        <pre><code>curl -L -o Alogi-x64.deb https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x64.deb
-sudo apt install ./Alogi-x64.deb</code></pre>
+        <pre><code>curl -L -o Alogi-amd64.deb https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb
+sudo apt install ./Alogi-amd64.deb</code></pre>
         <p class="note">Tip: you can also install via your file manager.</p>
       </section>
 
       <section id="arch" class="card">
         <h2>Arch / CachyOS (pacman)</h2>
-        <p>Use the PKGBUILD in the repo or publish to AUR for `yay -S alogi`.</p>
+        <p>Install the prebuilt pacman package or build locally from the PKGBUILD.</p>
+        <pre><code>curl -L -o alogi-arch.pkg.tar.zst https://github.com/allisonhere/alogi/releases/latest/download/alogi-arch.pkg.tar.zst
+sudo pacman -U alogi-arch.pkg.tar.zst</code></pre>
+        <p class="note">Manual build instructions below if you prefer to compile locally.</p>
         <pre><code>git clone https://github.com/allisonhere/alogi.git
 cd alogi
 npm install

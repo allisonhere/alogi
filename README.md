@@ -75,8 +75,9 @@ You can also prefill values via environment variables:
 Install page: **https://allisonhere.github.io/alogi/**
 
 Direct downloads (latest):
-* AppImage: `https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x64.AppImage`
-* Ubuntu deb: `https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x64.deb`
+* AppImage: `https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x86_64.AppImage`
+* Ubuntu deb: `https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb`
+* Arch pkg: `https://github.com/allisonhere/alogi/releases/latest/download/alogi-arch.pkg.tar.zst`
 
 ### AppImage + Debian (.deb)
 

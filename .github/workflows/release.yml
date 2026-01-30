@@ -30,9 +30,27 @@ jobs:
 
       - name: Pack linux-unpacked
         run: |
-          VERSION=$(node -p "require('./package.json').version")
+          VERSION="${GITHUB_REF_NAME#v}"
           tar -C dist-electron -czf alogi-${VERSION}-linux-unpacked.tar.gz linux-unpacked
           cp alogi-${VERSION}-linux-unpacked.tar.gz alogi-linux-unpacked.tar.gz
+
+      - name: Prepare Arch package sources
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          tar -C dist-electron -czf packaging/arch/linux-unpacked.tar.gz linux-unpacked
+          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" packaging/arch/PKGBUILD
+
+      - name: Build Arch package
+        run: |
+          docker run --rm -v "$PWD:/repo" archlinux:latest /bin/bash -c "\
+            pacman -Sy --noconfirm base-devel && \
+            cd /repo/packaging/arch && \
+            makepkg -f --noconfirm --needed --asroot"
+
+      - name: Collect Arch package
+        run: |
+          PKG=$(ls packaging/arch/alogi-*.pkg.tar.zst | head -n1)
+          cp "$PKG" alogi-arch.pkg.tar.zst
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
@@ -42,3 +60,4 @@ jobs:
             dist-electron/*.AppImage
             dist-electron/*.deb
             alogi-*-linux-unpacked.tar.gz
+            alogi-arch.pkg.tar.zst
