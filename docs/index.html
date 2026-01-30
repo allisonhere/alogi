@@ -21,8 +21,8 @@
         </p>
         <div class="actions">
           <a class="btn primary" href="https://github.com/allisonhere/alogi/releases/latest">Latest Release</a>
-          <a class="btn" href="#appimage">AppImage</a>
-          <a class="btn" href="#deb">Debian</a>
+          <a class="btn" href="https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x64.AppImage">AppImage</a>
+          <a class="btn" href="https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x64.deb">Ubuntu deb</a>
           <a class="btn" href="#arch">Pacman</a>
         </div>
       </header>
@@ -30,16 +30,16 @@
       <section id="appimage" class="card">
         <h2>AppImage (portable)</h2>
         <p>Works on most Linux distros, no root required.</p>
-        <pre><code># Download the AppImage from the latest release page
-chmod +x Alogi-*.AppImage
-./Alogi-*.AppImage</code></pre>
-        <p class="note">Grab the AppImage from the latest GitHub Release.</p>
+        <pre><code>curl -L -o Alogi-x64.AppImage https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x64.AppImage
+chmod +x Alogi-x64.AppImage
+./Alogi-x64.AppImage</code></pre>
+        <p class="note">Direct download link to the latest AppImage.</p>
       </section>
 
       <section id="deb" class="card">
         <h2>Ubuntu / Debian (.deb)</h2>
-        <pre><code># Download the .deb from the latest release page
-sudo apt install ./Alogi_*_amd64.deb</code></pre>
+        <pre><code>curl -L -o Alogi-x64.deb https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x64.deb
+sudo apt install ./Alogi-x64.deb</code></pre>
         <p class="note">Tip: you can also install via your file manager.</p>
       </section>
 

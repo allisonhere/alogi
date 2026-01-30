@@ -73,6 +73,7 @@
       }
     ],
     "linux": {
+      "artifactName": "Alogi-${arch}.${ext}",
       "target": [
         "AppImage",
         "deb"
