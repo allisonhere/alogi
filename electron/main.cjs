@@ -33,7 +33,7 @@ const loadUrlWithRetry = async (win, url, retries = 20) => {
 
 const startNextServer = async () => {
   const serverRoot = app.isPackaged
-    ? path.join(process.resourcesPath, 'app', '.next', 'standalone')
+    ? path.join(process.resourcesPath, '.next', 'standalone')
     : path.join(__dirname, '..', '.next', 'standalone');
 
   const serverPath = path.join(serverRoot, 'server.js');

@@ -61,11 +61,11 @@
     "extraResources": [
       {
         "from": ".next/standalone",
-        "to": "app/.next/standalone"
+        "to": ".next/standalone"
       },
       {
         "from": ".next/static",
-        "to": "app/.next/standalone/.next/static"
+        "to": ".next/standalone/.next/static"
       }
     ],
     "linux": {
