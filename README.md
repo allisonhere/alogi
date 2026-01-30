@@ -93,6 +93,7 @@ Output is placed in `dist-electron/`.
 1) Build the unpacked Linux app:
 
 ```bash
+npm install
 npm run dist:linux:dir
 ```
 
@@ -109,6 +110,9 @@ cd packaging/arch
 makepkg -f
 sudo pacman -U alogi-*.pkg.tar.zst
 ```
+
+Notes:
+* Requires Node.js 20+ and npm on your system.
 
 Notes:
 * The PKGBUILD expects `linux-unpacked.tar.gz` in `packaging/arch/`.
