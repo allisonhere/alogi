@@ -60,7 +60,13 @@ export function saveConfig(config: Partial<AlogiConfig>): void {
     
     // Merge with existing
     const current = getConfig();
-    const newConfig = { ...current, ...config };
+    const newConfig: AlogiConfig = {
+      ...current,
+      ...config,
+      general: { ...current.general, ...config.general },
+      ai: { ...current.ai, ...config.ai },
+      hosts: config.hosts ?? current.hosts,
+    };
     
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(newConfig, null, 2), 'utf-8');
   } catch (error) {

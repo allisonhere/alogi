@@ -88,15 +88,18 @@ interface AIAnalysis {
 }
 
 export function LogViewer({ content, loading, filename, isLive, setIsLive }: LogViewerProps) {
+  const MAX_RENDER_LINES = 5000;
   const [analyzing, setAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAllLines, setShowAllLines] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Reset analysis and search when file changes
   useEffect(() => {
     setAnalysis(null);
     setSearchQuery('');
+    setShowAllLines(false);
   }, [filename]);
 
   // Auto-scroll to bottom in live mode
@@ -146,6 +149,9 @@ export function LogViewer({ content, loading, filename, isLive, setIsLive }: Log
   const filteredLines = searchQuery 
     ? lines.map((line, index) => ({ line, index })).filter(item => item.line.toLowerCase().includes(searchQuery.toLowerCase()))
     : lines.map((line, index) => ({ line, index }));
+  const shouldWindow = !searchQuery && filteredLines.length > MAX_RENDER_LINES && !showAllLines;
+  const windowStart = shouldWindow ? filteredLines.length - MAX_RENDER_LINES : 0;
+  const windowedLines = shouldWindow ? filteredLines.slice(windowStart) : filteredLines;
 
     return (
 
@@ -273,8 +279,22 @@ export function LogViewer({ content, loading, filename, isLive, setIsLive }: Log
 
         </div>
 
+      {filteredLines.length > MAX_RENDER_LINES && !searchQuery && (
+        <div className="px-6 py-2 text-xs bg-amber-50 text-amber-900 border-b border-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:border-amber-500/20 flex items-center justify-between">
+          <span>
+            Large log: {shouldWindow ? `showing last ${MAX_RENDER_LINES} of ${filteredLines.length} lines` : `showing all ${filteredLines.length} lines`}
+          </span>
+          <button
+            onClick={() => setShowAllLines(!showAllLines)}
+            className="text-xs px-2 py-1 rounded border border-amber-300 dark:border-amber-500/30 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors"
+          >
+            {shouldWindow ? 'Show all' : 'Show latest only'}
+          </button>
+        </div>
+      )}
+
       <VibeCheckBar 
-        lines={filteredLines.map(l => l.line)} 
+        lines={windowedLines.map(l => l.line)} 
         onScrollTo={(index) => {
             const child = scrollRef.current?.children[index] as HTMLElement;
             if (child) child.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -287,7 +307,7 @@ export function LogViewer({ content, loading, filename, isLive, setIsLive }: Log
             ref={scrollRef}
             className="flex-1 overflow-auto p-4 font-mono text-sm text-zinc-300 leading-relaxed custom-scrollbar"
         >
-            {filteredLines.length > 0 ? filteredLines.map(({ line, index }) => (
+            {windowedLines.length > 0 ? windowedLines.map(({ line, index }) => (
                 <LogLine key={index} line={line} index={index} />
             )) : (
                 <div className="flex flex-col items-center justify-center h-full text-zinc-600 space-y-2">

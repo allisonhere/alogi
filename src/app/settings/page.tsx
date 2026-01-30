@@ -8,24 +8,70 @@ export default function SettingsPage() {
   const [config, setConfig] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [missingKeyById, setMissingKeyById] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    fetch('/api/settings')
-      .then(res => res.json())
-      .then(data => {
+    const loadConfig = async () => {
+      try {
+        setError(null);
+        const res = await fetch('/api/settings');
+        if (!res.ok) {
+          throw new Error(`Failed to load settings (${res.status})`);
+        }
+        const data = await res.json();
         setConfig(data);
+      } catch (err: any) {
+        setError(err.message || 'Failed to load settings');
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    loadConfig();
   }, []);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await fetch('/api/settings', {
+      const res = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),
       });
+      if (!res.ok) {
+        let message = `Failed to save settings (${res.status})`;
+        try {
+          const data = await res.json();
+          if (data?.missingKeys?.length) {
+            const list = data.missingKeys
+              .map((item: any) => `${item.alias}: ${item.keyPath}`)
+              .join('\n');
+            message = `Missing SSH key file(s):\n${list}`;
+            const nextMissing: Record<string, string> = {};
+            data.missingKeys.forEach((item: any) => {
+              if (item?.id) {
+                nextMissing[item.id] = item.keyPath;
+                return;
+              }
+              if (item?.alias) {
+                const match = config?.hosts?.find((h: any) => h.alias === item.alias);
+                if (match?.id) {
+                  nextMissing[match.id] = item.keyPath;
+                }
+              }
+            });
+            setMissingKeyById(nextMissing);
+          } else if (data?.error) {
+            message = data.error;
+          }
+        } catch {
+          // ignore parse errors
+        }
+        alert(message);
+        return;
+      }
+      setMissingKeyById({});
       alert("Settings saved!");
     } catch (e) {
       alert("Failed to save settings");
@@ -35,6 +81,31 @@ export default function SettingsPage() {
   };
 
   if (loading) return <div className="text-zinc-500 p-8">Loading settings...</div>;
+  if (error) {
+    return (
+      <div className="min-h-screen bg-zinc-50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 flex flex-col items-center py-10 transition-colors">
+        <div className="w-full max-w-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden shadow-xl">
+          <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/50">
+            <div className="flex items-center gap-4">
+              <Link href="/" className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-full transition-colors text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
+                <ArrowLeft className="w-5 h-5" />
+              </Link>
+              <h1 className="text-xl font-bold">Settings</h1>
+            </div>
+          </div>
+          <div className="p-6">
+            <div className="text-sm text-red-600 dark:text-red-400 mb-4">Failed to load settings: {error}</div>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-xs bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 px-3 py-2 rounded text-zinc-700 dark:text-zinc-300 transition-colors border border-zinc-300 dark:border-zinc-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 flex flex-col items-center py-10 transition-colors">
@@ -266,9 +337,23 @@ export default function SettingsPage() {
                                             const newHosts = [...config.hosts];
                                             newHosts[index].keyPath = e.target.value;
                                             setConfig({...config, hosts: newHosts});
+                                            if (host.id && missingKeyById[host.id]) {
+                                                const next = { ...missingKeyById };
+                                                delete next[host.id];
+                                                setMissingKeyById(next);
+                                            }
                                         }}
-                                        className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded px-2 py-1 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 focus:ring-indigo-500 outline-none"
+                                        className={`w-full bg-white dark:bg-zinc-950 border rounded px-2 py-1 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 outline-none ${
+                                            host.id && missingKeyById[host.id]
+                                              ? "border-red-400 dark:border-red-500 focus:ring-red-500"
+                                              : "border-zinc-300 dark:border-zinc-800 focus:ring-indigo-500"
+                                        }`}
                                     />
+                                    {host.id && missingKeyById[host.id] && (
+                                        <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                                            Private key not found at {missingKeyById[host.id]}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         </div>

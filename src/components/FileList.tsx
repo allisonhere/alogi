@@ -15,6 +15,14 @@ interface FileListProps {
 }
 
 export function FileList({ files, selectedFile, onSelectFile, loading }: FileListProps) {
+  const formatUpdated = (updated: string) => {
+    const parsed = new Date(updated);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toLocaleTimeString();
+    }
+    return updated || "—";
+  };
+
   return (
     <div className="w-72 border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 flex flex-col transition-colors">
       <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
@@ -41,7 +49,7 @@ export function FileList({ files, selectedFile, onSelectFile, loading }: FileLis
             </div>
             <div className="flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-600 mt-1 pl-6 group-hover:text-zinc-600 dark:group-hover:text-zinc-500">
                <Clock className="w-3 h-3" />
-               {new Date(file.updated).toLocaleTimeString()}
+               {formatUpdated(file.updated)}
             </div>
           </button>
         ))}

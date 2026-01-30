@@ -32,7 +32,11 @@ Answer the user's questions based strictly on these logs. Be technical, precise,
 
         const history = [
             { role: "user", parts: [{ text: systemPrompt }] },
-            { role: "model", parts: [{ text: "Understood. Ready to investigate." }] }
+            { role: "model", parts: [{ text: "Understood. Ready to investigate." }] },
+            ...messages.slice(0, -1).map((msg: any) => ({
+                role: msg.role === 'user' ? "user" : "model",
+                parts: [{ text: msg.content }]
+            }))
         ];
 
         // Map messages to Gemini format (user/model)
@@ -43,6 +47,9 @@ Answer the user's questions based strictly on these logs. Be technical, precise,
         
         const chat = model.startChat({ history });
         const lastMessage = messages[messages.length - 1];
+        if (!lastMessage?.content) {
+            return NextResponse.json({ error: 'Last message missing' }, { status: 400 });
+        }
 
         // Retry Logic
         let attempts = 0;
