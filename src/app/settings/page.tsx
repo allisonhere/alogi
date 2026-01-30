@@ -60,13 +60,13 @@ export default function SettingsPage() {
             const nextMissing: Record<string, string> = {};
             data.missingKeys.forEach((item) => {
               if (item?.id) {
-                nextMissing[item.id] = item.keyPath;
+                nextMissing[item.id] = item.keyPath ?? '';
                 return;
               }
               if (item?.alias) {
                 const match = config?.hosts?.find((h) => h.alias === item.alias);
                 if (match?.id) {
-                  nextMissing[match.id] = item.keyPath;
+                  nextMissing[match.id] = item.keyPath ?? '';
                 }
               }
             });
@@ -193,7 +193,7 @@ export default function SettingsPage() {
                         <select 
                             value={config.ai.provider || 'gemini'}
                             onChange={(e) => {
-                                const provider = e.target.value;
+                                const provider = e.target.value as 'gemini' | 'openai';
                                 setConfig({
                                     ...config, 
                                     ai: {
@@ -333,7 +333,7 @@ export default function SettingsPage() {
                                         value={host.type || 'ssh'}
                                         onChange={(e) => {
                                             const newHosts = [...config.hosts];
-                                            newHosts[index].type = e.target.value;
+                                            newHosts[index].type = e.target.value as 'ssh' | 'docker';
                                             setConfig({...config, hosts: newHosts});
                                         }}
                                         className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded px-2 py-1 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 focus:ring-indigo-500 outline-none"
