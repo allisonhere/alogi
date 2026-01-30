@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Make native modules external to prevent bundling errors
+  serverExternalPackages: ['ssh2'],
 };
 
 export default nextConfig;
