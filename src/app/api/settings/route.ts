@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { getConfig, saveConfig } from '@/lib/config';
+import { getConfig, saveConfig, type AlogiConfig } from '@/lib/config';
 
 function resolveHome(filepath: string): string {
   if (filepath.startsWith('~')) {
@@ -20,11 +20,16 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body = await request.json() as Partial<AlogiConfig>;
+    const hosts = body.hosts as Array<Partial<AlogiConfig['hosts'][number]>> | undefined;
 
-    if (Array.isArray(body?.hosts)) {
-      const missingKeys = body.hosts
-        .map((host: any) => {
+    if (Array.isArray(hosts)) {
+      const missingKeys = hosts
+        .map((host) => {
+          const authMethod = host?.authMethod ?? 'key';
+          if (authMethod === 'password') {
+            return null;
+          }
           const keyPathRaw = host?.keyPath || '~/.ssh/id_rsa';
           const keyPath = resolveHome(String(keyPathRaw));
           if (!fs.existsSync(keyPath)) {
@@ -38,9 +43,25 @@ export async function POST(request: Request) {
         })
         .filter(Boolean);
 
-      if (missingKeys.length > 0) {
+      const missingPasswords = hosts
+        .map((host) => {
+          const authMethod = host?.authMethod ?? 'key';
+          if (authMethod !== 'password') {
+            return null;
+          }
+          if (!host?.password) {
+            return {
+              id: host?.id,
+              alias: host?.alias || host?.hostname || 'unknown',
+            };
+          }
+          return null;
+        })
+        .filter(Boolean);
+
+      if (missingKeys.length > 0 || missingPasswords.length > 0) {
         return NextResponse.json(
-          { error: 'SSH private key not found', missingKeys },
+          { error: 'SSH credentials missing', missingKeys, missingPasswords },
           { status: 400 }
         );
       }
@@ -48,7 +69,7 @@ export async function POST(request: Request) {
 
     saveConfig(body);
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to save settings' }, { status: 500 });
   }
 }

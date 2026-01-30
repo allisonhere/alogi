@@ -51,9 +51,10 @@ export async function GET(request: Request) {
                 }));
               return NextResponse.json({ files });
           }
-      } catch (error: any) {
-          console.error(error);
-          return NextResponse.json({ error: `SSH Connection Failed: ${error.message}` }, { status: 500 });
+      } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          console.error(message);
+          return NextResponse.json({ error: `SSH Connection Failed: ${message}` }, { status: 500 });
       }
   }
 
@@ -76,7 +77,7 @@ export async function GET(request: Request) {
           files.unshift({ name: 'ALL_SYSTEM_LOGS', size: 0, updated: new Date().toISOString() });
 
           return NextResponse.json({ files });
-      } catch (error) {
+      } catch {
           return NextResponse.json({ error: 'Failed to list services. Do you have permissions?' }, { status: 500 });
       }
   }
@@ -105,7 +106,7 @@ export async function GET(request: Request) {
       }));
 
     return NextResponse.json({ files });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to read files' }, { status: 500 });
   }
 }

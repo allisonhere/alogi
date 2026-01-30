@@ -45,8 +45,9 @@ export async function GET(request: Request) {
           
           const content = await sshExec(hostConfig, command);
           return NextResponse.json({ content });
-      } catch (error: any) {
-          return NextResponse.json({ error: `SSH Read Failed: ${error.message}` }, { status: 500 });
+      } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          return NextResponse.json({ error: `SSH Read Failed: ${message}` }, { status: 500 });
       }
   }
 
@@ -91,7 +92,8 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({ content });
-  } catch (error: any) {
-    return NextResponse.json({ error: 'Failed to read file: ' + error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: 'Failed to read file: ' + message }, { status: 500 });
   }
 }

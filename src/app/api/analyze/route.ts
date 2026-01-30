@@ -40,8 +40,10 @@ export async function POST(request: Request) {
         // Retry logic for Gemini
         try {
             result = await model.generateContent(prompt);
-        } catch (e: any) {
-            if (e.message?.includes('429') || e.status === 429) {
+        } catch (e) {
+            const err = e as { message?: string; status?: number };
+            const message = typeof err.message === 'string' ? err.message : '';
+            if (message.includes('429') || err.status === 429) {
                 await new Promise(r => setTimeout(r, 4000));
                 result = await model.generateContent(prompt);
             } else {
@@ -75,8 +77,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: 'Invalid AI Provider' }, { status: 400 });
 
-  } catch (error: any) {
-    console.error("AI Analysis failed:", error.message);
-    return NextResponse.json({ error: 'Analysis failed: ' + error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("AI Analysis failed:", message);
+    return NextResponse.json({ error: 'Analysis failed: ' + message }, { status: 500 });
   }
 }

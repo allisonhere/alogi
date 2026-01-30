@@ -1,15 +1,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, ArrowLeft, Server, Cpu, Key } from 'lucide-react';
+import { Save, ArrowLeft, Server, Cpu, Key, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import type { AlogiConfig } from '@/lib/config';
+
+type MissingKey = { id?: string; alias?: string; keyPath?: string };
+type MissingPassword = { id?: string; alias?: string };
+type SaveErrorResponse = { error?: string; missingKeys?: MissingKey[]; missingPasswords?: MissingPassword[] };
 
 export default function SettingsPage() {
-  const [config, setConfig] = useState<any>(null);
+  const [config, setConfig] = useState<AlogiConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [missingKeyById, setMissingKeyById] = useState<Record<string, string>>({});
+  const [missingPasswordById, setMissingPasswordById] = useState<Record<string, true>>({});
+  const [showPasswordById, setShowPasswordById] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const loadConfig = async () => {
@@ -21,8 +28,9 @@ export default function SettingsPage() {
         }
         const data = await res.json();
         setConfig(data);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load settings');
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to load settings';
+        setError(message);
       } finally {
         setLoading(false);
       }
@@ -32,6 +40,7 @@ export default function SettingsPage() {
   }, []);
 
   const handleSave = async () => {
+    if (!config) return;
     setSaving(true);
     try {
       const res = await fetch('/api/settings', {
@@ -42,26 +51,48 @@ export default function SettingsPage() {
       if (!res.ok) {
         let message = `Failed to save settings (${res.status})`;
         try {
-          const data = await res.json();
+          const data = await res.json() as SaveErrorResponse;
           if (data?.missingKeys?.length) {
             const list = data.missingKeys
-              .map((item: any) => `${item.alias}: ${item.keyPath}`)
+              .map((item) => `${item.alias}: ${item.keyPath}`)
               .join('\n');
             message = `Missing SSH key file(s):\n${list}`;
             const nextMissing: Record<string, string> = {};
-            data.missingKeys.forEach((item: any) => {
+            data.missingKeys.forEach((item) => {
               if (item?.id) {
                 nextMissing[item.id] = item.keyPath;
                 return;
               }
               if (item?.alias) {
-                const match = config?.hosts?.find((h: any) => h.alias === item.alias);
+                const match = config?.hosts?.find((h) => h.alias === item.alias);
                 if (match?.id) {
                   nextMissing[match.id] = item.keyPath;
                 }
               }
             });
             setMissingKeyById(nextMissing);
+          }
+          if (data?.missingPasswords?.length) {
+            const list = data.missingPasswords
+              .map((item) => `${item.alias}`)
+              .join('\n');
+            message = message.includes('Missing SSH key file')
+              ? `${message}\n\nMissing SSH password(s):\n${list}`
+              : `Missing SSH password(s):\n${list}`;
+            const nextMissingPasswords: Record<string, true> = {};
+            data.missingPasswords.forEach((item) => {
+              if (item?.id) {
+                nextMissingPasswords[item.id] = true;
+                return;
+              }
+              if (item?.alias) {
+                const match = config?.hosts?.find((h) => h.alias === item.alias);
+                if (match?.id) {
+                  nextMissingPasswords[match.id] = true;
+                }
+              }
+            });
+            setMissingPasswordById(nextMissingPasswords);
           } else if (data?.error) {
             message = data.error;
           }
@@ -72,8 +103,9 @@ export default function SettingsPage() {
         return;
       }
       setMissingKeyById({});
+      setMissingPasswordById({});
       alert("Settings saved!");
-    } catch (e) {
+    } catch {
       alert("Failed to save settings");
     } finally {
       setSaving(false);
@@ -106,6 +138,7 @@ export default function SettingsPage() {
       </div>
     );
   }
+  if (!config) return <div className="text-zinc-500 p-8">Loading settings...</div>;
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 flex flex-col items-center py-10 transition-colors">
@@ -246,7 +279,7 @@ export default function SettingsPage() {
                     <button
                         onClick={() => setConfig({
                             ...config, 
-                            hosts: [...config.hosts, { id: Math.random().toString(36).substring(2, 9), alias: 'New Server', hostname: '', username: 'root', keyPath: '~/.ssh/id_rsa' }] 
+                            hosts: [...config.hosts, { id: Math.random().toString(36).substring(2, 9), alias: 'New Server', hostname: '', username: 'root', keyPath: '~/.ssh/id_rsa', password: '', authMethod: 'key' }] 
                         })}
                         className="text-xs bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 px-2 py-1 rounded text-zinc-700 dark:text-zinc-300 transition-colors border border-zinc-300 dark:border-zinc-700"
                     >
@@ -260,16 +293,37 @@ export default function SettingsPage() {
                             No remote hosts configured.
                         </div>
                     )}
-                    {config.hosts.map((host: any, index: number) => (
+                    {config.hosts.map((host, index) => (
                         <div key={host.id} className="bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-md p-4 relative group">
                             <button 
                                 onClick={() => {
+                                    const ok = window.confirm(`Remove host "${host.alias}"?`);
+                                    if (!ok) return;
+                                    if (host.id) {
+                                      if (missingKeyById[host.id]) {
+                                        const next = { ...missingKeyById };
+                                        delete next[host.id];
+                                        setMissingKeyById(next);
+                                      }
+                                      if (missingPasswordById[host.id]) {
+                                        const next = { ...missingPasswordById };
+                                        delete next[host.id];
+                                        setMissingPasswordById(next);
+                                      }
+                                      if (showPasswordById[host.id]) {
+                                        const next = { ...showPasswordById };
+                                        delete next[host.id];
+                                        setShowPasswordById(next);
+                                      }
+                                    }
                                     const newHosts = [...config.hosts];
                                     newHosts.splice(index, 1);
                                     setConfig({...config, hosts: newHosts});
                                 }}
-                                className="absolute top-2 right-2 text-zinc-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="absolute top-2 right-2 text-zinc-400 hover:text-red-500 transition-colors flex items-center gap-1 text-xs"
+                                title="Remove host"
                             >
+                                <Trash2 className="w-3.5 h-3.5" />
                                 Remove
                             </button>
                             <div className="grid grid-cols-2 gap-4">
@@ -287,6 +341,51 @@ export default function SettingsPage() {
                                         <option value="ssh">Standard File Viewer (SSH)</option>
                                         <option value="docker">Docker Containers (SSH)</option>
                                     </select>
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-xs text-zinc-500 mb-1">Auth Method</label>
+                                    <div className="inline-flex rounded-md border border-zinc-300 dark:border-zinc-800 overflow-hidden">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const newHosts = [...config.hosts];
+                                                newHosts[index].authMethod = 'key';
+                                                setConfig({...config, hosts: newHosts});
+                                                if (host.id && missingPasswordById[host.id]) {
+                                                    const next = { ...missingPasswordById };
+                                                    delete next[host.id];
+                                                    setMissingPasswordById(next);
+                                                }
+                                            }}
+                                            className={`px-3 py-1 text-xs transition-colors ${
+                                                (host.authMethod ?? 'key') === 'key'
+                                                  ? "bg-indigo-600 text-white"
+                                                  : "bg-white dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                                            }`}
+                                        >
+                                            Key
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const newHosts = [...config.hosts];
+                                                newHosts[index].authMethod = 'password';
+                                                setConfig({...config, hosts: newHosts});
+                                                if (host.id && missingKeyById[host.id]) {
+                                                    const next = { ...missingKeyById };
+                                                    delete next[host.id];
+                                                    setMissingKeyById(next);
+                                                }
+                                            }}
+                                            className={`px-3 py-1 text-xs transition-colors ${
+                                                (host.authMethod ?? 'key') === 'password'
+                                                  ? "bg-indigo-600 text-white"
+                                                  : "bg-white dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                                            }`}
+                                        >
+                                            Password
+                                        </button>
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="block text-xs text-zinc-500 mb-1">Alias</label>
@@ -328,33 +427,75 @@ export default function SettingsPage() {
                                         className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded px-2 py-1 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 focus:ring-indigo-500 outline-none"
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-xs text-zinc-500 mb-1">Private Key Path</label>
-                                    <input 
-                                        type="text" 
-                                        value={host.keyPath}
-                                        onChange={(e) => {
-                                            const newHosts = [...config.hosts];
-                                            newHosts[index].keyPath = e.target.value;
-                                            setConfig({...config, hosts: newHosts});
-                                            if (host.id && missingKeyById[host.id]) {
-                                                const next = { ...missingKeyById };
-                                                delete next[host.id];
-                                                setMissingKeyById(next);
-                                            }
-                                        }}
-                                        className={`w-full bg-white dark:bg-zinc-950 border rounded px-2 py-1 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 outline-none ${
-                                            host.id && missingKeyById[host.id]
-                                              ? "border-red-400 dark:border-red-500 focus:ring-red-500"
-                                              : "border-zinc-300 dark:border-zinc-800 focus:ring-indigo-500"
-                                        }`}
-                                    />
-                                    {host.id && missingKeyById[host.id] && (
-                                        <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                                            Private key not found at {missingKeyById[host.id]}
-                                        </p>
-                                    )}
-                                </div>
+                                {(host.authMethod ?? 'key') === 'key' ? (
+                                    <div>
+                                        <label className="block text-xs text-zinc-500 mb-1">Private Key Path</label>
+                                        <input 
+                                            type="text" 
+                                            value={host.keyPath}
+                                            onChange={(e) => {
+                                                const newHosts = [...config.hosts];
+                                                newHosts[index].keyPath = e.target.value;
+                                                setConfig({...config, hosts: newHosts});
+                                                if (host.id && missingKeyById[host.id]) {
+                                                    const next = { ...missingKeyById };
+                                                    delete next[host.id];
+                                                    setMissingKeyById(next);
+                                                }
+                                            }}
+                                            className={`w-full bg-white dark:bg-zinc-950 border rounded px-2 py-1 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 outline-none ${
+                                                host.id && missingKeyById[host.id]
+                                                  ? "border-red-400 dark:border-red-500 focus:ring-red-500"
+                                                  : "border-zinc-300 dark:border-zinc-800 focus:ring-indigo-500"
+                                            }`}
+                                        />
+                                        {host.id && missingKeyById[host.id] && (
+                                            <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                                                Private key not found at {missingKeyById[host.id]}
+                                            </p>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <label className="block text-xs text-zinc-500 mb-1">Password</label>
+                                        <div className="relative">
+                                            <input 
+                                                type={host.id && showPasswordById[host.id] ? "text" : "password"}
+                                                value={host.password || ''}
+                                                onChange={(e) => {
+                                                    const newHosts = [...config.hosts];
+                                                    newHosts[index].password = e.target.value;
+                                                    setConfig({...config, hosts: newHosts});
+                                                    if (host.id && missingPasswordById[host.id]) {
+                                                        const next = { ...missingPasswordById };
+                                                        delete next[host.id];
+                                                        setMissingPasswordById(next);
+                                                    }
+                                                }}
+                                                className={`w-full bg-white dark:bg-zinc-950 border rounded px-2 py-1 pr-12 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 outline-none ${
+                                                    host.id && missingPasswordById[host.id]
+                                                      ? "border-red-400 dark:border-red-500 focus:ring-red-500"
+                                                      : "border-zinc-300 dark:border-zinc-800 focus:ring-indigo-500"
+                                                }`}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (!host.id) return;
+                                                    setShowPasswordById(prev => ({ ...prev, [host.id]: !prev[host.id] }));
+                                                }}
+                                                className="absolute right-2 top-1.5 text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+                                            >
+                                                {host.id && showPasswordById[host.id] ? "Hide" : "Show"}
+                                            </button>
+                                        </div>
+                                        {host.id && missingPasswordById[host.id] && (
+                                            <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                                                Password is required for this host.
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))}

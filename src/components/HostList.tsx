@@ -2,7 +2,7 @@ import { Server, HardDrive, Settings, Moon, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useTheme } from "next-themes";
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
 interface HostListProps {
   hosts: string[];
@@ -12,11 +12,11 @@ interface HostListProps {
 
 export function HostList({ hosts, selectedHost, onSelectHost }: HostListProps) {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
   return (
     <div className="w-64 border-r border-zinc-800 bg-zinc-50 dark:bg-zinc-950 flex flex-col h-full transition-colors">
@@ -71,5 +71,4 @@ export function HostList({ hosts, selectedHost, onSelectHost }: HostListProps) {
     </div>
   );
 }
-
 

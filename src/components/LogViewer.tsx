@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Sparkles, Terminal, AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react';
+import { Sparkles, Terminal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VibeCheckBar } from './VibeCheckBar';
 import { ChatPanel } from './ChatPanel';
@@ -11,23 +11,27 @@ function LogLine({ line, index }: { line: string; index: number }) {
   const isWarn = lower.includes('warn') || lower.includes('warning') || lower.includes('block') || lower.includes('conflict') || lower.includes('timeout') || lower.includes('retrying');
 
   // 1. Try JSON
+  let parsedJson: unknown | null = null;
   if (line.trim().startsWith('{') && line.trim().endsWith('}')) {
-      try {
-          const obj = JSON.parse(line);
-          return (
-             <div className={cn(
-                "flex hover:bg-zinc-100 dark:hover:bg-zinc-800/30 -mx-4 px-4 py-1 transition-colors",
-                isError ? "bg-red-50 dark:bg-red-950/20" : "bg-transparent"
-             )}>
-                <span className="w-10 text-zinc-400 dark:text-zinc-600 select-none text-right mr-4 flex-shrink-0 text-xs mt-0.5 font-mono">{index + 1}</span>
-                <pre className="text-xs font-mono text-emerald-600 dark:text-emerald-400 bg-zinc-50 dark:bg-zinc-900/50 p-2 rounded w-full overflow-x-auto border border-zinc-200 dark:border-zinc-800">
-                    {JSON.stringify(obj, null, 2)}
-                </pre>
-             </div>
-          );
-      } catch (e) {
-          // Not valid JSON, fall through
-      }
+    try {
+      parsedJson = JSON.parse(line);
+    } catch {
+      // Not valid JSON, fall through
+    }
+  }
+
+  if (parsedJson !== null) {
+    return (
+      <div className={cn(
+        "flex hover:bg-zinc-100 dark:hover:bg-zinc-800/30 -mx-4 px-4 py-1 transition-colors",
+        isError ? "bg-red-50 dark:bg-red-950/20" : "bg-transparent"
+      )}>
+        <span className="w-10 text-zinc-400 dark:text-zinc-600 select-none text-right mr-4 flex-shrink-0 text-xs mt-0.5 font-mono">{index + 1}</span>
+        <pre className="text-xs font-mono text-emerald-600 dark:text-emerald-400 bg-zinc-50 dark:bg-zinc-900/50 p-2 rounded w-full overflow-x-auto border border-zinc-200 dark:border-zinc-800">
+          {JSON.stringify(parsedJson, null, 2)}
+        </pre>
+      </div>
+    );
   }
 
   // 2. Standard Highlighting matching pic.png style
@@ -311,7 +315,7 @@ export function LogViewer({ content, loading, filename, isLive, setIsLive }: Log
                 <LogLine key={index} line={line} index={index} />
             )) : (
                 <div className="flex flex-col items-center justify-center h-full text-zinc-600 space-y-2">
-                    <div className="text-sm italic">No matches found for "{searchQuery}"</div>
+                    <div className="text-sm italic">No matches found for {`"${searchQuery}"`}</div>
                     <button onClick={() => setSearchQuery('')} className="text-xs text-indigo-400 hover:underline">Clear search</button>
                 </div>
             )}

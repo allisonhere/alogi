@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs';
-import path from 'path';
 import { getConfig } from '@/lib/config';
 
 export async function GET() {
@@ -31,7 +30,7 @@ export async function GET() {
     }
 
     return NextResponse.json({ hosts });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to read hosts' }, { status: 500 });
   }
 }

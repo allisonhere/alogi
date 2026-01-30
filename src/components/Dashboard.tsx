@@ -5,11 +5,17 @@ import { HostList } from './HostList';
 import { FileList } from './FileList';
 import { LogViewer } from './LogViewer';
 
+interface FileInfo {
+  name: string;
+  size: number;
+  updated: string;
+}
+
 export default function Dashboard() {
   const [hosts, setHosts] = useState<string[]>([]);
   const [selectedHost, setSelectedHost] = useState<string | null>(null);
   
-  const [files, setFiles] = useState<any[]>([]);
+  const [files, setFiles] = useState<FileInfo[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [loadingFiles, setLoadingFiles] = useState(false);
 
@@ -24,19 +30,23 @@ export default function Dashboard() {
       .then(data => setHosts(data.hosts || []));
   }, []);
 
+  const handleSelectHost = (host: string) => {
+    setSelectedHost(host);
+    setLoadingFiles(true);
+    setSelectedFile(null);
+    setContent(null);
+    setIsLive(false);
+  };
+
   // Fetch Files
   useEffect(() => {
     if (!selectedHost) return;
-    setLoadingFiles(true);
     fetch(`/api/files?host=${selectedHost}`)
       .then(res => res.json())
       .then(data => {
         setFiles(data.files || []);
         setLoadingFiles(false);
       });
-    setSelectedFile(null);
-    setContent(null);
-    setIsLive(false); // Reset live mode on host change
   }, [selectedHost]);
 
   // Fetch Content
@@ -70,7 +80,7 @@ export default function Dashboard() {
       <HostList 
         hosts={hosts} 
         selectedHost={selectedHost} 
-        onSelectHost={setSelectedHost} 
+        onSelectHost={handleSelectHost} 
       />
       
       {selectedHost && (

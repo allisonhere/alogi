@@ -55,7 +55,7 @@ export function ChatPanel({ initialSummary, logContext }: ChatPanelProps) {
       } else {
           setMessages(prev => [...prev, { role: 'assistant', content: data.content }]);
       }
-    } catch (err) {
+    } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: "Failed to connect to AI." }]);
     } finally {
       setLoading(false);

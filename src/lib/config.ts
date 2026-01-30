@@ -20,8 +20,10 @@ export interface AlogiConfig {
     alias: string;
     hostname: string;
     username: string;
-    port: number;
+    port?: number;
     keyPath?: string;
+    password?: string;
+    authMethod?: 'key' | 'password';
     type?: 'ssh' | 'docker'; // New field
   }>;
 }

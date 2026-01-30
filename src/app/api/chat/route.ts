@@ -3,11 +3,19 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 import { getConfig } from '@/lib/config';
 
+type ChatMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};
+
 export async function POST(request: Request) {
   try {
-    const { messages, context } = await request.json();
+    const { messages, context } = await request.json() as {
+      messages?: ChatMessage[];
+      context?: string;
+    };
 
-    if (!messages || !context) {
+    if (!Array.isArray(messages) || typeof context !== 'string') {
       return NextResponse.json({ error: 'Messages and context are required' }, { status: 400 });
     }
 
@@ -33,7 +41,7 @@ Answer the user's questions based strictly on these logs. Be technical, precise,
         const history = [
             { role: "user", parts: [{ text: systemPrompt }] },
             { role: "model", parts: [{ text: "Understood. Ready to investigate." }] },
-            ...messages.slice(0, -1).map((msg: any) => ({
+            ...messages.slice(0, -1).map((msg) => ({
                 role: msg.role === 'user' ? "user" : "model",
                 parts: [{ text: msg.content }]
             }))
@@ -58,9 +66,11 @@ Answer the user's questions based strictly on these logs. Be technical, precise,
             try {
                 const result = await chat.sendMessage(lastMessage.content);
                 return NextResponse.json({ role: 'assistant', content: result.response.text() });
-            } catch (e: any) {
+            } catch (e) {
                 attempts++;
-                if (e.message?.includes('429') || e.status === 429) {
+                const err = e as { message?: string; status?: number };
+                const message = typeof err.message === 'string' ? err.message : '';
+                if (message.includes('429') || err.status === 429) {
                     await new Promise(r => setTimeout(r, attempts * 5000));
                     continue;
                 }
@@ -90,8 +100,9 @@ Answer the user's questions based strictly on these logs. Be technical, precise,
 
     return NextResponse.json({ error: 'Invalid AI Provider' }, { status: 400 });
 
-  } catch (error: any) {
-    console.error("Chat Failed:", error);
-    return NextResponse.json({ error: 'Chat failed: ' + error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Chat Failed:", message);
+    return NextResponse.json({ error: 'Chat failed: ' + message }, { status: 500 });
   }
 }
