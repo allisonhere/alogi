@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Sparkles, Terminal, AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VibeCheckBar } from './VibeCheckBar';
+import { ChatPanel } from './ChatPanel';
 
 // Helper to highlight log parts
 function LogLine({ line, index }: { line: string; index: number }) {
@@ -234,43 +235,9 @@ export function LogViewer({ content, loading, filename, isLive, setIsLive }: Log
         </div>
 
         {/* AI Panel (Slide in) */}
-        {analysis && (
-            <div className="w-96 border-l border-zinc-800 bg-zinc-900/30 p-6 overflow-y-auto animate-in slide-in-from-right duration-300">
-                <h3 className="text-lg font-semibold text-zinc-100 flex items-center gap-2 mb-4">
-                    <Sparkles className="w-5 h-5 text-purple-400" />
-                    AI Insights
-                </h3>
-                
-                <div className={cn(
-                    "p-3 rounded-lg mb-4 border",
-                    analysis.severity === 'high' ? "bg-red-500/10 border-red-500/20 text-red-200" :
-                    "bg-zinc-800 border-zinc-700 text-zinc-300"
-                )}>
-                    <div className="text-xs font-bold uppercase tracking-wider opacity-70 mb-1">Summary</div>
-                    {analysis.summary}
-                </div>
-
-                <div className="space-y-4">
-                    <div>
-                        <div className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">Key Findings</div>
-                        <ul className="space-y-2">
-                            {(analysis.key_findings || []).map((finding, i) => (
-                                <li key={i} className="flex gap-2 text-sm text-zinc-300">
-                                    <AlertCircle className="w-4 h-4 text-zinc-500 flex-shrink-0 mt-0.5" />
-                                    {finding}
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-
-                    <div>
-                        <div className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">Recommendation</div>
-                        <div className="flex gap-2 text-sm text-indigo-300 bg-indigo-500/5 p-3 rounded border border-indigo-500/10">
-                            <CheckCircle className="w-4 h-4 text-indigo-400 flex-shrink-0 mt-0.5" />
-                            {analysis.recommendation}
-                        </div>
-                    </div>
-                </div>
+        {analysis && content && (
+            <div className="animate-in slide-in-from-right duration-300 h-full border-l border-zinc-800">
+                <ChatPanel initialSummary={analysis} logContext={content} />
             </div>
         )}
       </div>

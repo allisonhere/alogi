@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-
-// Initialize Gemini (will fail gracefully if key is missing)
-const apiKey = process.env.GEMINI_API_KEY;
-const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
+import OpenAI from 'openai';
+import { getConfig } from '@/lib/config';
 
 export async function POST(request: Request) {
   try {
@@ -13,22 +11,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Content is required' }, { status: 400 });
     }
 
-    // Fallback to mock if no API key is configured
-    if (!genAI) {
-      console.warn("No GEMINI_API_KEY found. Using mock analysis.");
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return NextResponse.json({
-        summary: "Mock Analysis (Configure GEMINI_API_KEY for real AI): Analyzed logs.",
-        key_findings: ["API Key missing - using placeholder data.", "System appears normal otherwise."],
-        recommendation: "Add GEMINI_API_KEY to your .env.local file.",
-        severity: "low"
-      });
-    }
-
-    // Use gemini-flash-latest for better free-tier availability
-    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
-
-    const prompt = `
+    const config = getConfig();
+    const provider = config.ai.provider || 'gemini';
+    const systemPrompt = `
       You are an expert DevOps engineer. Analyze the following log data (truncated).
       Provide a JSON response with the following structure:
       {
@@ -38,58 +23,60 @@ export async function POST(request: Request) {
         "severity": "high" | "medium" | "low"
       }
 
-      Return ONLY the JSON.
-
-      Log Data:
-      ${content.slice(0, 15000)} 
+      Return ONLY the JSON. No markdown.
     `;
 
-    let result;
-    try {
-        result = await model.generateContent(prompt);
-    } catch (e: any) {
-        // Simple retry logic for rate limits (429)
-        if (e.message?.includes('429') || e.status === 429) {
-             console.warn("Rate limited. Retrying in 4 seconds...");
-             await new Promise(r => setTimeout(r, 4000));
-             result = await model.generateContent(prompt);
-        } else {
-             throw e;
+    // --- GEMINI HANDLER ---
+    if (provider === 'gemini') {
+        const apiKey = config.ai.apiKey || process.env.GEMINI_API_KEY;
+        if (!apiKey) throw new Error("Gemini API Key missing");
+
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: config.ai.model || "gemini-flash-latest" });
+
+        const prompt = `${systemPrompt}\n\nLog Data:\n${content.slice(0, 15000)}`;
+        
+        let result;
+        // Retry logic for Gemini
+        try {
+            result = await model.generateContent(prompt);
+        } catch (e: any) {
+            if (e.message?.includes('429') || e.status === 429) {
+                await new Promise(r => setTimeout(r, 4000));
+                result = await model.generateContent(prompt);
+            } else {
+                throw e;
+            }
         }
+        
+        const text = result.response.text();
+        const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        return NextResponse.json(JSON.parse(jsonStr));
     }
 
-    const response = await result.response;
-    const text = response.text();
-    
-    // Clean up markdown code blocks if present (common with LLMs)
-    const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    
-    let analysis;
-    try {
-        analysis = JSON.parse(jsonStr);
-    } catch (parseError) {
-        console.error("Failed to parse AI JSON:", text);
-        return NextResponse.json({ 
-            summary: "Analysis generated but format was invalid.",
-            key_findings: ["Raw output: " + text.slice(0, 100)],
-            recommendation: "Check logs for raw AI output.",
-            severity: "medium"
+    // --- OPENAI HANDLER ---
+    if (provider === 'openai') {
+        const apiKey = config.ai.openaiApiKey || process.env.OPENAI_API_KEY;
+        if (!apiKey) throw new Error("OpenAI API Key missing");
+
+        const openai = new OpenAI({ apiKey });
+        const completion = await openai.chat.completions.create({
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: content.slice(0, 15000) }
+            ],
+            model: config.ai.model || "gpt-4o",
+            response_format: { type: "json_object" }, // Ensure JSON
         });
+
+        const text = completion.choices[0].message.content || "{}";
+        return NextResponse.json(JSON.parse(text));
     }
 
-    return NextResponse.json(analysis);
+    return NextResponse.json({ error: 'Invalid AI Provider' }, { status: 400 });
 
   } catch (error: any) {
     console.error("AI Analysis failed:", error.message);
-    
-    // Return a structured error to the UI instead of 500 if possible, 
-    // or let the UI handle the 500.
-    if (error.message?.includes('429')) {
-        return NextResponse.json({ 
-            error: 'Rate limit exceeded. Please try again in a few moments.' 
-        }, { status: 429 });
-    }
-    
     return NextResponse.json({ error: 'Analysis failed: ' + error.message }, { status: 500 });
   }
 }

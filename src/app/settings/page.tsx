@@ -84,31 +84,85 @@ export default function SettingsPage() {
                     <Cpu className="w-4 h-4" /> AI Configuration
                 </h2>
                 <div className="space-y-4">
-                    {/* ... (keep AI inputs) ... */}
                     <div>
-                        <label className="block text-sm font-medium text-zinc-300 mb-1">Gemini API Key</label>
-                        <div className="relative">
-                            <input 
-                                type="password" 
-                                value={config.ai.apiKey}
-                                onChange={(e) => setConfig({...config, ai: {...config.ai, apiKey: e.target.value}})}
-                                className="w-full bg-zinc-900 border border-zinc-800 rounded-md px-3 py-2 pl-9 text-sm text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
-                            />
-                            <Key className="w-4 h-4 text-zinc-500 absolute left-3 top-2.5" />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-zinc-300 mb-1">Model ID</label>
+                        <label className="block text-sm font-medium text-zinc-300 mb-1">Provider</label>
                         <select 
-                            value={config.ai.model}
-                            onChange={(e) => setConfig({...config, ai: {...config.ai, model: e.target.value}})}
+                            value={config.ai.provider || 'gemini'}
+                            onChange={(e) => {
+                                const provider = e.target.value;
+                                setConfig({
+                                    ...config, 
+                                    ai: {
+                                        ...config.ai, 
+                                        provider, 
+                                        model: provider === 'openai' ? 'gpt-4o' : 'gemini-flash-latest'
+                                    }
+                                });
+                            }}
                             className="w-full bg-zinc-900 border border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
                         >
-                            <option value="gemini-flash-latest">Gemini Flash (Recommended)</option>
-                            <option value="gemini-pro">Gemini Pro</option>
-                            <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                            <option value="gemini">Google Gemini</option>
+                            <option value="openai">OpenAI</option>
                         </select>
                     </div>
+
+                    {config.ai.provider === 'openai' ? (
+                        <>
+                            <div>
+                                <label className="block text-sm font-medium text-zinc-300 mb-1">OpenAI API Key</label>
+                                <div className="relative">
+                                    <input 
+                                        type="password" 
+                                        value={config.ai.openaiApiKey || ''}
+                                        onChange={(e) => setConfig({...config, ai: {...config.ai, openaiApiKey: e.target.value}})}
+                                        placeholder="sk-..."
+                                        className="w-full bg-zinc-900 border border-zinc-800 rounded-md px-3 py-2 pl-9 text-sm text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
+                                    />
+                                    <Key className="w-4 h-4 text-zinc-500 absolute left-3 top-2.5" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-zinc-300 mb-1">Model</label>
+                                <select 
+                                    value={config.ai.model}
+                                    onChange={(e) => setConfig({...config, ai: {...config.ai, model: e.target.value}})}
+                                    className="w-full bg-zinc-900 border border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
+                                >
+                                    <option value="gpt-4o">GPT-4o (Smartest)</option>
+                                    <option value="gpt-4o-mini">GPT-4o Mini (Fastest)</option>
+                                    <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                                </select>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div>
+                                <label className="block text-sm font-medium text-zinc-300 mb-1">Gemini API Key</label>
+                                <div className="relative">
+                                    <input 
+                                        type="password" 
+                                        value={config.ai.apiKey}
+                                        onChange={(e) => setConfig({...config, ai: {...config.ai, apiKey: e.target.value}})}
+                                        className="w-full bg-zinc-900 border border-zinc-800 rounded-md px-3 py-2 pl-9 text-sm text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
+                                    />
+                                    <Key className="w-4 h-4 text-zinc-500 absolute left-3 top-2.5" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-zinc-300 mb-1">Model</label>
+                                <select 
+                                    value={config.ai.model}
+                                    onChange={(e) => setConfig({...config, ai: {...config.ai, model: e.target.value}})}
+                                    className="w-full bg-zinc-900 border border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
+                                >
+                                    <option value="gemini-flash-latest">Gemini Flash (Recommended)</option>
+                                    <option value="gemini-pro">Gemini Pro</option>
+                                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                                </select>
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
 

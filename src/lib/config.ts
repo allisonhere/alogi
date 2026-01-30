@@ -10,7 +10,9 @@ export interface AlogiConfig {
     logPath: string;
   };
   ai: {
-    apiKey: string;
+    provider: 'gemini' | 'openai';
+    apiKey: string;       // Gemini
+    openaiApiKey: string; // OpenAI
     model: string;
   };
   hosts: Array<{
@@ -28,7 +30,9 @@ const DEFAULT_CONFIG: AlogiConfig = {
     logPath: process.env.LOG_ROOT_DIR || '/var/log',
   },
   ai: {
+    provider: 'gemini',
     apiKey: process.env.GEMINI_API_KEY || '',
+    openaiApiKey: process.env.OPENAI_API_KEY || '',
     model: 'gemini-flash-latest',
   },
   hosts: [],
