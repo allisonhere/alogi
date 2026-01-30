@@ -22,6 +22,7 @@ export interface AlogiConfig {
     username: string;
     port: number;
     keyPath?: string;
+    type?: 'ssh' | 'docker'; // New field
   }>;
 }
 

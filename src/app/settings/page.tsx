@@ -202,6 +202,21 @@ export default function SettingsPage() {
                                 Remove
                             </button>
                             <div className="grid grid-cols-2 gap-4">
+                                <div className="col-span-2">
+                                    <label className="block text-xs text-zinc-500 mb-1">Host Type</label>
+                                    <select
+                                        value={host.type || 'ssh'}
+                                        onChange={(e) => {
+                                            const newHosts = [...config.hosts];
+                                            newHosts[index].type = e.target.value;
+                                            setConfig({...config, hosts: newHosts});
+                                        }}
+                                        className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded px-2 py-1 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 focus:ring-indigo-500 outline-none"
+                                    >
+                                        <option value="ssh">Standard File Viewer (SSH)</option>
+                                        <option value="docker">Docker Containers (SSH)</option>
+                                    </select>
+                                </div>
                                 <div>
                                     <label className="block text-xs text-zinc-500 mb-1">Alias</label>
                                     <input 

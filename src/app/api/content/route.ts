@@ -18,8 +18,9 @@ export async function GET(request: Request) {
   }
 
   // Handle Remote Hosts
-  if (host.startsWith('remote:')) {
-      const alias = host.replace('remote:', '');
+  if (host.startsWith('remote:') || host.startsWith('docker:')) {
+      const isDocker = host.startsWith('docker:');
+      const alias = host.replace('remote:', '').replace('docker:', '');
       const config = getConfig();
       const hostConfig = config.hosts.find(h => h.alias === alias);
 
@@ -28,11 +29,19 @@ export async function GET(request: Request) {
       }
 
       try {
-          // Fetch last 2000 lines. Use zcat for compressed files.
+          // Sanitize input
           const safeFile = file.replace(/[^a-zA-Z0-9\.\-\_\@]/g, ''); 
-          const command = file.endsWith('.gz') 
-            ? `zcat /var/log/${safeFile} | tail -n 2000` 
-            : `tail -n 2000 /var/log/${safeFile}`;
+          
+          let command;
+          if (isDocker) {
+              // Fetch last 2000 lines of container logs
+              command = `docker logs --tail 2000 ${safeFile} 2>&1`;
+          } else {
+              // Standard File Logic
+              command = file.endsWith('.gz') 
+                ? `zcat /var/log/${safeFile} | tail -n 2000` 
+                : `tail -n 2000 /var/log/${safeFile}`;
+          }
           
           const content = await sshExec(hostConfig, command);
           return NextResponse.json({ content });

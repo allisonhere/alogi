@@ -13,9 +13,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Host parameter is required' }, { status: 400 });
   }
 
-  // Handle Remote Hosts
-  if (host.startsWith('remote:')) {
-      const alias = host.replace('remote:', '');
+  // Handle Remote Hosts (Files or Docker)
+  if (host.startsWith('remote:') || host.startsWith('docker:')) {
+      const isDocker = host.startsWith('docker:');
+      const alias = host.replace('remote:', '').replace('docker:', '');
       const config = getConfig();
       const hostConfig = config.hosts.find(h => h.alias === alias);
 
@@ -24,19 +25,32 @@ export async function GET(request: Request) {
       }
 
       try {
-          // List /var/log (simple ls for now, could be improved to find .log files recursively)
-          // Using -p to put / at end of dirs
-          const stdout = await sshExec(hostConfig, 'ls -p /var/log');
-          
-          const files = stdout.split('\n')
-            .filter(line => line.trim() && !line.endsWith('/')) // Filter dirs for now (simple viewer)
-            .map(line => ({
-                name: line.trim(),
-                size: 0,
-                updated: new Date().toISOString() // Unknown without parsing ls -l
-            }));
-          
-          return NextResponse.json({ files });
+          if (isDocker) {
+              // List running containers using docker ps
+              const stdout = await sshExec(hostConfig, 'docker ps --format "{{.Names}}\t{{.Status}}"');
+              const files = stdout.split('\n')
+                .filter(line => line.trim())
+                .map(line => {
+                    const [name, status] = line.split('\t');
+                    return {
+                        name: name.trim(),
+                        size: 0,
+                        updated: status.trim() // Display status (e.g. "Up 2 hours") instead of date
+                    };
+                });
+              return NextResponse.json({ files });
+          } else {
+              // Standard File List (ls)
+              const stdout = await sshExec(hostConfig, 'ls -p /var/log');
+              const files = stdout.split('\n')
+                .filter(line => line.trim() && !line.endsWith('/'))
+                .map(line => ({
+                    name: line.trim(),
+                    size: 0,
+                    updated: new Date().toISOString()
+                }));
+              return NextResponse.json({ files });
+          }
       } catch (error: any) {
           console.error(error);
           return NextResponse.json({ error: `SSH Connection Failed: ${error.message}` }, { status: 500 });

@@ -15,7 +15,10 @@ export async function GET() {
 
     // 2. Remote Hosts
     if (config.hosts && config.hosts.length > 0) {
-        config.hosts.forEach(h => hosts.push(`remote:${h.alias}`));
+        config.hosts.forEach(h => {
+            const prefix = h.type === 'docker' ? 'docker:' : 'remote:';
+            hosts.push(`${prefix}${h.alias}`);
+        });
     }
 
     // 3. Local Folders
