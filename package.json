@@ -52,6 +52,7 @@
     "appId": "com.allisonhere.alogi",
     "productName": "Alogi",
     "executableName": "alogi",
+    "publish": "never",
     "directories": {
       "output": "dist-electron"
     },
