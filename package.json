@@ -2,11 +2,16 @@
   "name": "alogi",
   "version": "0.1.0",
   "private": true,
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "next dev",
+    "dev:desktop": "concurrently -k \"next dev\" \"wait-on http://127.0.0.1:3000 && ELECTRON_START_URL=http://127.0.0.1:3000 electron .\"",
     "build": "next build",
+    "build:desktop": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "dist:linux": "npm run build:desktop && electron-builder --linux AppImage deb",
+    "dist:linux:dir": "npm run build:desktop && electron-builder --linux dir"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -26,9 +31,45 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.0",
+    "electron": "^32.3.0",
+    "electron-builder": "^24.13.3",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.allisonhere.alogi",
+    "productName": "Alogi",
+    "executableName": "alogi",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "electron/**"
+    ],
+    "extraResources": [
+      {
+        "from": ".next/standalone",
+        "to": "app/.next/standalone"
+      },
+      {
+        "from": ".next/static",
+        "to": "app/.next/standalone/.next/static"
+      },
+      {
+        "from": "public",
+        "to": "app/.next/standalone/public"
+      }
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility"
+    }
   }
 }

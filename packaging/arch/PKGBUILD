@@ -1,0 +1,54 @@
+pkgname=alogi
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="AI-powered log viewer"
+arch=("x86_64")
+url="https://github.com/allisonhere/alogi"
+license=("MIT")
+depends=(
+  "glibc"
+  "gtk3"
+  "nss"
+  "libxss"
+  "libxtst"
+  "alsa-lib"
+  "libxrandr"
+  "libxkbcommon"
+  "libxcomposite"
+  "libxdamage"
+  "libxfixes"
+  "libxi"
+  "libxrender"
+  "libxcursor"
+  "at-spi2-core"
+  "libdrm"
+  "mesa"
+  "libnotify"
+  "libcups"
+  "pango"
+  "cairo"
+  "dbus"
+  "glib2"
+)
+options=("!strip")
+source=("linux-unpacked.tar.gz" "alogi.desktop" "icon.png")
+sha256sums=("SKIP" "SKIP" "SKIP")
+
+package() {
+  local appdir="${srcdir}/linux-unpacked"
+
+  if [[ ! -d "${appdir}" ]]; then
+    echo "linux-unpacked not found. Build first with: npm run dist:linux:dir"
+    echo "Then create linux-unpacked.tar.gz in packaging/arch."
+    return 1
+  fi
+
+  install -d "${pkgdir}/opt/alogi"
+  cp -a "${appdir}/"* "${pkgdir}/opt/alogi/"
+
+  install -d "${pkgdir}/usr/bin"
+  ln -s "/opt/alogi/alogi" "${pkgdir}/usr/bin/alogi"
+
+  install -Dm644 "${srcdir}/alogi.desktop" "${pkgdir}/usr/share/applications/alogi.desktop"
+  install -Dm644 "${srcdir}/icon.png" "${pkgdir}/usr/share/pixmaps/alogi.png"
+}
