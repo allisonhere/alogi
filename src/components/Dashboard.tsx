@@ -66,7 +66,7 @@ export default function Dashboard() {
   }, [selectedHost, selectedFile, isLive]);
 
   return (
-    <div className="flex h-screen w-full bg-[#09090b] text-zinc-100 overflow-hidden">
+    <div className="flex h-screen w-full bg-white dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 overflow-hidden transition-colors">
       <HostList 
         hosts={hosts} 
         selectedHost={selectedHost} 
