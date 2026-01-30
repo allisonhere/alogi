@@ -66,10 +66,6 @@
       {
         "from": ".next/static",
         "to": "app/.next/standalone/.next/static"
-      },
-      {
-        "from": "public",
-        "to": "app/.next/standalone/public"
       }
     ],
     "linux": {
