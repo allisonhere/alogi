@@ -70,6 +70,44 @@ You can also prefill values via environment variables:
 *   Docker hosts use SSH and run `docker ps` + `docker logs` on the remote machine.
 *   Ensure Docker is installed and the SSH user can run Docker commands (e.g. user in the `docker` group or using sudo).
 
+## 📦 Desktop Packaging (Linux)
+
+### AppImage + Debian (.deb)
+
+Build Linux desktop artifacts (AppImage + .deb):
+
+```bash
+npm run dist:linux
+```
+
+Output is placed in `dist-electron/`.
+
+### Arch / CachyOS (pacman)
+
+1) Build the unpacked Linux app:
+
+```bash
+npm run dist:linux:dir
+```
+
+2) Create the tarball for the PKGBUILD:
+
+```bash
+tar -C dist-electron -czf packaging/arch/linux-unpacked.tar.gz linux-unpacked
+```
+
+3) Build and install the package:
+
+```bash
+cd packaging/arch
+makepkg -f
+sudo pacman -U alogi-*.pkg.tar.zst
+```
+
+Notes:
+* The PKGBUILD expects `linux-unpacked.tar.gz` in `packaging/arch/`.
+* You can edit `PKGBUILD` to bump `pkgver` when you release new versions.
+
 ## License
 
 MIT
