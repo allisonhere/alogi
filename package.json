@@ -1,6 +1,13 @@
 {
   "name": "alogi",
   "version": "0.1.0",
+  "description": "AI-powered log viewer for local and remote logs",
+  "author": "allisonhere",
+  "homepage": "https://allisonhere.github.io/alogi/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/allisonhere/alogi.git"
+  },
   "private": true,
   "main": "electron/main.cjs",
   "scripts": {
@@ -11,7 +18,8 @@
     "start": "next start",
     "lint": "eslint",
     "dist:linux": "npm run build:desktop && electron-builder --linux AppImage deb",
-    "dist:linux:dir": "npm run build:desktop && electron-builder --linux dir"
+    "dist:linux:dir": "npm run build:desktop && electron-builder --linux dir",
+    "dist:linux:all": "npm run build:desktop && electron-builder --linux AppImage deb dir"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

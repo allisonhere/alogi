@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Alogi • Linux Install</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div class="bg"></div>
+    <main class="page">
+      <header class="hero">
+        <div class="badge">Alogi • Linux</div>
+        <h1>Install Alogi on CachyOS & Ubuntu</h1>
+        <p class="lead">
+          Choose a fast portable AppImage, a native Ubuntu deb, or a pacman package for
+          Arch-based systems. All builds are signed and published on GitHub Releases.
+        </p>
+        <div class="actions">
+          <a class="btn primary" href="https://github.com/allisonhere/alogi/releases/latest">Latest Release</a>
+          <a class="btn" href="#appimage">AppImage</a>
+          <a class="btn" href="#deb">Debian</a>
+          <a class="btn" href="#arch">Pacman</a>
+        </div>
+      </header>
+
+      <section id="appimage" class="card">
+        <h2>AppImage (portable)</h2>
+        <p>Works on most Linux distros, no root required.</p>
+        <pre><code># Download the AppImage from the latest release page
+chmod +x Alogi-*.AppImage
+./Alogi-*.AppImage</code></pre>
+        <p class="note">Grab the AppImage from the latest GitHub Release.</p>
+      </section>
+
+      <section id="deb" class="card">
+        <h2>Ubuntu / Debian (.deb)</h2>
+        <pre><code># Download the .deb from the latest release page
+sudo apt install ./Alogi_*_amd64.deb</code></pre>
+        <p class="note">Tip: you can also install via your file manager.</p>
+      </section>
+
+      <section id="arch" class="card">
+        <h2>Arch / CachyOS (pacman)</h2>
+        <p>Use the PKGBUILD in the repo or publish to AUR for `yay -S alogi`.</p>
+        <pre><code>git clone https://github.com/allisonhere/alogi.git
+cd alogi
+npm run dist:linux:dir
+
+tar -C dist-electron -czf packaging/arch/linux-unpacked.tar.gz linux-unpacked
+cd packaging/arch
+makepkg -f
+sudo pacman -U alogi-*.pkg.tar.zst</code></pre>
+      </section>
+
+      <section class="card subtle">
+        <h2>Need help?</h2>
+        <p>Open an issue on GitHub and include your distro, CPU architecture, and logs.</p>
+        <a class="btn" href="https://github.com/allisonhere/alogi/issues">Report an issue</a>
+      </section>
+    </main>
+  </body>
+</html>

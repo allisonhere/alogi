@@ -1,0 +1,80 @@
+name: Publish AUR
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g. 0.1.0)"
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  aur:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Download release tarball
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          curl -L -o "alogi-${VERSION}-linux-unpacked.tar.gz" \
+            "https://github.com/${{ github.repository }}/releases/download/v${VERSION}/alogi-${VERSION}-linux-unpacked.tar.gz"
+          SHA256=$(sha256sum "alogi-${VERSION}-linux-unpacked.tar.gz" | awk '{print $1}')
+          echo "SHA256=$SHA256" >> $GITHUB_ENV
+
+      - name: Start ssh-agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+
+      - name: Clone AUR repo
+        run: |
+          if [ -z "${{ secrets.AUR_REPO }}" ]; then
+            echo "AUR_REPO secret not set" >&2
+            exit 1
+          fi
+          git clone "${{ secrets.AUR_REPO }}" aur-repo
+
+      - name: Prepare PKGBUILD
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          cp packaging/arch/aur/PKGBUILD aur-repo/PKGBUILD
+          cp packaging/arch/alogi.desktop aur-repo/alogi.desktop
+          cp packaging/arch/icon.png aur-repo/icon.png
+          sed -i "s/__VERSION__/${VERSION}/g" aur-repo/PKGBUILD
+          sed -i "s/__SHA256__/${SHA256}/g" aur-repo/PKGBUILD
+
+      - name: Generate .SRCINFO
+        run: |
+          docker run --rm -v "$PWD/aur-repo:/pkg" archlinux:latest /bin/bash -c "\
+            pacman -Sy --noconfirm base-devel && \
+            cd /pkg && \
+            makepkg --printsrcinfo > .SRCINFO"
+
+      - name: Commit & push
+        run: |
+          cd aur-repo
+          if git diff --quiet; then
+            echo "No changes to publish."
+            exit 0
+          fi
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add PKGBUILD .SRCINFO alogi.desktop icon.png
+          git commit -m "Release ${{ steps.version.outputs.version }}"
+          git push

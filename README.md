@@ -72,6 +72,8 @@ You can also prefill values via environment variables:
 
 ## 📦 Desktop Packaging (Linux)
 
+Install page: **https://allisonhere.github.io/alogi/**
+
 ### AppImage + Debian (.deb)
 
 Build Linux desktop artifacts (AppImage + .deb):
@@ -107,6 +109,11 @@ sudo pacman -U alogi-*.pkg.tar.zst
 Notes:
 * The PKGBUILD expects `linux-unpacked.tar.gz` in `packaging/arch/`.
 * You can edit `PKGBUILD` to bump `pkgver` when you release new versions.
+
+### GitHub Releases + AUR automation
+
+* Tag a release `vX.Y.Z` to publish AppImage + deb + linux-unpacked to GitHub Releases.
+* Optional AUR publishing is wired via `.github/workflows/aur.yml` and requires AUR secrets (see `packaging/arch/aur/README.md`).
 
 ## License
 
