@@ -44,8 +44,9 @@ jobs:
         run: |
           docker run --rm -v "$PWD:/repo" archlinux:latest /bin/bash -c "\
             pacman -Sy --noconfirm base-devel && \
-            cd /repo/packaging/arch && \
-            makepkg -f --noconfirm --needed --asroot"
+            useradd -m builder && \
+            chown -R builder:builder /repo && \
+            su - builder -c 'cd /repo/packaging/arch && makepkg -f --noconfirm --needed'"
 
       - name: Collect Arch package
         run: |
