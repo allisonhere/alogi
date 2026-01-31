@@ -28,7 +28,7 @@ function LogLine({
   const highlightMatches = (text: string) => {
     if (!query) return text;
     const lowerText = text.toLowerCase();
-    const parts: Array<string | JSX.Element> = [];
+    const parts: Array<string | React.ReactElement> = [];
     let startIndex = 0;
     let matchIndex = lowerText.indexOf(queryLower, startIndex);
     let keyIndex = 0;
