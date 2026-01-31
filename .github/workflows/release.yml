@@ -48,9 +48,9 @@ jobs:
             -v "$PWD:/repo" \
             archlinux:latest /bin/bash -c "\
             pacman -Sy --noconfirm base-devel gtk3 nss libxss libxtst alsa-lib libxrandr libxkbcommon libxcomposite libxdamage libxfixes libxi libxrender libxcursor at-spi2-core libdrm mesa libnotify libcups pango cairo dbus glib2 && \
-            groupadd -g ${HOST_GID} builder || true && \
-            useradd -m -u ${HOST_UID} -g ${HOST_GID} builder || true && \
-            chown -R ${HOST_UID}:${HOST_GID} /repo && \
+            groupadd -g \${HOST_GID} builder || true && \
+            useradd -m -u \${HOST_UID} -g \${HOST_GID} builder || true && \
+            chown -R \${HOST_UID}:\${HOST_GID} /repo && \
             su - builder -c 'cd /repo/packaging/arch && makepkg -f --noconfirm --needed'"
 
       - name: Collect Arch package
