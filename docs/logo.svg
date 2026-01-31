@@ -1,0 +1,39 @@
+<svg width="512" height="512" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="alogiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9A9CFF"/>
+      <stop offset="50%" stop-color="#4FE0FF"/>
+      <stop offset="100%" stop-color="#00FFD5"/>
+    </linearGradient>
+    <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="3"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect
+    x="20" y="18"
+    width="80" height="84"
+    rx="10"
+    stroke="url(#alogiGrad)"
+    stroke-width="4"
+    fill="none"
+    opacity="0.9"
+  />
+  <rect x="30" y="32" width="40" height="5" rx="2.5" fill="url(#alogiGrad)" opacity="0.6"/>
+  <rect x="30" y="44" width="52" height="5" rx="2.5" fill="url(#alogiGrad)" opacity="0.8"/>
+  <rect x="30" y="56" width="34" height="5" rx="2.5" fill="url(#alogiGrad)" opacity="0.5"/>
+  <polygon
+    points="60,68 70,78 60,88 50,78"
+    fill="url(#alogiGrad)"
+    filter="url(#softGlow)"
+  />
+  <line
+    x1="60" y1="28" x2="60" y2="66"
+    stroke="url(#alogiGrad)"
+    stroke-width="3"
+    opacity="0.7"
+  />
+</svg>

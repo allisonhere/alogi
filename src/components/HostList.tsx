@@ -1,4 +1,4 @@
-import { Server, HardDrive, Settings, Moon, Sun } from 'lucide-react';
+import { HardDrive, Settings, Moon, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useTheme } from "next-themes";
@@ -20,9 +20,16 @@ export function HostList({ hosts, selectedHost, onSelectHost }: HostListProps) {
 
   return (
     <div className="w-full border-r border-zinc-800 bg-zinc-50 dark:bg-zinc-950 flex flex-col h-full transition-colors">
-      <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
-        <Server className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
-        <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">Hosts</h2>
+      <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-3">
+        <img
+          src="/logo.svg"
+          alt="Alogi logo"
+          className="w-8 h-8"
+        />
+        <div className="flex flex-col">
+          <span className="font-semibold text-zinc-900 dark:text-zinc-100 leading-tight">Alogi</span>
+          <span className="text-[11px] uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-500">Hosts</span>
+        </div>
       </div>
       
       <div className="flex-1 overflow-y-auto p-2 space-y-1">

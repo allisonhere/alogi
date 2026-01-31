@@ -463,6 +463,7 @@ export function LogViewer({
 
           <div className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300 min-w-0 flex-[1_1_240px]">
 
+              <img src="/logo.svg" alt="Alogi logo" className="w-5 h-5 flex-shrink-0" />
               <Terminal className="w-4 h-4 text-zinc-400 dark:text-zinc-500 flex-shrink-0" />
 
               <span className="font-mono text-sm truncate">{filename}</span>

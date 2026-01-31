@@ -16,6 +16,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Alogi",
   description: "AI-Powered Log Viewer",
+  icons: {
+    icon: "/logo.svg",
+    shortcut: "/logo.svg",
+    apple: "/logo.svg",
+  },
 };
 
 export default function RootLayout({
@@ -40,4 +45,3 @@ export default function RootLayout({
     </html>
   );
 }
-

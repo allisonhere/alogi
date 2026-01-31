@@ -70,6 +70,21 @@ body {
   gap: 18px;
 }
 
+.logo-mark {
+  width: 64px;
+  height: 64px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-mark img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 8px 20px rgba(124, 92, 255, 0.35));
+}
+
 .badge {
   display: inline-flex;
   align-self: flex-start;
