@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Alogi • Linux Install</title>
+    <title>Alogi • AI-Powered Log Viewer</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -12,52 +12,138 @@
   <body>
     <div class="bg"></div>
     <main class="page">
-      <header class="hero">
-        <div class="badge">Alogi • Linux</div>
-        <h1>Install Alogi on CachyOS & Ubuntu</h1>
-        <p class="lead">
-          Choose a fast portable AppImage, a native Ubuntu deb, or a pacman package for
-          Arch-based systems. All builds are signed and published on GitHub Releases.
-        </p>
-        <div class="actions">
-          <a class="btn primary" href="https://github.com/allisonhere/alogi/releases/latest">Latest Release</a>
-          <a class="btn" href="https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x86_64.AppImage">AppImage</a>
-          <a class="btn" href="https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb">Ubuntu deb</a>
-          <a class="btn" href="https://github.com/allisonhere/alogi/releases/latest/download/alogi-arch.pkg.tar.zst">Pacman pkg</a>
+      <header class="hero" id="top">
+        <div class="hero-text">
+          <div class="badge">Alogi • AI Log Viewer</div>
+          <h1>Turn noisy logs into clear answers.</h1>
+          <p class="lead">
+            Alogi is a local-first log viewer for engineers who want signal fast. Stream and
+            filter logs, spot hotspots instantly, and ask AI to explain what happened across
+            local files, system journal, and remote hosts.
+          </p>
+          <div class="actions">
+            <a class="btn primary" href="https://github.com/allisonhere/alogi/releases/latest">Latest Release</a>
+            <a class="btn" href="https://github.com/allisonhere/alogi/releases/latest"">AppImage</a>
+            <a class="btn" href="https://github.com/allisonhere/alogi/releases/latest/">Ubuntu deb</a>
+            <a class="btn" href="https://github.com/allisonhere/alogi/releases/latest/">Pacman pkg</a>
+          </div>
+          <div class="hero-links">
+            <a href="#features">Features</a>
+            <a href="#workflow">Workflow</a>
+            <a href="#install">Install</a>
+            <a href="https://github.com/allisonhere/alogi">GitHub</a>
+          </div>
+          <div class="hero-meta">
+            <span>Live tailing</span>
+            <span>AI summaries</span>
+            <span>SSH + Docker</span>
+            <span>System journal</span>
+          </div>
+        </div>
+        <div class="hero-media">
+          <img src="screenshot.png" alt="Alogi dashboard showing a log stream and analysis" />
+          <p class="hero-caption">Live tailing + AI analysis in one view.</p>
         </div>
       </header>
 
-      <section id="appimage" class="card">
-        <h2>AppImage (portable)</h2>
-        <p>Works on most Linux distros, no root required.</p>
-        <pre><code>curl -L -o Alogi-x86_64.AppImage https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x86_64.AppImage
+      <section id="features" class="section">
+        <div class="section-head">
+          <h2 class="section-title">Why Alogi</h2>
+          <p class="section-lead">Everything you expect from a terminal workflow, with clarity and context.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="panel">
+            <h3>Live tailing</h3>
+            <p>Stream logs in real-time with auto-scroll, pause, and quick filters.</p>
+          </article>
+          <article class="panel">
+            <h3>AI analysis</h3>
+            <p>Ask for summaries, root causes, and next steps with Gemini or OpenAI.</p>
+          </article>
+          <article class="panel">
+            <h3>Smart highlighting</h3>
+            <p>Heatmap, pills, JSON formatting, and keyword coloring make patterns obvious.</p>
+          </article>
+          <article class="panel">
+            <h3>System journal</h3>
+            <p>Browse system services and journalctl entries alongside file logs.</p>
+          </article>
+          <article class="panel">
+            <h3>Remote SSH logs</h3>
+            <p>Inspect /var/log and other paths on remote hosts over SSH.</p>
+          </article>
+          <article class="panel">
+            <h3>Docker logs</h3>
+            <p>List containers and tail docker logs from remote machines.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="workflow" class="section">
+        <div class="section-head">
+          <h2 class="section-title">Workflow</h2>
+          <p class="section-lead">Find the issue, understand it, and move on.</p>
+        </div>
+        <div class="step-grid">
+          <article class="panel step">
+            <div class="step-number">1</div>
+            <div>
+              <h3>Connect</h3>
+              <p>Point Alogi at local logs or add a remote SSH host.</p>
+            </div>
+          </article>
+          <article class="panel step">
+            <div class="step-number">2</div>
+            <div>
+              <h3>Inspect</h3>
+              <p>Tail logs, filter fast, and spot spikes in the vibe heatmap.</p>
+            </div>
+          </article>
+          <article class="panel step">
+            <div class="step-number">3</div>
+            <div>
+              <h3>Explain</h3>
+              <p>Run AI analysis to summarize errors and highlight likely causes.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="install" class="section">
+        <div class="section-head">
+          <h2 class="section-title">Install Alogi</h2>
+          <p class="section-lead">Download a prebuilt Linux package or build from source.</p>
+        </div>
+        <div class="install-grid">
+          <article class="panel install">
+            <h3>AppImage (portable)</h3>
+            <p>Works on most Linux distros, no root required.</p>
+            <pre><code>curl -L -o Alogi-x86_64.AppImage https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x86_64.AppImage
 chmod +x Alogi-x86_64.AppImage
 ./Alogi-x86_64.AppImage</code></pre>
-        <p class="note">Direct download link to the latest AppImage.</p>
-      </section>
+            <a class="btn ghost" href="https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x86_64.AppImage">Download AppImage</a>
+          </article>
 
-      <section id="deb" class="card">
-        <h2>Ubuntu / Debian (.deb)</h2>
-        <pre><code>curl -L -o Alogi-amd64.deb https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb
+          <article class="panel install">
+            <h3>Ubuntu / Debian (.deb)</h3>
+            <p>Native package for Ubuntu and Debian-based systems.</p>
+            <pre><code>curl -L -o Alogi-amd64.deb https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb
 sudo apt install ./Alogi-amd64.deb</code></pre>
-        <p class="note">Tip: you can also install via your file manager.</p>
-      </section>
+            <a class="btn ghost" href="https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb">Download .deb</a>
+          </article>
 
-      <section id="arch" class="card">
-        <h2>Arch / CachyOS (pacman)</h2>
-        <p>Install the prebuilt pacman package or build locally from the PKGBUILD.</p>
-        <pre><code>curl -L -o alogi-arch.pkg.tar.zst https://github.com/allisonhere/alogi/releases/latest/download/alogi-arch.pkg.tar.zst
+          <article class="panel install">
+            <h3>Arch / CachyOS (pacman)</h3>
+            <p>Install the prebuilt pacman package or build locally from the PKGBUILD.</p>
+            <pre><code>curl -L -o alogi-arch.pkg.tar.zst https://github.com/allisonhere/alogi/releases/latest/download/alogi-arch.pkg.tar.zst
 sudo pacman -U alogi-arch.pkg.tar.zst</code></pre>
-        <p class="note">Manual build instructions below if you prefer to compile locally.</p>
-        <pre><code>git clone https://github.com/allisonhere/alogi.git
-cd alogi
-npm install
-npm run dist:linux:dir
-
-tar -C dist-electron -czf packaging/arch/linux-unpacked.tar.gz linux-unpacked
-cd packaging/arch
-makepkg -f
-sudo pacman -U alogi-*.pkg.tar.zst</code></pre>
+            <a class="btn ghost" href="https://github.com/allisonhere/alogi/releases/latest/download/alogi-arch.pkg.tar.zst">Download pacman pkg</a>
+          </article>
+        </div>
+        <div class="install-footer">
+          <a class="btn" href="https://github.com/allisonhere/alogi/releases/latest">View all release assets</a>
+          <a class="btn" href="https://github.com/allisonhere/alogi">View source on GitHub</a>
+        </div>
       </section>
 
       <section class="card subtle">
