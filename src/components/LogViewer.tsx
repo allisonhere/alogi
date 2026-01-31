@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Sparkles, Terminal } from 'lucide-react';
+import { BarChart3, Sparkles, Terminal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VibeCheckBar } from './VibeCheckBar';
 import { ChatPanel } from './ChatPanel';
+import { InsightsPanel } from './InsightsPanel';
 
 // Helper to highlight log parts
 function LogLine({
@@ -175,6 +176,7 @@ export function LogViewer({
   const [fontSize, setFontSize] = useState(13);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [viewportRange, setViewportRange] = useState({ start: 0, end: 0 });
+  const [insightsOpen, setInsightsOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -228,6 +230,7 @@ export function LogViewer({
       const stored = JSON.parse(localStorage.getItem(PREF_KEY) ?? '{}') as {
         wrapLines?: boolean;
         fontSize?: number;
+        insightsOpen?: boolean;
       };
       if (typeof stored.wrapLines === 'boolean') {
         setWrapLines(stored.wrapLines);
@@ -237,6 +240,9 @@ export function LogViewer({
           Math.abs(curr - stored.fontSize!) < Math.abs(prev - stored.fontSize!) ? curr : prev
         , FONT_SIZES[2]);
         setFontSize(nearest);
+      }
+      if (typeof stored.insightsOpen === 'boolean') {
+        setInsightsOpen(stored.insightsOpen);
       }
     } catch {
       // Ignore invalid stored values
@@ -248,9 +254,9 @@ export function LogViewer({
     if (!prefsLoaded) return;
     localStorage.setItem(
       PREF_KEY,
-      JSON.stringify({ wrapLines, fontSize })
+      JSON.stringify({ wrapLines, fontSize, insightsOpen })
     );
-  }, [wrapLines, fontSize, prefsLoaded]);
+  }, [wrapLines, fontSize, insightsOpen, prefsLoaded]);
 
   const fontSizeClass = `text-[${fontSize}px]`;
 
@@ -258,6 +264,27 @@ export function LogViewer({
     const index = FONT_SIZES.indexOf(fontSize);
     const nextIndex = Math.min(FONT_SIZES.length - 1, Math.max(0, index + delta));
     setFontSize(FONT_SIZES[nextIndex]);
+  };
+
+  const getSeverity = (line: string) => {
+    const lower = line.toLowerCase();
+    if (lower.includes('error') || lower.includes('critical') || lower.includes('fatal') || lower.includes('failed')) {
+      return 'error';
+    }
+    if (lower.includes('warn') || lower.includes('warning')) {
+      return 'warn';
+    }
+    return 'info';
+  };
+
+  const normalizeMessage = (line: string) => {
+    return line
+      .replace(/\b0x[0-9a-f]+\b/gi, '<hex>')
+      .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '<id>')
+      .replace(/\b\d{1,3}(?:\.\d{1,3}){3}\b/g, '<ip>')
+      .replace(/\b\d+\b/g, '<#>')
+      .replace(/\s+/g, ' ')
+      .trim();
   };
 
   useEffect(() => {
@@ -358,6 +385,73 @@ export function LogViewer({
   const shouldWindow = !searchQuery && filteredLines.length > MAX_RENDER_LINES && !showAllLines;
   const windowStart = shouldWindow ? filteredLines.length - MAX_RENDER_LINES : 0;
   const windowedLines = shouldWindow ? filteredLines.slice(windowStart) : filteredLines;
+  const allWindowed = lines.length > MAX_RENDER_LINES && !showAllLines
+    ? lines.map((line, index) => ({ line, index })).slice(lines.length - MAX_RENDER_LINES)
+    : lines.map((line, index) => ({ line, index }));
+  const insightsLines = searchQuery ? windowedLines : allWindowed;
+
+  const insightsData = useMemo(() => {
+    const errorMap = new Map<string, { count: number; index: number; sample: string }>();
+    const warnMap = new Map<string, { count: number; index: number; sample: string }>();
+    const bucketCount = Math.min(36, Math.max(12, Math.ceil(insightsLines.length / 140)));
+    const bucketSize = Math.max(1, Math.ceil(insightsLines.length / bucketCount));
+    const buckets: Array<{ start: number; end: number; errors: number; warns: number }> = [];
+
+    for (let i = 0; i < bucketCount; i += 1) {
+      buckets.push({ start: i * bucketSize, end: Math.min(insightsLines.length, (i + 1) * bucketSize), errors: 0, warns: 0 });
+    }
+
+    insightsLines.forEach((item, idx) => {
+      const severity = getSeverity(item.line);
+      if (severity === 'error' || severity === 'warn') {
+        const key = normalizeMessage(item.line);
+        const sample = item.line.trim().slice(0, 140);
+        const map = severity === 'error' ? errorMap : warnMap;
+        const entry = map.get(key);
+        if (entry) {
+          entry.count += 1;
+        } else {
+          map.set(key, { count: 1, index: item.index, sample });
+        }
+        const bucketIndex = Math.min(buckets.length - 1, Math.floor(idx / bucketSize));
+        if (severity === 'error') buckets[bucketIndex].errors += 1;
+        if (severity === 'warn') buckets[bucketIndex].warns += 1;
+      }
+    });
+
+    const toSorted = (map: Map<string, { count: number; index: number; sample: string }>) =>
+      Array.from(map.entries())
+        .map(([key, value]) => ({ key, ...value }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 6);
+
+    const totals = buckets.map(bucket => bucket.errors + bucket.warns);
+    const avg = totals.length ? totals.reduce((a, b) => a + b, 0) / totals.length : 0;
+    const spikes = buckets
+      .map((bucket, i) => ({ ...bucket, idx: i, total: bucket.errors + bucket.warns }))
+      .filter(bucket => bucket.total >= Math.max(3, avg * 2))
+      .slice(0, 4)
+      .map(bucket => ({
+        index: insightsLines[Math.min(bucket.start, insightsLines.length - 1)]?.index ?? 0,
+        count: bucket.total,
+        range: `${bucket.start + 1}-${Math.min(bucket.end, insightsLines.length)}`,
+      }));
+
+    return {
+      topErrors: toSorted(errorMap),
+      topWarns: toSorted(warnMap),
+      buckets: buckets.map((bucket, i) => ({
+        index: insightsLines[Math.min(bucket.start, insightsLines.length - 1)]?.index ?? 0,
+        total: bucket.errors + bucket.warns,
+        errors: bucket.errors,
+        warns: bucket.warns,
+        range: `${bucket.start + 1}-${Math.min(bucket.end, insightsLines.length)}`,
+        id: `${i}-${bucket.start}`,
+      })),
+      spikes,
+      totalLines: insightsLines.length,
+    };
+  }, [insightsLines]);
 
     return (
 
@@ -523,6 +617,19 @@ export function LogViewer({
 
               <div className="flex items-center gap-1 flex-shrink-0">
                   <button
+                      onClick={() => setInsightsOpen(prev => !prev)}
+                      className={cn(
+                          "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors border flex items-center gap-1",
+                          insightsOpen
+                              ? "border-indigo-300 dark:border-indigo-500/60 text-indigo-600 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-500/10"
+                              : "border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                      )}
+                      title="Toggle insights"
+                  >
+                      <BarChart3 className="w-3 h-3" />
+                      Insights
+                  </button>
+                  <button
                       onClick={() => setWrapLines(prev => !prev)}
                       className={cn(
                           "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors border",
@@ -623,6 +730,23 @@ export function LogViewer({
                 </div>
             )}
         </div>
+
+        {insightsOpen && (
+            <div className="w-80 border-l border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0b0d12]">
+                <InsightsPanel
+                  data={insightsData}
+                  onJump={(index) => {
+                    const position = windowedLines.findIndex(item => item.index === index);
+                    if (position === -1) return;
+                    const child = scrollRef.current?.children[position] as HTMLElement | undefined;
+                    if (child) {
+                      const targetTop = child.offsetTop - scrollRef.current!.clientHeight / 2 + child.clientHeight / 2;
+                      scrollRef.current?.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+                    }
+                  }}
+                />
+            </div>
+        )}
 
         {/* AI Panel (Slide in) */}
         {analysis && content && isAiPanelOpen && (
