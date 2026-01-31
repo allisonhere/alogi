@@ -24,7 +24,7 @@ export function FileList({ files, selectedFile, onSelectFile, loading }: FileLis
   };
 
   return (
-    <div className="w-full border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 flex flex-col transition-colors">
+    <div className="w-full border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 flex flex-col h-full min-h-0 transition-colors">
       <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
         <FileText className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
         <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">Files</h2>

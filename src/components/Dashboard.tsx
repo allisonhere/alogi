@@ -352,7 +352,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex h-screen w-full bg-white dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 overflow-hidden transition-colors">
+    <div className="flex h-screen w-full min-h-0 bg-white dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 overflow-hidden transition-colors">
       {showHosts && (
         <div ref={hostPanelRef} style={{ width: hostWidth }} className="flex-shrink-0">
           <HostList 

@@ -14,6 +14,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [resettingOnboarding, setResettingOnboarding] = useState(false);
+  const [aiTestStatus, setAiTestStatus] = useState<{ state: 'idle' | 'testing' | 'success' | 'error'; message?: string }>({ state: 'idle' });
   const [error, setError] = useState<string | null>(null);
   const [missingKeyById, setMissingKeyById] = useState<Record<string, string>>({});
   const [missingPasswordById, setMissingPasswordById] = useState<Record<string, true>>({});
@@ -134,6 +135,36 @@ export default function SettingsPage() {
     }
   };
 
+  const handleTestKey = async () => {
+    if (!config) return;
+    const provider = config.ai.provider || 'gemini';
+    const apiKey = provider === 'openai' ? (config.ai.openaiApiKey || '') : (config.ai.apiKey || '');
+    if (!apiKey.trim()) {
+      setAiTestStatus({ state: 'error', message: 'Paste an API key first.' });
+      return;
+    }
+    setAiTestStatus({ state: 'testing' });
+    try {
+      const res = await fetch('/api/ai/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, apiKey, model: config.ai.model }),
+      });
+      const data = await res.json();
+      if (!res.ok || data?.error) {
+        setAiTestStatus({ state: 'error', message: data?.error || 'Validation failed.' });
+        return;
+      }
+      setAiTestStatus({ state: 'success', message: 'Key verified.' });
+    } catch {
+      setAiTestStatus({ state: 'error', message: 'Validation failed.' });
+    }
+  };
+
+  useEffect(() => {
+    setAiTestStatus({ state: 'idle' });
+  }, [config?.ai?.provider, config?.ai?.apiKey, config?.ai?.openaiApiKey, config?.ai?.model]);
+
   if (loading) return <div className="text-zinc-500 p-8">Loading settings...</div>;
   if (error) {
     return (
@@ -210,6 +241,59 @@ export default function SettingsPage() {
                     <Cpu className="w-4 h-4" /> AI Configuration
                 </h2>
                 <div className="space-y-4">
+                    <div className="rounded-lg border border-indigo-200/70 dark:border-indigo-500/30 bg-indigo-50/50 dark:bg-indigo-500/5 p-4 text-sm text-zinc-700 dark:text-zinc-300">
+                        <div className="font-semibold text-zinc-900 dark:text-zinc-100 mb-1">New to API keys?</div>
+                        <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-3">
+                            An API key lets Alogi talk to your AI provider. Keys are stored locally on your machine.
+                            No key? You can still use logs without AI and add one later.
+                        </p>
+                        <ol className="text-xs text-zinc-600 dark:text-zinc-400 space-y-1 list-decimal list-inside">
+                            <li>Pick a provider below.</li>
+                            <li>Create a key in the provider dashboard.</li>
+                            <li>Paste it here and click Test key.</li>
+                        </ol>
+                        <div className="flex flex-wrap gap-2 mt-3">
+                            <a
+                                href="https://platform.openai.com/api-keys"
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-xs px-3 py-1 rounded-full border border-indigo-200 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100/60 dark:hover:bg-indigo-500/10 transition-colors"
+                            >
+                                Get OpenAI API key
+                            </a>
+                            <a
+                                href="https://aistudio.google.com/app/apikey"
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-xs px-3 py-1 rounded-full border border-indigo-200 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100/60 dark:hover:bg-indigo-500/10 transition-colors"
+                            >
+                                Get Gemini API key
+                            </a>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-md border border-zinc-200 dark:border-zinc-800 px-3 py-2">
+                        <div>
+                            <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Enable AI features</p>
+                            <p className="text-xs text-zinc-500">Turn off to disable AI analyze and chat.</p>
+                        </div>
+                        <label className="inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                className="sr-only"
+                                checked={config.ai.enabled !== false}
+                                onChange={(e) => setConfig({ ...config, ai: { ...config.ai, enabled: e.target.checked } })}
+                            />
+                            <span className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${
+                                config.ai.enabled !== false ? 'bg-indigo-600' : 'bg-zinc-300 dark:bg-zinc-700'
+                            }`}>
+                                <span className={`bg-white w-4 h-4 rounded-full shadow transform transition-transform ${
+                                    config.ai.enabled !== false ? 'translate-x-5' : 'translate-x-0'
+                                }`} />
+                            </span>
+                        </label>
+                    </div>
+
                     <div>
                         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Provider</label>
                         <select 
@@ -246,6 +330,23 @@ export default function SettingsPage() {
                                     />
                                     <Key className="w-4 h-4 text-zinc-500 absolute left-3 top-2.5" />
                                 </div>
+                                <div className="flex items-center gap-3 mt-2">
+                                    <button
+                                        type="button"
+                                        onClick={handleTestKey}
+                                        disabled={aiTestStatus.state === 'testing' || config.ai.enabled === false}
+                                        className="text-xs px-3 py-1.5 rounded-md border border-indigo-200 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 disabled:opacity-50 transition-colors"
+                                    >
+                                        {aiTestStatus.state === 'testing' ? 'Testing...' : 'Test key'}
+                                    </button>
+                                    {aiTestStatus.state !== 'idle' && (
+                                        <span className={`text-xs ${
+                                            aiTestStatus.state === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+                                        }`}>
+                                            {aiTestStatus.message}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Model</label>
@@ -273,6 +374,23 @@ export default function SettingsPage() {
                                         className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md px-3 py-2 pl-9 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
                                     />
                                     <Key className="w-4 h-4 text-zinc-500 absolute left-3 top-2.5" />
+                                </div>
+                                <div className="flex items-center gap-3 mt-2">
+                                    <button
+                                        type="button"
+                                        onClick={handleTestKey}
+                                        disabled={aiTestStatus.state === 'testing' || config.ai.enabled === false}
+                                        className="text-xs px-3 py-1.5 rounded-md border border-indigo-200 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 disabled:opacity-50 transition-colors"
+                                    >
+                                        {aiTestStatus.state === 'testing' ? 'Testing...' : 'Test key'}
+                                    </button>
+                                    {aiTestStatus.state !== 'idle' && (
+                                        <span className={`text-xs ${
+                                            aiTestStatus.state === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+                                        }`}>
+                                            {aiTestStatus.message}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                             <div>

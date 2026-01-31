@@ -356,7 +356,14 @@ export function LogViewer({
       if (data.error) {
         // Handle API errors (e.g. rate limits)
         console.error("Analysis Error:", data.error);
-        alert(`Analysis failed: ${data.error}`);
+        const message = String(data.error);
+        if (message.toLowerCase().includes('api key') && message.toLowerCase().includes('missing')) {
+          alert('No API key set. Open Settings → AI Configuration to add a key.');
+        } else if (message.toLowerCase().includes('ai features are disabled')) {
+          alert('AI features are disabled. Enable them in Settings → AI Configuration.');
+        } else {
+          alert(`Analysis failed: ${data.error}`);
+        }
         return;
       }
       
@@ -455,7 +462,7 @@ export function LogViewer({
 
     return (
 
-      <div className="flex-1 flex flex-col bg-white dark:bg-[#09090b] h-screen overflow-hidden transition-colors">
+      <div className="flex-1 flex flex-col bg-white dark:bg-[#09090b] h-screen min-h-0 overflow-hidden transition-colors">
 
         {/* Header */}
 
@@ -708,12 +715,12 @@ export function LogViewer({
         viewportEnd={viewportRange.end}
       />
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Code View */}
         <div 
             ref={scrollRef}
             onScroll={scheduleViewportUpdate}
-            className="flex-1 overflow-auto p-4 font-mono text-sm text-zinc-300 leading-relaxed custom-scrollbar"
+            className="flex-1 min-h-0 overflow-auto p-4 font-mono text-sm text-zinc-300 leading-relaxed custom-scrollbar"
         >
             {windowedLines.length > 0 ? windowedLines.map(({ line, index }) => (
                 <LogLine

@@ -20,6 +20,9 @@ export async function POST(request: Request) {
     }
 
     const config = getConfig();
+    if (config.ai.enabled === false) {
+      return NextResponse.json({ error: 'AI features are disabled in Settings.' }, { status: 400 });
+    }
     const provider = config.ai.provider || 'gemini';
     
     const systemPrompt = `You are Alogi, an expert DevOps Investigator. 

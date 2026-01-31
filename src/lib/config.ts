@@ -10,6 +10,7 @@ export interface AlogiConfig {
     logPath: string;
   };
   ai: {
+    enabled?: boolean;
     provider: 'gemini' | 'openai';
     apiKey: string;       // Gemini
     openaiApiKey: string; // OpenAI
@@ -36,6 +37,7 @@ const DEFAULT_CONFIG: AlogiConfig = {
     logPath: process.env.LOG_ROOT_DIR || '/var/log',
   },
   ai: {
+    enabled: true,
     provider: 'gemini',
     apiKey: process.env.GEMINI_API_KEY || '',
     openaiApiKey: process.env.OPENAI_API_KEY || '',

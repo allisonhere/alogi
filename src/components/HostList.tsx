@@ -19,7 +19,7 @@ export function HostList({ hosts, selectedHost, onSelectHost }: HostListProps) {
   );
 
   return (
-    <div className="w-full border-r border-zinc-800 bg-zinc-50 dark:bg-zinc-950 flex flex-col h-full transition-colors">
+    <div className="w-full border-r border-zinc-800 bg-zinc-50 dark:bg-zinc-950 flex flex-col h-full min-h-0 transition-colors">
       <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-3">
         <img
           src="/logo.svg"
