@@ -5,7 +5,17 @@ import { VibeCheckBar } from './VibeCheckBar';
 import { ChatPanel } from './ChatPanel';
 
 // Helper to highlight log parts
-function LogLine({ line, index }: { line: string; index: number }) {
+function LogLine({
+  line,
+  index,
+  wrapLines,
+  fontSizeClass,
+}: {
+  line: string;
+  index: number;
+  wrapLines: boolean;
+  fontSizeClass: string;
+}) {
   const lower = line.toLowerCase();
   const isError = lower.includes('error') || lower.includes('critical') || lower.includes('fatal') || lower.includes('failed') || lower.includes('denied');
   const isWarn = lower.includes('warn') || lower.includes('warning') || lower.includes('block') || lower.includes('conflict') || lower.includes('timeout') || lower.includes('retrying');
@@ -27,7 +37,10 @@ function LogLine({ line, index }: { line: string; index: number }) {
         isError ? "bg-red-50 dark:bg-red-950/20" : "bg-transparent"
       )}>
         <span className="w-10 text-zinc-400 dark:text-zinc-600 select-none text-right mr-4 flex-shrink-0 text-xs mt-0.5 font-mono">{index + 1}</span>
-        <pre className="text-xs font-mono text-emerald-600 dark:text-emerald-400 bg-zinc-50 dark:bg-zinc-900/50 p-2 rounded w-full overflow-x-auto border border-zinc-200 dark:border-zinc-800">
+        <pre className={cn(
+          "font-mono text-emerald-600 dark:text-emerald-400 bg-zinc-50 dark:bg-zinc-900/50 p-2 rounded w-full overflow-x-auto border border-zinc-200 dark:border-zinc-800",
+          fontSizeClass
+        )}>
           {JSON.stringify(parsedJson, null, 2)}
         </pre>
       </div>
@@ -46,7 +59,11 @@ function LogLine({ line, index }: { line: string; index: number }) {
         "bg-transparent border-transparent"
     )}>
         <span className="w-10 text-zinc-400 dark:text-zinc-700 select-none text-right mr-4 flex-shrink-0 text-xs mt-[3px] font-mono group-hover:text-zinc-500">{index + 1}</span>
-        <span className="text-zinc-700 dark:text-zinc-300 break-all whitespace-pre-wrap flex-1 font-mono text-[13px] leading-tight tracking-tight">
+        <span className={cn(
+          "text-zinc-700 dark:text-zinc-300 break-all flex-1 font-mono leading-tight tracking-tight",
+          wrapLines ? "whitespace-pre-wrap" : "whitespace-pre",
+          fontSizeClass
+        )}>
             {parts.map((part, i) => {
                 const lowerPart = part.toLowerCase();
                 
@@ -106,12 +123,17 @@ export function LogViewer({
   onToggleHosts,
   onToggleFiles,
 }: LogViewerProps) {
+  const FONT_SIZES = [11, 12, 13, 14, 15, 16];
+  const PREF_KEY = 'alogi.logViewerPrefs';
   const MAX_RENDER_LINES = 5000;
   const [analyzing, setAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAllLines, setShowAllLines] = useState(false);
+  const [wrapLines, setWrapLines] = useState(true);
+  const [fontSize, setFontSize] = useState(13);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -129,6 +151,43 @@ export function LogViewer({
         scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [content, isLive]);
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(PREF_KEY) ?? '{}') as {
+        wrapLines?: boolean;
+        fontSize?: number;
+      };
+      if (typeof stored.wrapLines === 'boolean') {
+        setWrapLines(stored.wrapLines);
+      }
+      if (typeof stored.fontSize === 'number') {
+        const nearest = FONT_SIZES.reduce((prev, curr) =>
+          Math.abs(curr - stored.fontSize!) < Math.abs(prev - stored.fontSize!) ? curr : prev
+        , FONT_SIZES[2]);
+        setFontSize(nearest);
+      }
+    } catch {
+      // Ignore invalid stored values
+    }
+    setPrefsLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!prefsLoaded) return;
+    localStorage.setItem(
+      PREF_KEY,
+      JSON.stringify({ wrapLines, fontSize })
+    );
+  }, [wrapLines, fontSize, prefsLoaded]);
+
+  const fontSizeClass = `text-[${fontSize}px]`;
+
+  const adjustFontSize = (delta: number) => {
+    const index = FONT_SIZES.indexOf(fontSize);
+    const nextIndex = Math.min(FONT_SIZES.length - 1, Math.max(0, index + delta));
+    setFontSize(FONT_SIZES[nextIndex]);
+  };
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -154,6 +213,26 @@ export function LogViewer({
         searchInputRef.current?.select();
         return;
       }
+      if (!event.metaKey && !event.ctrlKey && !event.altKey && key === 'w') {
+        event.preventDefault();
+        setWrapLines(prev => !prev);
+        return;
+      }
+      if ((event.metaKey || event.ctrlKey) && (key === '+' || key === '=')) {
+        event.preventDefault();
+        adjustFontSize(1);
+        return;
+      }
+      if ((event.metaKey || event.ctrlKey) && key === '-') {
+        event.preventDefault();
+        adjustFontSize(-1);
+        return;
+      }
+      if ((event.metaKey || event.ctrlKey) && key === '0') {
+        event.preventDefault();
+        setFontSize(13);
+        return;
+      }
       if (!event.metaKey && !event.ctrlKey && !event.altKey && key === 'l') {
         event.preventDefault();
         setIsLive(!isLive);
@@ -162,7 +241,7 @@ export function LogViewer({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isLive, setIsLive]);
+  }, [isLive, setIsLive, fontSize]);
 
   const handleAnalyze = async () => {
     if (!content) return;
@@ -329,6 +408,44 @@ export function LogViewer({
 
               </div>
 
+              <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                      onClick={() => setWrapLines(prev => !prev)}
+                      className={cn(
+                          "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors border",
+                          wrapLines
+                              ? "border-indigo-300 dark:border-indigo-500/60 text-indigo-600 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-500/10"
+                              : "border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                      )}
+                      title="Toggle line wrap (W)"
+                  >
+                      Wrap
+                  </button>
+                  <button
+                      onClick={() => adjustFontSize(-1)}
+                      disabled={fontSize <= FONT_SIZES[0]}
+                      className="px-2 py-1 rounded-md text-[11px] font-semibold transition-colors border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 disabled:opacity-40"
+                      title="Decrease font size (Ctrl/Cmd -)"
+                  >
+                      A-
+                  </button>
+                  <button
+                      onClick={() => setFontSize(13)}
+                      className="px-2 py-1 rounded-md text-[11px] font-semibold transition-colors border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                      title="Reset font size (Ctrl/Cmd 0)"
+                  >
+                      A
+                  </button>
+                  <button
+                      onClick={() => adjustFontSize(1)}
+                      disabled={fontSize >= FONT_SIZES[FONT_SIZES.length - 1]}
+                      className="px-2 py-1 rounded-md text-[11px] font-semibold transition-colors border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 disabled:opacity-40"
+                      title="Increase font size (Ctrl/Cmd +)"
+                  >
+                      A+
+                  </button>
+              </div>
+
               
 
               <button
@@ -404,7 +521,13 @@ export function LogViewer({
             className="flex-1 overflow-auto p-4 font-mono text-sm text-zinc-300 leading-relaxed custom-scrollbar"
         >
             {windowedLines.length > 0 ? windowedLines.map(({ line, index }) => (
-                <LogLine key={index} line={line} index={index} />
+                <LogLine
+                  key={index}
+                  line={line}
+                  index={index}
+                  wrapLines={wrapLines}
+                  fontSizeClass={fontSizeClass}
+                />
             )) : (
                 <div className="flex flex-col items-center justify-center h-full text-zinc-600 space-y-2">
                     <div className="text-sm italic">No matches found for {`"${searchQuery}"`}</div>
