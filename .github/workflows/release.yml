@@ -43,7 +43,7 @@ jobs:
       - name: Build Arch package
         run: |
           docker run --rm -v "$PWD:/repo" archlinux:latest /bin/bash -c "\
-            pacman -Sy --noconfirm base-devel && \
+            pacman -Sy --noconfirm base-devel gtk3 nss libxss libxtst alsa-lib libxrandr libxkbcommon libxcomposite libxdamage libxfixes libxi libxrender libxcursor at-spi2-core libdrm mesa libnotify libcups pango cairo dbus glib2 && \
             useradd -m builder && \
             chown -R builder:builder /repo && \
             su - builder -c 'cd /repo/packaging/arch && makepkg -f --noconfirm --needed'"
