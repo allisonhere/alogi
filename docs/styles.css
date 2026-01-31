@@ -1,3 +1,7 @@
+html {
+  scroll-behavior: smooth;
+}
+
 :root {
   color-scheme: light;
   --bg: #0a0d14;
@@ -249,6 +253,17 @@ h1 {
 
 .install pre {
   margin: 16px 0 12px;
+}
+
+.install {
+  scroll-margin-top: 96px;
+  transition: border 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.install:target {
+  border-color: rgba(79, 247, 161, 0.5);
+  box-shadow: 0 0 0 2px rgba(79, 247, 161, 0.2), 0 18px 48px rgba(0, 0, 0, 0.45);
+  background: linear-gradient(140deg, rgba(79, 247, 161, 0.12), rgba(95, 213, 255, 0.08)) border-box;
 }
 
 .install-footer {

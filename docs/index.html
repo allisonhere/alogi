@@ -23,9 +23,9 @@
           </p>
           <div class="actions">
             <a class="btn primary" href="https://github.com/allisonhere/alogi/releases/latest">Latest Release</a>
-            <a class="btn" href="https://github.com/allisonhere/alogi/releases/latest"">AppImage</a>
-            <a class="btn" href="https://github.com/allisonhere/alogi/releases/latest/">Ubuntu deb</a>
-            <a class="btn" href="https://github.com/allisonhere/alogi/releases/latest/">Pacman pkg</a>
+            <a class="btn" href="#install-appimage">AppImage</a>
+            <a class="btn" href="#install-deb">Ubuntu deb</a>
+            <a class="btn" href="#install-arch">Pacman pkg</a>
           </div>
           <div class="hero-links">
             <a href="#features">Features</a>
@@ -115,7 +115,7 @@
           <p class="section-lead">Download a prebuilt Linux package or build from source.</p>
         </div>
         <div class="install-grid">
-          <article class="panel install">
+          <article class="panel install" id="install-appimage">
             <h3>AppImage (portable)</h3>
             <p>Works on most Linux distros, no root required.</p>
             <pre><code>curl -L -o Alogi-x86_64.AppImage https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x86_64.AppImage
@@ -124,7 +124,7 @@ chmod +x Alogi-x86_64.AppImage
             <a class="btn ghost" href="https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x86_64.AppImage">Download AppImage</a>
           </article>
 
-          <article class="panel install">
+          <article class="panel install" id="install-deb">
             <h3>Ubuntu / Debian (.deb)</h3>
             <p>Native package for Ubuntu and Debian-based systems.</p>
             <pre><code>curl -L -o Alogi-amd64.deb https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb
@@ -132,7 +132,7 @@ sudo apt install ./Alogi-amd64.deb</code></pre>
             <a class="btn ghost" href="https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb">Download .deb</a>
           </article>
 
-          <article class="panel install">
+          <article class="panel install" id="install-arch">
             <h3>Arch / CachyOS (pacman)</h3>
             <p>Install the prebuilt pacman package or build locally from the PKGBUILD.</p>
             <pre><code>curl -L -o alogi-arch.pkg.tar.zst https://github.com/allisonhere/alogi/releases/latest/download/alogi-arch.pkg.tar.zst
