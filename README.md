@@ -36,6 +36,11 @@
 
 ## 📦 Installation
 
+Prefer ready-to-go apps? Visit the install page for direct downloads and distro-specific instructions:
+
+- Install page: https://allisonhere.github.io/alogi/
+- Latest release assets: https://github.com/allisonhere/alogi/releases/latest
+
 1.  **Clone the repo:**
     ```bash
     git clone https://github.com/allisonhere/alogi.git
