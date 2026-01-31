@@ -139,6 +139,8 @@ interface LogViewerProps {
   showFiles: boolean;
   onToggleHosts: () => void;
   onToggleFiles: () => void;
+  liveButtonRef?: React.RefObject<HTMLButtonElement>;
+  analyzeButtonRef?: React.RefObject<HTMLButtonElement>;
 }
 
 interface AIAnalysis {
@@ -158,6 +160,8 @@ export function LogViewer({
   showFiles,
   onToggleHosts,
   onToggleFiles,
+  liveButtonRef,
+  analyzeButtonRef,
 }: LogViewerProps) {
   const FONT_SIZES = [11, 12, 13, 14, 15, 16];
   const PREF_KEY = 'alogi.logViewerPrefs';
@@ -413,6 +417,7 @@ export function LogViewer({
               </div>
 
               <button
+                  ref={liveButtonRef}
 
                   onClick={() => setIsLive(!isLive)}
 
@@ -435,6 +440,7 @@ export function LogViewer({
               </button>
 
               <button
+                  ref={analyzeButtonRef}
 
                   onClick={handleAnalyze}
 

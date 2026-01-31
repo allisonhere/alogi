@@ -1,0 +1,149 @@
+'use client';
+
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+
+export interface OnboardingStep {
+  id: string;
+  title: string;
+  body: string;
+  target: React.RefObject<HTMLElement>;
+  enabled?: boolean;
+}
+
+interface OnboardingOverlayProps {
+  steps: OnboardingStep[];
+  onFinish: () => void;
+  onSkip?: () => void;
+}
+
+export function OnboardingOverlay({ steps, onFinish, onSkip }: OnboardingOverlayProps) {
+  const calloutRef = useRef<HTMLDivElement>(null);
+  const [currentId, setCurrentId] = useState<string | null>(null);
+  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const [calloutPos, setCalloutPos] = useState({ top: 0, left: 0 });
+
+  const availableSteps = useMemo(
+    () => steps.filter(step => step.enabled !== false && step.target.current),
+    [steps]
+  );
+
+  const currentIndex = currentId
+    ? availableSteps.findIndex(step => step.id === currentId)
+    : -1;
+  const activeIndex = currentIndex >= 0 ? currentIndex : 0;
+  const activeStep = availableSteps[activeIndex];
+
+  useEffect(() => {
+    if (!availableSteps.length) return;
+    if (!activeStep || activeStep.id !== currentId) {
+      setCurrentId(availableSteps[0].id);
+    }
+  }, [availableSteps, activeStep, currentId]);
+
+  useLayoutEffect(() => {
+    if (!activeStep?.target.current) {
+      setTargetRect(null);
+      return;
+    }
+    const updateRect = () => {
+      const rect = activeStep.target.current?.getBoundingClientRect() ?? null;
+      setTargetRect(rect);
+    };
+    updateRect();
+    window.addEventListener('resize', updateRect);
+    window.addEventListener('scroll', updateRect, true);
+    return () => {
+      window.removeEventListener('resize', updateRect);
+      window.removeEventListener('scroll', updateRect, true);
+    };
+  }, [activeStep]);
+
+  useLayoutEffect(() => {
+    if (!targetRect || !calloutRef.current) return;
+    const padding = 12;
+    const { innerWidth, innerHeight } = window;
+    const calloutWidth = calloutRef.current.offsetWidth;
+    const calloutHeight = calloutRef.current.offsetHeight;
+
+    let left = targetRect.right + padding;
+    let top = targetRect.top + targetRect.height / 2 - calloutHeight / 2;
+
+    if (left + calloutWidth > innerWidth - padding) {
+      left = targetRect.left - calloutWidth - padding;
+    }
+    if (left < padding) left = padding;
+    if (top + calloutHeight > innerHeight - padding) {
+      top = innerHeight - calloutHeight - padding;
+    }
+    if (top < padding) top = padding;
+
+    setCalloutPos({ top, left });
+  }, [targetRect, activeStep]);
+
+  if (!availableSteps.length || !activeStep) return null;
+
+  const handleNext = () => {
+    if (activeIndex >= availableSteps.length - 1) {
+      onFinish();
+      return;
+    }
+    setCurrentId(availableSteps[activeIndex + 1].id);
+  };
+
+  const handleBack = () => {
+    if (activeIndex <= 0) return;
+    setCurrentId(availableSteps[activeIndex - 1].id);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 pointer-events-none">
+      <div className="absolute inset-0 bg-black/40" />
+      {targetRect && (
+        <div
+          className="absolute border-2 border-indigo-400/80 rounded-lg shadow-[0_0_0_6px_rgba(99,102,241,0.15)] pointer-events-none"
+          style={{
+            top: targetRect.top - 6,
+            left: targetRect.left - 6,
+            width: targetRect.width + 12,
+            height: targetRect.height + 12,
+          }}
+        />
+      )}
+
+      <div
+        ref={calloutRef}
+        className="absolute max-w-[320px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl p-4 text-zinc-900 dark:text-zinc-100 pointer-events-auto"
+        style={{ top: calloutPos.top, left: calloutPos.left }}
+      >
+        <div className="text-xs uppercase tracking-[0.2em] text-zinc-400 mb-2">
+          Step {activeIndex + 1} / {availableSteps.length}
+        </div>
+        <h3 className="text-sm font-semibold mb-1">{activeStep.title}</h3>
+        <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-4">{activeStep.body}</p>
+        <div className="flex items-center justify-between text-xs">
+          <button
+            onClick={onSkip ?? onFinish}
+            className="text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+          >
+            Skip
+          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleBack}
+              disabled={activeIndex === 0}
+              className="px-3 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 disabled:opacity-40"
+            >
+              Back
+            </button>
+            <button
+              onClick={handleNext}
+              className="px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-500"
+            >
+              {activeIndex === availableSteps.length - 1 ? 'Done' : 'Next'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

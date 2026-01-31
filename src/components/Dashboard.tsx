@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, type MouseEvent as ReactMouseEvent } from 
 import { HostList } from './HostList';
 import { FileList } from './FileList';
 import { LogViewer } from './LogViewer';
+import { OnboardingOverlay } from './OnboardingOverlay';
 
 interface FileInfo {
   name: string;
@@ -42,6 +43,11 @@ export default function Dashboard() {
   const [fileWidth, setFileWidth] = useState(DEFAULT_FILE_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
   const [hasRestored, setHasRestored] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const hostPanelRef = useRef<HTMLDivElement>(null);
+  const filePanelRef = useRef<HTMLDivElement>(null);
+  const liveButtonRef = useRef<HTMLButtonElement>(null);
+  const analyzeButtonRef = useRef<HTMLButtonElement>(null);
   const dragState = useRef<{
     type: 'hosts' | 'files';
     startX: number;
@@ -101,6 +107,13 @@ export default function Dashboard() {
       // Ignore invalid stored values
     }
     setHasRestored(true);
+  }, []);
+
+  useEffect(() => {
+    const dismissed = localStorage.getItem('alogi.onboarded') === 'true';
+    if (!dismissed) {
+      setShowOnboarding(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -282,7 +295,7 @@ export default function Dashboard() {
   return (
     <div className="flex h-screen w-full bg-white dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 overflow-hidden transition-colors">
       {showHosts && (
-        <div style={{ width: hostWidth }} className="flex-shrink-0">
+        <div ref={hostPanelRef} style={{ width: hostWidth }} className="flex-shrink-0">
           <HostList 
             hosts={hosts} 
             selectedHost={selectedHost} 
@@ -299,7 +312,7 @@ export default function Dashboard() {
       )}
       
       {showFiles && selectedHost && (
-        <div style={{ width: fileWidth }} className="flex-shrink-0">
+        <div ref={filePanelRef} style={{ width: fileWidth }} className="flex-shrink-0">
           <FileList 
             files={files} 
             selectedFile={selectedFile} 
@@ -326,7 +339,52 @@ export default function Dashboard() {
         showFiles={showFiles}
         onToggleHosts={() => setShowHosts(prev => !prev)}
         onToggleFiles={() => setShowFiles(prev => !prev)}
+        liveButtonRef={liveButtonRef}
+        analyzeButtonRef={analyzeButtonRef}
       />
+
+      {showOnboarding && (
+        <OnboardingOverlay
+          steps={[
+            {
+              id: 'hosts',
+              title: 'Choose a host',
+              body: 'Pick a local folder, system journal, or remote host.',
+              target: hostPanelRef,
+              enabled: showHosts,
+            },
+            {
+              id: 'files',
+              title: 'Pick a log file',
+              body: 'Select a file or service to start reading logs.',
+              target: filePanelRef,
+              enabled: Boolean(selectedHost && showFiles),
+            },
+            {
+              id: 'live',
+              title: 'Go live',
+              body: 'Toggle live tailing to stream new lines as they arrive.',
+              target: liveButtonRef,
+              enabled: Boolean(selectedFile),
+            },
+            {
+              id: 'ai',
+              title: 'Analyze with AI',
+              body: 'Generate a summary and recommendations for errors.',
+              target: analyzeButtonRef,
+              enabled: Boolean(selectedFile),
+            },
+          ]}
+          onFinish={() => {
+            localStorage.setItem('alogi.onboarded', 'true');
+            setShowOnboarding(false);
+          }}
+          onSkip={() => {
+            localStorage.setItem('alogi.onboarded', 'true');
+            setShowOnboarding(false);
+          }}
+        />
+      )}
     </div>
   );
 }
