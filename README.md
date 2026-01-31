@@ -12,6 +12,7 @@
 
 *   **⚡️ Live Tailing:** Watch logs stream in real-time (like `tail -f`) with auto-scrolling.
 *   **🧠 AI Analysis:** Click "Analyze" to scan your logs for errors, root causes, and actionable recommendations (Gemini or OpenAI).
+*   **💬 AI Chat:** Ask questions about the current log context with a conversational panel (Gemini or OpenAI).
 *   **🎨 Smart Highlighting:**
     *   **Vibe Check Bar:** A visual heatmap at the top of the screen showing where errors (Red) and warnings (Orange) are buried.
     *   **Syntax Highlighting:** Dates, IPs, and Keywords are color-coded.
@@ -80,7 +81,7 @@ You can also prefill values via environment variables:
 
 *   **Select a Host:** Click a folder on the left (or `(system-journal)`). Remote hosts appear as `remote:<alias>` or `docker:<alias>`.
 *   **Select a File:** Click a log file to view it.
-*   **Analyze:** Click the **Sparkles** button to generate an AI summary.
+*   **Analyze:** Click the **Sparkles** button to generate an AI summary and open the chat panel for follow-up questions.
 *   **Go Live:** Toggle "Go Live" to stream updates automatically.
 *   **Filter:** Use the search bar to filter lines instantly.
 *   **Insights:** Toggle the Insights button to see top errors/warnings and trends.
