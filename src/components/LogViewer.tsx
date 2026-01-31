@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { BarChart3, Sparkles, Terminal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VibeCheckBar } from './VibeCheckBar';
