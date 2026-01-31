@@ -456,7 +456,7 @@ export function LogViewer({
 
                       onChange={(e) => setSearchQuery(e.target.value)}
 
-                      className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md py-1.5 pl-8 pr-3 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
+                      className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md py-1.5 pl-8 pr-3 text-xs text-zinc-800 dark:text-zinc-200 dark:focus:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-colors placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
 
                   />
 
