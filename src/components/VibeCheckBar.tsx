@@ -1,13 +1,14 @@
-import { useMemo } from 'react';
+import { useMemo, type MouseEvent as ReactMouseEvent } from 'react';
 
 interface VibeCheckBarProps {
   lines: string[];
   onScrollTo: (index: number) => void;
+  onScrub?: (ratio: number) => void;
   viewportStart?: number;
   viewportEnd?: number;
 }
 
-export function VibeCheckBar({ lines, onScrollTo, viewportStart = 0, viewportEnd = 0 }: VibeCheckBarProps) {
+export function VibeCheckBar({ lines, onScrollTo, onScrub, viewportStart = 0, viewportEnd = 0 }: VibeCheckBarProps) {
   const segments = useMemo(() => {
     if (lines.length === 0) return [];
     const targetSegments = Math.min(140, Math.max(24, Math.ceil(lines.length / 60)));
@@ -39,9 +40,38 @@ export function VibeCheckBar({ lines, onScrollTo, viewportStart = 0, viewportEnd
 
   if (lines.length === 0) return null;
 
+  const handleScrub = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!onScrub) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    const ratio = (event.clientX - rect.left) / rect.width;
+    onScrub(Math.max(0, Math.min(1, ratio)));
+  };
+
+  const startDrag = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!onScrub) return;
+    const target = event.currentTarget;
+    handleScrub(event);
+    const handleMove = (moveEvent: MouseEvent) => {
+      const rect = target.getBoundingClientRect();
+      if (rect.width <= 0) return;
+      const ratio = (moveEvent.clientX - rect.left) / rect.width;
+      onScrub(Math.max(0, Math.min(1, ratio)));
+    };
+    const handleUp = () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+  };
+
   return (
-    <div className="h-3 w-full bg-zinc-950 border-b border-zinc-900 relative cursor-crosshair group"
-         title="Vibe Check: Click to jump to events"
+    <div
+      className="h-3 w-full bg-zinc-950 border-b border-zinc-900 relative cursor-crosshair group"
+      onMouseDown={startDrag}
+      onClick={handleScrub}
+      title="Vibe Check: Click to jump to events"
     >
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-900/50 pointer-events-none" />
 

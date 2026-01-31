@@ -177,18 +177,26 @@ export function LogViewer({
   const updateViewport = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const totalScrollable = el.scrollHeight - el.clientHeight;
-    if (totalScrollable <= 0) {
+    if (el.scrollHeight <= 0) {
       setViewportRange({ start: 0, end: 1 });
       return;
     }
-    const start = el.scrollTop / totalScrollable;
+    const start = el.scrollTop / el.scrollHeight;
     const end = (el.scrollTop + el.clientHeight) / el.scrollHeight;
     setViewportRange({
       start: Math.max(0, Math.min(1, start)),
       end: Math.max(0, Math.min(1, end)),
     });
   }, []);
+
+  const viewportRaf = useRef<number | null>(null);
+  const scheduleViewportUpdate = useCallback(() => {
+    if (viewportRaf.current !== null) return;
+    viewportRaf.current = requestAnimationFrame(() => {
+      viewportRaf.current = null;
+      updateViewport();
+    });
+  }, [updateViewport]);
 
   // Reset analysis and search when file changes
   useEffect(() => {
@@ -207,9 +215,9 @@ export function LogViewer({
 
   useEffect(() => {
     updateViewport();
-    window.addEventListener('resize', updateViewport);
-    return () => window.removeEventListener('resize', updateViewport);
-  }, [updateViewport, content, searchQuery, showAllLines, isLive]);
+    window.addEventListener('resize', scheduleViewportUpdate);
+    return () => window.removeEventListener('resize', scheduleViewportUpdate);
+  }, [updateViewport, scheduleViewportUpdate, content, searchQuery, showAllLines, isLive]);
 
   useEffect(() => {
     try {
@@ -568,8 +576,19 @@ export function LogViewer({
       <VibeCheckBar 
         lines={windowedLines.map(l => l.line)} 
         onScrollTo={(index) => {
-            const child = scrollRef.current?.children[index] as HTMLElement;
-            if (child) child.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            const container = scrollRef.current;
+            if (!container) return;
+            const child = container.children[index] as HTMLElement | undefined;
+            if (!child) return;
+            const targetTop = child.offsetTop - container.clientHeight / 2 + child.clientHeight / 2;
+            container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+        }}
+        onScrub={(ratio) => {
+            const container = scrollRef.current;
+            if (!container) return;
+            const totalScrollable = container.scrollHeight - container.clientHeight;
+            if (totalScrollable <= 0) return;
+            container.scrollTop = Math.max(0, Math.min(totalScrollable, ratio * totalScrollable));
         }}
         viewportStart={viewportRange.start}
         viewportEnd={viewportRange.end}
@@ -579,7 +598,7 @@ export function LogViewer({
         {/* Code View */}
         <div 
             ref={scrollRef}
-            onScroll={updateViewport}
+            onScroll={scheduleViewportUpdate}
             className="flex-1 overflow-auto p-4 font-mono text-sm text-zinc-300 leading-relaxed custom-scrollbar"
         >
             {windowedLines.length > 0 ? windowedLines.map(({ line, index }) => (
