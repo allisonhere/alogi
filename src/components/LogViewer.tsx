@@ -113,6 +113,7 @@ export function LogViewer({
   const [searchQuery, setSearchQuery] = useState('');
   const [showAllLines, setShowAllLines] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Reset analysis and search when file changes
   useEffect(() => {
@@ -128,6 +129,40 @@ export function LogViewer({
         scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [content, isLive]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      const target = event.target as HTMLElement | null;
+      const isTyping = target && (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      );
+      if (isTyping) return;
+
+      const key = event.key.toLowerCase();
+      if ((event.metaKey || event.ctrlKey) && key === 'k') {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+        return;
+      }
+      if (!event.metaKey && !event.ctrlKey && !event.altKey && (key === '/' || key === 'f')) {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+        return;
+      }
+      if (!event.metaKey && !event.ctrlKey && !event.altKey && key === 'l') {
+        event.preventDefault();
+        setIsLive(!isLive);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLive, setIsLive]);
 
   const handleAnalyze = async () => {
     if (!content) return;
@@ -237,7 +272,7 @@ export function LogViewer({
 
                   className={cn(
 
-                      "px-3 py-1.5 rounded-md text-xs font-medium transition-colors border",
+                      "px-3 py-1.5 rounded-md text-xs font-medium transition-colors border whitespace-nowrap",
 
                       isLive 
 
@@ -256,6 +291,7 @@ export function LogViewer({
               <div className="relative flex-1 min-w-[180px]">
 
                   <input 
+                      ref={searchInputRef}
 
                       type="text" 
 

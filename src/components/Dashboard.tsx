@@ -181,6 +181,40 @@ export default function Dashboard() {
   }, [selectedHost, selectedFile, showHosts, showFiles]);
 
   useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      const isTyping = target && (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      );
+      if (isTyping) return;
+      if (!showFiles || !selectedHost || files.length === 0) return;
+
+      const key = event.key.toLowerCase();
+      if (key !== 'j' && key !== 'k') return;
+      event.preventDefault();
+
+      const currentIndex = files.findIndex((file) => file.name === selectedFile);
+      let nextIndex = currentIndex;
+      if (key === 'j') {
+        nextIndex = currentIndex < 0 ? 0 : Math.min(files.length - 1, currentIndex + 1);
+      } else {
+        nextIndex = currentIndex < 0 ? files.length - 1 : Math.max(0, currentIndex - 1);
+      }
+      const nextFile = files[nextIndex];
+      if (nextFile && nextFile.name !== selectedFile) {
+        setSelectedFile(nextFile.name);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [files, selectedFile, selectedHost, showFiles]);
+
+  useEffect(() => {
     if (!isResizing) return;
     const previousCursor = document.body.style.cursor;
     const previousSelect = document.body.style.userSelect;
