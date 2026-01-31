@@ -10,15 +10,49 @@ function LogLine({
   index,
   wrapLines,
   fontSizeClass,
+  searchQuery,
 }: {
   line: string;
   index: number;
   wrapLines: boolean;
   fontSizeClass: string;
+  searchQuery: string;
 }) {
   const lower = line.toLowerCase();
   const isError = lower.includes('error') || lower.includes('critical') || lower.includes('fatal') || lower.includes('failed') || lower.includes('denied');
   const isWarn = lower.includes('warn') || lower.includes('warning') || lower.includes('block') || lower.includes('conflict') || lower.includes('timeout') || lower.includes('retrying');
+  const query = searchQuery.trim();
+  const queryLower = query.toLowerCase();
+
+  const highlightMatches = (text: string) => {
+    if (!query) return text;
+    const lowerText = text.toLowerCase();
+    const parts: Array<string | JSX.Element> = [];
+    let startIndex = 0;
+    let matchIndex = lowerText.indexOf(queryLower, startIndex);
+    let keyIndex = 0;
+    while (matchIndex !== -1) {
+      if (matchIndex > startIndex) {
+        parts.push(text.slice(startIndex, matchIndex));
+      }
+      const matchText = text.slice(matchIndex, matchIndex + query.length);
+      parts.push(
+        <mark
+          key={`${matchIndex}-${keyIndex}`}
+          className="bg-amber-200/70 dark:bg-amber-400/25 rounded px-0.5"
+        >
+          {matchText}
+        </mark>
+      );
+      keyIndex += 1;
+      startIndex = matchIndex + query.length;
+      matchIndex = lowerText.indexOf(queryLower, startIndex);
+    }
+    if (startIndex < text.length) {
+      parts.push(text.slice(startIndex));
+    }
+    return parts;
+  };
 
   // 1. Try JSON
   let parsedJson: unknown | null = null;
@@ -41,7 +75,7 @@ function LogLine({
           "font-mono text-emerald-600 dark:text-emerald-400 bg-zinc-50 dark:bg-zinc-900/50 p-2 rounded w-full overflow-x-auto border border-zinc-200 dark:border-zinc-800",
           fontSizeClass
         )}>
-          {JSON.stringify(parsedJson, null, 2)}
+          {highlightMatches(JSON.stringify(parsedJson, null, 2))}
         </pre>
       </div>
     );
@@ -66,27 +100,28 @@ function LogLine({
         )}>
             {parts.map((part, i) => {
                 const lowerPart = part.toLowerCase();
+                const highlightPart = () => highlightMatches(part);
                 
                 // Brackets [Timestamp] or [Component] -> Zinc 500 (Gray)
-                if (part.startsWith('[') && part.endsWith(']')) return <span key={i} className="text-zinc-400 dark:text-zinc-500">{part}</span>;
+                if (part.startsWith('[') && part.endsWith(']')) return <span key={i} className="text-zinc-400 dark:text-zinc-500">{highlightPart()}</span>;
                 
                 // Keywords matching vibrant pic.png colors - NOW AS LARGER, BRIGHTER PILLS
                 if (['info', 'started', 'reached', 'listening', 'created', 'mounted', 'accepted', 'connected'].includes(lowerPart)) {
-                    return <span key={i} className="inline-block mx-2 px-2.5 py-1 rounded-md text-[11px] font-black bg-[#00f5d4]/10 dark:bg-[#00f5d4]/20 text-emerald-600 dark:text-[#00f5d4] leading-none select-none tracking-tight uppercase shadow-sm shadow-[#00f5d4]/10">{part}</span>;
+                    return <span key={i} className="inline-block mx-2 px-2.5 py-1 rounded-md text-[11px] font-black bg-[#00f5d4]/10 dark:bg-[#00f5d4]/20 text-emerald-600 dark:text-[#00f5d4] leading-none select-none tracking-tight uppercase shadow-sm shadow-[#00f5d4]/10">{highlightPart()}</span>;
                 }
                 
                 if (['warn', 'warning', 'block', 'conflict', 'timeout', 'retrying'].includes(lowerPart)) {
-                    return <span key={i} className="inline-block mx-2 px-2.5 py-1 rounded-md text-[11px] font-black bg-[#ff9f1c]/10 dark:bg-[#ff9f1c]/25 text-orange-600 dark:text-[#ff9f1c] leading-none select-none tracking-tight uppercase shadow-sm shadow-[#ff9f1c]/10">{part}</span>;
+                    return <span key={i} className="inline-block mx-2 px-2.5 py-1 rounded-md text-[11px] font-black bg-[#ff9f1c]/10 dark:bg-[#ff9f1c]/25 text-orange-600 dark:text-[#ff9f1c] leading-none select-none tracking-tight uppercase shadow-sm shadow-[#ff9f1c]/10">{highlightPart()}</span>;
                 }
                 
                 if (['error', 'critical', 'fatal', 'failed'].includes(lowerPart)) {
-                    return <span key={i} className="inline-block mx-2 px-2.5 py-1 rounded-md text-[11px] font-black bg-[#ff5d5d]/10 dark:bg-[#ff5d5d]/25 text-red-600 dark:text-[#ff5d5d] leading-none select-none tracking-tight uppercase shadow-sm shadow-[#ff5d5d]/10">{part}</span>;
+                    return <span key={i} className="inline-block mx-2 px-2.5 py-1 rounded-md text-[11px] font-black bg-[#ff5d5d]/10 dark:bg-[#ff5d5d]/25 text-red-600 dark:text-[#ff5d5d] leading-none select-none tracking-tight uppercase shadow-sm shadow-[#ff5d5d]/10">{highlightPart()}</span>;
                 }
 
                 // HTTP Methods & Positive Actions (Remaining ones not covered by pills)
-                if (['GET', 'POST', 'PUT', 'DELETE', 'Stopped'].includes(part)) return <span key={i} className="text-indigo-600 dark:text-indigo-400">{part}</span>;
+                if (['GET', 'POST', 'PUT', 'DELETE', 'Stopped'].includes(part)) return <span key={i} className="text-indigo-600 dark:text-indigo-400">{highlightPart()}</span>;
                 
-                return part;
+                return highlightPart();
             })}
         </span>
     </div>
@@ -527,6 +562,7 @@ export function LogViewer({
                   index={index}
                   wrapLines={wrapLines}
                   fontSizeClass={fontSizeClass}
+                  searchQuery={searchQuery}
                 />
             )) : (
                 <div className="flex flex-col items-center justify-center h-full text-zinc-600 space-y-2">
