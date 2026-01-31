@@ -26,6 +26,9 @@ export interface AlogiConfig {
     authMethod?: 'key' | 'password';
     type?: 'ssh' | 'docker'; // New field
   }>;
+  ui?: {
+    onboardingDismissed?: boolean;
+  };
 }
 
 const DEFAULT_CONFIG: AlogiConfig = {
@@ -39,6 +42,9 @@ const DEFAULT_CONFIG: AlogiConfig = {
     model: 'gemini-flash-latest',
   },
   hosts: [],
+  ui: {
+    onboardingDismissed: false,
+  },
 };
 
 export function getConfig(): AlogiConfig {
@@ -68,6 +74,7 @@ export function saveConfig(config: Partial<AlogiConfig>): void {
       general: { ...current.general, ...config.general },
       ai: { ...current.ai, ...config.ai },
       hosts: config.hosts ?? current.hosts,
+      ui: { ...current.ui, ...config.ui },
     };
     
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(newConfig, null, 2), 'utf-8');

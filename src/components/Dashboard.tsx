@@ -110,10 +110,25 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    const dismissed = localStorage.getItem('alogi.onboarded') === 'true';
-    if (!dismissed) {
-      setShowOnboarding(true);
-    }
+    const loadOnboarding = async () => {
+      try {
+        const res = await fetch('/api/settings');
+        if (res.ok) {
+          const data = await res.json();
+          if (!data?.ui?.onboardingDismissed) {
+            setShowOnboarding(true);
+          }
+          return;
+        }
+      } catch {
+        // ignore and fall back to localStorage
+      }
+      const dismissed = localStorage.getItem('alogi.onboarded') === 'true';
+      if (!dismissed) {
+        setShowOnboarding(true);
+      }
+    };
+    loadOnboarding();
   }, []);
 
   useEffect(() => {
@@ -381,11 +396,29 @@ export default function Dashboard() {
               enabled: Boolean(selectedFile),
             },
           ]}
-          onFinish={() => {
+          onFinish={async () => {
+            try {
+              await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ui: { onboardingDismissed: true } }),
+              });
+            } catch {
+              // ignore
+            }
             localStorage.setItem('alogi.onboarded', 'true');
             setShowOnboarding(false);
           }}
-          onSkip={() => {
+          onSkip={async () => {
+            try {
+              await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ui: { onboardingDismissed: true } }),
+              });
+            } catch {
+              // ignore
+            }
             localStorage.setItem('alogi.onboarded', 'true');
             setShowOnboarding(false);
           }}
