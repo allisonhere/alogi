@@ -42,10 +42,15 @@ jobs:
 
       - name: Build Arch package
         run: |
-          docker run --rm -v "$PWD:/repo" archlinux:latest /bin/bash -c "\
+          docker run --rm \
+            -e HOST_UID=$(id -u) \
+            -e HOST_GID=$(id -g) \
+            -v "$PWD:/repo" \
+            archlinux:latest /bin/bash -c "\
             pacman -Sy --noconfirm base-devel gtk3 nss libxss libxtst alsa-lib libxrandr libxkbcommon libxcomposite libxdamage libxfixes libxi libxrender libxcursor at-spi2-core libdrm mesa libnotify libcups pango cairo dbus glib2 && \
-            useradd -m builder && \
-            chown -R builder:builder /repo && \
+            groupadd -g ${HOST_GID} builder || true && \
+            useradd -m -u ${HOST_UID} -g ${HOST_GID} builder || true && \
+            chown -R ${HOST_UID}:${HOST_GID} /repo && \
             su - builder -c 'cd /repo/packaging/arch && makepkg -f --noconfirm --needed'"
 
       - name: Collect Arch package
