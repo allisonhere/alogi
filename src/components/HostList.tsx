@@ -19,7 +19,7 @@ export function HostList({ hosts, selectedHost, onSelectHost }: HostListProps) {
   );
 
   return (
-    <div className="w-64 border-r border-zinc-800 bg-zinc-50 dark:bg-zinc-950 flex flex-col h-full transition-colors">
+    <div className="w-full border-r border-zinc-800 bg-zinc-50 dark:bg-zinc-950 flex flex-col h-full transition-colors">
       <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
         <Server className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
         <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">Hosts</h2>
@@ -71,4 +71,3 @@ export function HostList({ hosts, selectedHost, onSelectHost }: HostListProps) {
     </div>
   );
 }
-
