@@ -97,10 +97,10 @@ export function OnboardingOverlay({ steps, onFinish, onSkip }: OnboardingOverlay
 
   return (
     <div className="fixed inset-0 z-50 pointer-events-none">
-      <div className="absolute inset-0 bg-black/40" />
+      <div className="absolute inset-0 bg-black/60" />
       {targetRect && (
         <div
-          className="absolute border-2 border-indigo-400/80 rounded-lg shadow-[0_0_0_6px_rgba(99,102,241,0.15)] pointer-events-none"
+          className="absolute border-2 border-indigo-400/90 rounded-xl shadow-[0_0_0_8px_rgba(99,102,241,0.25),0_0_32px_rgba(99,102,241,0.35)] pointer-events-none"
           style={{
             top: targetRect.top - 6,
             left: targetRect.left - 6,
@@ -112,20 +112,20 @@ export function OnboardingOverlay({ steps, onFinish, onSkip }: OnboardingOverlay
 
       <div
         ref={calloutRef}
-        className="absolute max-w-[320px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl p-4 text-zinc-900 dark:text-zinc-100 pointer-events-auto"
+        className="absolute max-w-[380px] bg-white dark:bg-zinc-950/95 border border-indigo-300/60 dark:border-indigo-500/40 rounded-2xl shadow-[0_18px_50px_rgba(15,23,42,0.35),0_0_30px_rgba(99,102,241,0.25)] p-5 text-zinc-900 dark:text-zinc-100 pointer-events-auto backdrop-blur"
         style={{ top: calloutPos.top, left: calloutPos.left }}
       >
-        <div className="text-xs uppercase tracking-[0.2em] text-zinc-400 mb-2">
+        <div className="text-[11px] uppercase tracking-[0.24em] text-indigo-500/80 dark:text-indigo-300/70 mb-2">
           Step {activeIndex + 1} / {availableSteps.length}
         </div>
-        <h3 className="text-sm font-semibold mb-1">{activeStep.title}</h3>
-        <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-4">{activeStep.body}</p>
-        <div className="flex items-center justify-between text-xs">
+        <h3 className="text-base font-semibold mb-2">{activeStep.title}</h3>
+        <p className="text-sm text-zinc-600 dark:text-zinc-300 mb-5">{activeStep.body}</p>
+        <div className="flex items-center justify-between text-sm">
           <button
             onClick={onSkip ?? onFinish}
             className="text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
           >
-            Skip
+            Don't show again
           </button>
           <div className="flex items-center gap-2">
             <button
