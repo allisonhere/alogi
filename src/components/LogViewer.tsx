@@ -487,216 +487,229 @@ export function LogViewer({
 
         {/* Header */}
 
-        <div className="min-h-[3.5rem] border-b border-zinc-200 dark:border-zinc-800 flex flex-wrap items-center px-6 py-2 bg-zinc-50 dark:bg-zinc-950 gap-3">
+        <div className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950">
+          <div className="px-6 py-2">
+            <div className="flex flex-wrap items-start gap-4">
 
-          <div className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300 min-w-0 flex-[1_1_240px]">
+              <div className="flex-1 min-w-[240px]">
+                <div className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300 min-w-0">
 
-              <img src="/logo.svg" alt="Alogi logo" className="w-5 h-5 flex-shrink-0" />
-              <Terminal className="w-4 h-4 text-zinc-400 dark:text-zinc-500 flex-shrink-0" />
+                    <img src="/logo.svg" alt="Alogi logo" className="w-5 h-5 flex-shrink-0" />
+                    <Terminal className="w-4 h-4 text-zinc-400 dark:text-zinc-500 flex-shrink-0" />
 
-              <span className="font-mono text-sm truncate">{filename}</span>
+                    <span className="font-mono text-sm truncate">{filename}</span>
 
-              {isLive && (
+                    {isLive && (
 
-                  <span className="flex h-2 w-2 relative ml-2">
+                        <span className="flex h-2 w-2 relative ml-2">
 
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
 
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
 
-                  </span>
+                        </span>
 
-              )}
+                    )}
 
-          </div>
+                </div>
 
-  
-
-          <div className="flex items-center gap-3 flex-1 flex-wrap justify-end min-w-0">
-
-              <div className="flex items-center gap-2 flex-shrink-0">
-                  <button
-                      onClick={onToggleHosts}
-                      className={cn(
-                          "px-3 py-1.5 rounded-md text-xs font-medium transition-colors border",
-                          showHosts
-                              ? "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
-                              : "border-indigo-300 dark:border-indigo-500/60 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
-                      )}
-                  >
-                      {showHosts ? 'Hide Hosts' : 'Show Hosts'}
-                  </button>
-                  <button
-                      onClick={onToggleFiles}
-                      className={cn(
-                          "px-3 py-1.5 rounded-md text-xs font-medium transition-colors border",
-                          showFiles
-                              ? "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
-                              : "border-emerald-300 dark:border-emerald-500/60 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
-                      )}
-                  >
-                      {showFiles ? 'Hide Files' : 'Show Files'}
-                  </button>
               </div>
 
-              <button
-                  ref={liveButtonRef}
+              <div className="flex items-center gap-3 flex-wrap justify-end min-w-0">
 
-                  onClick={() => setIsLive(!isLive)}
-
-                  className={cn(
-
-                      "px-3 py-1.5 rounded-md text-xs font-medium transition-colors border whitespace-nowrap",
-
-                      isLive 
-
-                          ? "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20 hover:bg-emerald-200 dark:hover:bg-emerald-500/20" 
-
-                          : "bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:text-zinc-800 dark:hover:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-700"
-
-                  )}
-
-              >
-
-                  {isLive ? 'Live On' : 'Go Live'}
-
-              </button>
-
-              <button
-                  ref={analyzeButtonRef}
-
-                  onClick={handleAnalyze}
-
-                  disabled={analyzing}
-
-                  className={cn(
-
-                      "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all flex-shrink-0",
-
-                      analyzing
-
-                          ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed" 
-
-                          : "bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-500 dark:to-purple-500 hover:from-indigo-500 hover:to-purple-500 dark:hover:from-indigo-400 dark:hover:to-purple-400 text-white shadow-lg shadow-indigo-500/20 cursor-pointer"
-
-                  )}
-
-              >
-
-                  <Sparkles className="w-3 h-3" />
-
-                  {analyzing ? 'Analyzing...' : analysis ? 'Re-Analyze' : 'AI Analyze'}
-
-              </button>
-
-              {analysis && (
-                  <button
-                      onClick={() => setIsAiPanelOpen(prev => !prev)}
-                      className={cn(
-                          "px-3 py-1.5 rounded-md text-xs font-medium transition-colors border",
-                          isAiPanelOpen
-                              ? "border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
-                              : "border-indigo-300 dark:border-indigo-500/60 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
-                      )}
-                  >
-                      {isAiPanelOpen ? 'Hide AI' : 'Show AI'}
-                  </button>
-              )}
-
-              <div className="relative flex-1 min-w-[220px] order-last w-full md:order-none md:min-w-[180px]">
-
-                  <input 
-                      ref={searchInputRef}
-
-                      type="text" 
-
-                      placeholder="Filter logs..." 
-
-                      value={searchQuery}
-
-                      onChange={(e) => setSearchQuery(e.target.value)}
-
-                      className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md py-1.5 pl-8 pr-3 text-xs text-zinc-800 dark:text-zinc-200 dark:focus:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-colors placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
-
-                  />
-
-                  <div className="absolute left-2.5 top-2 text-zinc-400 dark:text-zinc-500">
-
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                          onClick={onToggleHosts}
+                          className={cn(
+                              "px-3 py-1.5 rounded-md text-xs font-medium transition-colors border",
+                              showHosts
+                                  ? "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                                  : "border-indigo-300 dark:border-indigo-500/60 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
+                          )}
+                      >
+                          {showHosts ? 'Hide Hosts' : 'Show Hosts'}
+                      </button>
+                      <button
+                          onClick={onToggleFiles}
+                          className={cn(
+                              "px-3 py-1.5 rounded-md text-xs font-medium transition-colors border",
+                              showFiles
+                                  ? "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                                  : "border-emerald-300 dark:border-emerald-500/60 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
+                          )}
+                      >
+                          {showFiles ? 'Hide Files' : 'Show Files'}
+                      </button>
                   </div>
 
-                  {searchQuery && (
+                  <button
+                      ref={liveButtonRef}
 
-                      <button 
+                      onClick={() => setIsLive(!isLive)}
 
-                          onClick={() => setSearchQuery('')}
+                      className={cn(
 
-                          className="absolute right-2 top-2 text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300"
+                          "px-3 py-1.5 rounded-md text-xs font-medium transition-colors border whitespace-nowrap",
 
+                          isLive 
+
+                              ? "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20 hover:bg-emerald-200 dark:hover:bg-emerald-500/20" 
+
+                              : "bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:text-zinc-800 dark:hover:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-700"
+
+                      )}
+
+                  >
+
+                      <span className="flex items-center gap-2">
+                          {isLive && (
+                              <span className="relative flex h-2 w-2">
+                                  <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping"></span>
+                                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                              </span>
+                          )}
+                          {isLive ? 'Live On' : 'Go Live'}
+                      </span>
+
+                  </button>
+
+                  {analysis && (
+                      <button
+                          onClick={() => setIsAiPanelOpen(prev => !prev)}
+                          className={cn(
+                              "px-3 py-1.5 rounded-md text-xs font-medium transition-colors border",
+                              isAiPanelOpen
+                                  ? "border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                                  : "border-indigo-300 dark:border-indigo-500/60 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
+                          )}
                       >
-
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-
+                          {isAiPanelOpen ? 'Hide AI' : 'Show AI'}
                       </button>
-
                   )}
 
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                          onClick={() => setInsightsOpen(prev => !prev)}
+                          className={cn(
+                              "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors border flex items-center gap-1",
+                              insightsOpen
+                                  ? "border-indigo-300 dark:border-indigo-500/60 text-indigo-600 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-500/10"
+                                  : "border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                          )}
+                          title="Toggle insights"
+                      >
+                          <BarChart3 className="w-3 h-3" />
+                          Insights
+                      </button>
+                      <button
+                          onClick={() => setWrapLines(prev => !prev)}
+                          className={cn(
+                              "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors border",
+                              wrapLines
+                                  ? "border-indigo-300 dark:border-indigo-500/60 text-indigo-600 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-500/10"
+                                  : "border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                          )}
+                          title="Toggle line wrap (W)"
+                      >
+                          Wrap
+                      </button>
+                      <button
+                          onClick={() => adjustFontSize(-1)}
+                          disabled={fontSize <= FONT_SIZES[0]}
+                          className="px-2 py-1 rounded-md text-[11px] font-semibold transition-colors border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 disabled:opacity-40"
+                          title="Decrease font size (Ctrl/Cmd -)"
+                      >
+                          A-
+                      </button>
+                      <button
+                          onClick={() => setFontSize(13)}
+                          className="px-2 py-1 rounded-md text-[11px] font-semibold transition-colors border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                          title="Reset font size (Ctrl/Cmd 0)"
+                      >
+                          A
+                      </button>
+                      <button
+                          onClick={() => adjustFontSize(1)}
+                          disabled={fontSize >= FONT_SIZES[FONT_SIZES.length - 1]}
+                          className="px-2 py-1 rounded-md text-[11px] font-semibold transition-colors border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 disabled:opacity-40"
+                          title="Increase font size (Ctrl/Cmd +)"
+                      >
+                          A+
+                      </button>
+                  </div>
+
               </div>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+                <div className="relative w-full max-w-[420px]">
 
-              <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                      onClick={() => setInsightsOpen(prev => !prev)}
-                      className={cn(
-                          "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors border flex items-center gap-1",
-                          insightsOpen
-                              ? "border-indigo-300 dark:border-indigo-500/60 text-indigo-600 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-500/10"
-                              : "border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
-                      )}
-                      title="Toggle insights"
-                  >
-                      <BarChart3 className="w-3 h-3" />
-                      Insights
-                  </button>
-                  <button
-                      onClick={() => setWrapLines(prev => !prev)}
-                      className={cn(
-                          "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors border",
-                          wrapLines
-                              ? "border-indigo-300 dark:border-indigo-500/60 text-indigo-600 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-500/10"
-                              : "border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
-                      )}
-                      title="Toggle line wrap (W)"
-                  >
-                      Wrap
-                  </button>
-                  <button
-                      onClick={() => adjustFontSize(-1)}
-                      disabled={fontSize <= FONT_SIZES[0]}
-                      className="px-2 py-1 rounded-md text-[11px] font-semibold transition-colors border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 disabled:opacity-40"
-                      title="Decrease font size (Ctrl/Cmd -)"
-                  >
-                      A-
-                  </button>
-                  <button
-                      onClick={() => setFontSize(13)}
-                      className="px-2 py-1 rounded-md text-[11px] font-semibold transition-colors border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
-                      title="Reset font size (Ctrl/Cmd 0)"
-                  >
-                      A
-                  </button>
-                  <button
-                      onClick={() => adjustFontSize(1)}
-                      disabled={fontSize >= FONT_SIZES[FONT_SIZES.length - 1]}
-                      className="px-2 py-1 rounded-md text-[11px] font-semibold transition-colors border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 disabled:opacity-40"
-                      title="Increase font size (Ctrl/Cmd +)"
-                  >
-                      A+
-                  </button>
-              </div>
+                    <input 
+                        ref={searchInputRef}
 
-              
+                        type="text" 
 
+                        placeholder="Filter logs..." 
+
+                        value={searchQuery}
+
+                        onChange={(e) => setSearchQuery(e.target.value)}
+
+                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md py-1.5 pl-8 pr-3 text-xs text-zinc-800 dark:text-zinc-200 dark:focus:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-colors placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
+
+                    />
+
+                    <div className="absolute left-2.5 top-2 text-zinc-400 dark:text-zinc-500">
+
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+
+                    </div>
+
+                    {searchQuery && (
+
+                        <button 
+
+                            onClick={() => setSearchQuery('')}
+
+                            className="absolute right-2 top-2 text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300"
+
+                        >
+
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+
+                        </button>
+
+                    )}
+
+                </div>
+                <div className="ml-auto flex-shrink-0">
+                    <button
+                        ref={analyzeButtonRef}
+
+                        onClick={handleAnalyze}
+
+                        disabled={analyzing}
+
+                        className={cn(
+
+                            "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all flex-shrink-0",
+
+                            analyzing
+
+                                ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed" 
+
+                                : "bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-500 dark:to-purple-500 hover:from-indigo-500 hover:to-purple-500 dark:hover:from-indigo-400 dark:hover:to-purple-400 text-white shadow-lg shadow-indigo-500/20 cursor-pointer"
+
+                        )}
+
+                    >
+
+                        <Sparkles className="w-3 h-3" />
+
+                        {analyzing ? 'Analyzing...' : analysis ? 'Re-Analyze' : 'AI Analyze'}
+
+                    </button>
+                </div>
+            </div>
           </div>
 
         </div>
