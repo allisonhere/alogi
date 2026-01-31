@@ -21,57 +21,27 @@ export default function Dashboard() {
   const DEFAULT_HOST_WIDTH = 256;
   const DEFAULT_FILE_WIDTH = 304;
 
-  const readStored = <T,>(key: string, fallback: T): T => {
-    if (typeof window === 'undefined') return fallback;
-    try {
-      const raw = localStorage.getItem(key);
-      return raw ? (JSON.parse(raw) as T) : fallback;
-    } catch {
-      return fallback;
-    }
-  };
-
   const clamp = (value: number | undefined, min: number, max: number, fallback: number) => {
     if (typeof value !== 'number') return fallback;
     return Math.min(max, Math.max(min, value));
   };
 
-  const storedPanels = readStored<{ hostWidth?: number; fileWidth?: number }>(STORAGE_KEY, {});
-  const storedSession = readStored<{
-    selectedHost?: string | null;
-    selectedFile?: string | null;
-    isLive?: boolean;
-    showHosts?: boolean;
-    showFiles?: boolean;
-  }>(SESSION_KEY, {});
-
   const [hosts, setHosts] = useState<string[]>([]);
-  const [selectedHost, setSelectedHost] = useState<string | null>(
-    typeof storedSession.selectedHost === 'string' || storedSession.selectedHost === null
-      ? storedSession.selectedHost ?? null
-      : null
-  );
+  const [selectedHost, setSelectedHost] = useState<string | null>(null);
   
   const [files, setFiles] = useState<FileInfo[]>([]);
-  const [selectedFile, setSelectedFile] = useState<string | null>(
-    typeof storedSession.selectedFile === 'string' || storedSession.selectedFile === null
-      ? storedSession.selectedFile ?? null
-      : null
-  );
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [loadingFiles, setLoadingFiles] = useState(false);
 
   const [content, setContent] = useState<string | null>(null);
   const [loadingContent, setLoadingContent] = useState(false);
-  const [isLive, setIsLive] = useState(Boolean(storedSession.isLive));
-  const [showHosts, setShowHosts] = useState(storedSession.showHosts ?? true);
-  const [showFiles, setShowFiles] = useState(storedSession.showFiles ?? true);
-  const [hostWidth, setHostWidth] = useState(
-    clamp(storedPanels.hostWidth, HOST_MIN, HOST_MAX, DEFAULT_HOST_WIDTH)
-  );
-  const [fileWidth, setFileWidth] = useState(
-    clamp(storedPanels.fileWidth, FILE_MIN, FILE_MAX, DEFAULT_FILE_WIDTH)
-  );
+  const [isLive, setIsLive] = useState(false);
+  const [showHosts, setShowHosts] = useState(true);
+  const [showFiles, setShowFiles] = useState(true);
+  const [hostWidth, setHostWidth] = useState(DEFAULT_HOST_WIDTH);
+  const [fileWidth, setFileWidth] = useState(DEFAULT_FILE_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
+  const [hasRestored, setHasRestored] = useState(false);
   const dragState = useRef<{
     type: 'hosts' | 'files';
     startX: number;
@@ -97,13 +67,52 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+    try {
+      const storedPanels = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as {
+        hostWidth?: number;
+        fileWidth?: number;
+      };
+      setHostWidth(clamp(storedPanels.hostWidth, HOST_MIN, HOST_MAX, DEFAULT_HOST_WIDTH));
+      setFileWidth(clamp(storedPanels.fileWidth, FILE_MIN, FILE_MAX, DEFAULT_FILE_WIDTH));
+    } catch {
+      // Ignore invalid stored values
+    }
+
+    try {
+      const storedSession = JSON.parse(localStorage.getItem(SESSION_KEY) ?? '{}') as {
+        selectedHost?: string | null;
+        selectedFile?: string | null;
+        isLive?: boolean;
+        showHosts?: boolean;
+        showFiles?: boolean;
+      };
+      if (typeof storedSession.showHosts === 'boolean') setShowHosts(storedSession.showHosts);
+      if (typeof storedSession.showFiles === 'boolean') setShowFiles(storedSession.showFiles);
+      if (typeof storedSession.selectedHost === 'string' || storedSession.selectedHost === null) {
+        setSelectedHost(storedSession.selectedHost ?? null);
+      }
+      if (typeof storedSession.selectedFile === 'string' || storedSession.selectedFile === null) {
+        setSelectedFile(storedSession.selectedFile ?? null);
+      }
+      if (typeof storedSession.isLive === 'boolean') {
+        setIsLive(storedSession.isLive);
+      }
+    } catch {
+      // Ignore invalid stored values
+    }
+    setHasRestored(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hasRestored) return;
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({ hostWidth, fileWidth })
     );
-  }, [hostWidth, fileWidth]);
+  }, [hostWidth, fileWidth, hasRestored]);
 
   useEffect(() => {
+    if (!hasRestored) return;
     localStorage.setItem(
       SESSION_KEY,
       JSON.stringify({
@@ -114,7 +123,7 @@ export default function Dashboard() {
         showFiles,
       })
     );
-  }, [selectedHost, selectedFile, isLive, showHosts, showFiles]);
+  }, [selectedHost, selectedFile, isLive, showHosts, showFiles, hasRestored]);
 
   const handleSelectHost = (host: string) => {
     setSelectedHost(host);
