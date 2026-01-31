@@ -367,7 +367,47 @@ export function LogViewer({
 
               </button>
 
-              <div className="relative flex-1 min-w-[180px]">
+              <button
+
+                  onClick={handleAnalyze}
+
+                  disabled={analyzing}
+
+                  className={cn(
+
+                      "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all flex-shrink-0",
+
+                      analyzing
+
+                          ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed" 
+
+                          : "bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-500 dark:to-purple-500 hover:from-indigo-500 hover:to-purple-500 dark:hover:from-indigo-400 dark:hover:to-purple-400 text-white shadow-lg shadow-indigo-500/20 cursor-pointer"
+
+                  )}
+
+              >
+
+                  <Sparkles className="w-3 h-3" />
+
+                  {analyzing ? 'Analyzing...' : analysis ? 'Re-Analyze' : 'AI Analyze'}
+
+              </button>
+
+              {analysis && (
+                  <button
+                      onClick={() => setIsAiPanelOpen(prev => !prev)}
+                      className={cn(
+                          "px-3 py-1.5 rounded-md text-xs font-medium transition-colors border",
+                          isAiPanelOpen
+                              ? "border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                              : "border-indigo-300 dark:border-indigo-500/60 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
+                      )}
+                  >
+                      {isAiPanelOpen ? 'Hide AI' : 'Show AI'}
+                  </button>
+              )}
+
+              <div className="relative flex-1 min-w-[220px] order-last w-full md:order-none md:min-w-[180px]">
 
                   <input 
                       ref={searchInputRef}
@@ -447,46 +487,6 @@ export function LogViewer({
               </div>
 
               
-
-              <button
-
-                  onClick={handleAnalyze}
-
-                  disabled={analyzing}
-
-                  className={cn(
-
-                      "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all flex-shrink-0",
-
-                      analyzing
-
-                          ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed" 
-
-                          : "bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-500 dark:to-purple-500 hover:from-indigo-500 hover:to-purple-500 dark:hover:from-indigo-400 dark:hover:to-purple-400 text-white shadow-lg shadow-indigo-500/20 cursor-pointer"
-
-                  )}
-
-              >
-
-                  <Sparkles className="w-3 h-3" />
-
-                  {analyzing ? 'Analyzing...' : analysis ? 'Re-Analyze' : 'AI Analyze'}
-
-              </button>
-
-              {analysis && (
-                  <button
-                      onClick={() => setIsAiPanelOpen(prev => !prev)}
-                      className={cn(
-                          "px-3 py-1.5 rounded-md text-xs font-medium transition-colors border",
-                          isAiPanelOpen
-                              ? "border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
-                              : "border-indigo-300 dark:border-indigo-500/60 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
-                      )}
-                  >
-                      {isAiPanelOpen ? 'Hide AI' : 'Show AI'}
-                  </button>
-              )}
 
           </div>
 
