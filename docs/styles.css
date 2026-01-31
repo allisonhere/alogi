@@ -10,9 +10,9 @@ html {
   --panel-border: rgba(255, 255, 255, 0.08);
   --text: #f5f7ff;
   --muted: #b1b8c8;
-  --accent: #4ff7a1;
-  --accent-2: #5fd5ff;
-  --accent-3: #ffd66b;
+  --accent: #b79cff;
+  --accent-2: #7c5cff;
+  --accent-3: #ff7bd8;
 }
 
 * {
@@ -31,10 +31,10 @@ body {
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(circle at 10% 10%, rgba(79, 247, 161, 0.28), transparent 45%),
-    radial-gradient(circle at 90% 20%, rgba(95, 213, 255, 0.25), transparent 40%),
-    radial-gradient(circle at 30% 90%, rgba(255, 214, 107, 0.18), transparent 45%),
-    linear-gradient(120deg, #0a0d14 0%, #0f172a 55%, #0a0d14 100%);
+    radial-gradient(circle at 10% 10%, rgba(183, 156, 255, 0.28), transparent 45%),
+    radial-gradient(circle at 90% 20%, rgba(124, 92, 255, 0.25), transparent 40%),
+    radial-gradient(circle at 30% 90%, rgba(255, 123, 216, 0.18), transparent 45%),
+    linear-gradient(120deg, #0a0d14 0%, #15122b 55%, #0a0d14 100%);
   z-index: -2;
 }
 
@@ -73,9 +73,9 @@ body {
 .badge {
   display: inline-flex;
   align-self: flex-start;
-  background: rgba(79, 247, 161, 0.16);
+  background: rgba(183, 156, 255, 0.16);
   color: var(--accent);
-  border: 1px solid rgba(79, 247, 161, 0.3);
+  border: 1px solid rgba(183, 156, 255, 0.3);
   padding: 6px 12px;
   border-radius: 999px;
   font-size: 12px;
@@ -109,17 +109,18 @@ h1 {
   border-radius: 999px;
   font-weight: 600;
   background: rgba(255, 255, 255, 0.04);
-  transition: transform 0.15s ease, border 0.15s ease, background 0.15s ease;
+  transition: transform 0.15s ease, border 0.15s ease, background 0.15s ease, box-shadow 0.2s ease;
 }
 
 .btn:hover {
   transform: translateY(-1px);
-  border-color: rgba(95, 213, 255, 0.4);
-  background: rgba(95, 213, 255, 0.12);
+  border-color: rgba(124, 92, 255, 0.45);
+  background: rgba(124, 92, 255, 0.16);
+  box-shadow: 0 0 0 1px rgba(124, 92, 255, 0.35), 0 8px 20px rgba(124, 92, 255, 0.28);
 }
 
 .btn.primary {
-  background: linear-gradient(120deg, #4ff7a1 0%, #5fd5ff 100%);
+  background: linear-gradient(120deg, #b79cff 0%, #7c5cff 100%);
   color: #0a0d14;
   border: none;
 }
@@ -242,8 +243,8 @@ h1 {
   width: 36px;
   height: 36px;
   border-radius: 12px;
-  background: rgba(95, 213, 255, 0.18);
-  border: 1px solid rgba(95, 213, 255, 0.35);
+  background: rgba(124, 92, 255, 0.18);
+  border: 1px solid rgba(124, 92, 255, 0.35);
   color: var(--accent-2);
   display: inline-flex;
   align-items: center;
@@ -275,30 +276,37 @@ h1 {
   padding: 6px 12px;
   border-radius: 999px;
   cursor: pointer;
-  transition: transform 0.15s ease, border 0.15s ease, background 0.15s ease;
+  transition: transform 0.15s ease, border 0.15s ease, background 0.15s ease, box-shadow 0.2s ease;
 }
 
 .copy-btn:hover {
   transform: translateY(-1px);
-  border-color: rgba(95, 213, 255, 0.5);
-  background: rgba(95, 213, 255, 0.16);
+  border-color: rgba(124, 92, 255, 0.5);
+  background: rgba(124, 92, 255, 0.16);
+  box-shadow: 0 0 0 1px rgba(124, 92, 255, 0.35), 0 6px 16px rgba(124, 92, 255, 0.25);
 }
 
 .copy-btn[data-copied="true"] {
-  border-color: rgba(79, 247, 161, 0.6);
-  background: rgba(79, 247, 161, 0.2);
-  color: #0a0d14;
+  border-color: rgba(183, 156, 255, 0.6);
+  background: rgba(183, 156, 255, 0.24);
+  color: var(--text);
 }
 
 .install {
+  display: flex;
+  flex-direction: column;
   scroll-margin-top: 96px;
   transition: border 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
+.install .btn.ghost {
+  margin-top: auto;
+}
+
 .install:target {
-  border-color: rgba(79, 247, 161, 0.5);
-  box-shadow: 0 0 0 2px rgba(79, 247, 161, 0.2), 0 18px 48px rgba(0, 0, 0, 0.45);
-  background: linear-gradient(140deg, rgba(79, 247, 161, 0.12), rgba(95, 213, 255, 0.08)) border-box;
+  border-color: rgba(183, 156, 255, 0.5);
+  box-shadow: 0 0 0 2px rgba(183, 156, 255, 0.2), 0 18px 48px rgba(0, 0, 0, 0.45);
+  background: linear-gradient(140deg, rgba(183, 156, 255, 0.12), rgba(124, 92, 255, 0.08)) border-box;
 }
 
 .install-footer {
@@ -326,7 +334,7 @@ h1 {
 pre {
   margin: 16px 0 0;
   background: rgba(10, 12, 18, 0.7);
-  border: 1px solid rgba(95, 213, 255, 0.2);
+  border: 1px solid rgba(124, 92, 255, 0.25);
   padding: 16px;
   border-radius: 14px;
   overflow-x: auto;
@@ -335,7 +343,7 @@ pre {
 code {
   font-family: "Space Mono", "Fira Code", monospace;
   font-size: 14px;
-  color: #d1f7ff;
+  color: #e6dbff;
 }
 
 .note {
