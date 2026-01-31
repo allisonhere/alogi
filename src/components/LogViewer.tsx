@@ -82,6 +82,10 @@ interface LogViewerProps {
   filename: string | null;
   isLive: boolean;
   setIsLive: (live: boolean) => void;
+  showHosts: boolean;
+  showFiles: boolean;
+  onToggleHosts: () => void;
+  onToggleFiles: () => void;
 }
 
 interface AIAnalysis {
@@ -91,10 +95,21 @@ interface AIAnalysis {
   severity: 'low' | 'medium' | 'high';
 }
 
-export function LogViewer({ content, loading, filename, isLive, setIsLive }: LogViewerProps) {
+export function LogViewer({
+  content,
+  loading,
+  filename,
+  isLive,
+  setIsLive,
+  showHosts,
+  showFiles,
+  onToggleHosts,
+  onToggleFiles,
+}: LogViewerProps) {
   const MAX_RENDER_LINES = 5000;
   const [analyzing, setAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
+  const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAllLines, setShowAllLines] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -102,6 +117,7 @@ export function LogViewer({ content, loading, filename, isLive, setIsLive }: Log
   // Reset analysis and search when file changes
   useEffect(() => {
     setAnalysis(null);
+    setIsAiPanelOpen(false);
     setSearchQuery('');
     setShowAllLines(false);
   }, [filename]);
@@ -133,6 +149,7 @@ export function LogViewer({ content, loading, filename, isLive, setIsLive }: Log
       }
       
       setAnalysis(data);
+      setIsAiPanelOpen(true);
     } catch (err) {
       console.error(err);
       alert("Failed to connect to analysis service.");
@@ -187,7 +204,32 @@ export function LogViewer({ content, loading, filename, isLive, setIsLive }: Log
 
   
 
-          <div className="flex items-center gap-3 flex-1 max-w-md">
+          <div className="flex items-center gap-3 flex-1">
+
+              <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                      onClick={onToggleHosts}
+                      className={cn(
+                          "px-3 py-1.5 rounded-md text-xs font-medium transition-colors border",
+                          showHosts
+                              ? "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                              : "border-indigo-300 dark:border-indigo-500/60 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
+                      )}
+                  >
+                      {showHosts ? 'Hide Hosts' : 'Show Hosts'}
+                  </button>
+                  <button
+                      onClick={onToggleFiles}
+                      className={cn(
+                          "px-3 py-1.5 rounded-md text-xs font-medium transition-colors border",
+                          showFiles
+                              ? "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                              : "border-emerald-300 dark:border-emerald-500/60 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
+                      )}
+                  >
+                      {showFiles ? 'Hide Files' : 'Show Files'}
+                  </button>
+              </div>
 
               <button
 
@@ -211,7 +253,7 @@ export function LogViewer({ content, loading, filename, isLive, setIsLive }: Log
 
               </button>
 
-              <div className="relative flex-1">
+              <div className="relative flex-1 min-w-[180px]">
 
                   <input 
 
@@ -279,6 +321,20 @@ export function LogViewer({ content, loading, filename, isLive, setIsLive }: Log
 
               </button>
 
+              {analysis && (
+                  <button
+                      onClick={() => setIsAiPanelOpen(prev => !prev)}
+                      className={cn(
+                          "px-3 py-1.5 rounded-md text-xs font-medium transition-colors border",
+                          isAiPanelOpen
+                              ? "border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                              : "border-indigo-300 dark:border-indigo-500/60 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
+                      )}
+                  >
+                      {isAiPanelOpen ? 'Hide AI' : 'Show AI'}
+                  </button>
+              )}
+
           </div>
 
         </div>
@@ -322,7 +378,7 @@ export function LogViewer({ content, loading, filename, isLive, setIsLive }: Log
         </div>
 
         {/* AI Panel (Slide in) */}
-        {analysis && content && (
+        {analysis && content && isAiPanelOpen && (
             <div className="animate-in slide-in-from-right duration-300 h-full border-l border-zinc-800">
                 <ChatPanel initialSummary={analysis} logContext={content} />
             </div>

@@ -22,6 +22,8 @@ export default function Dashboard() {
   const [content, setContent] = useState<string | null>(null);
   const [loadingContent, setLoadingContent] = useState(false);
   const [isLive, setIsLive] = useState(false);
+  const [showHosts, setShowHosts] = useState(true);
+  const [showFiles, setShowFiles] = useState(true);
 
   // Fetch Hosts
   useEffect(() => {
@@ -75,15 +77,23 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [selectedHost, selectedFile, isLive]);
 
+  useEffect(() => {
+    if (showHosts && selectedHost && !showFiles) {
+      setShowFiles(true);
+    }
+  }, [showHosts, selectedHost, showFiles]);
+
   return (
     <div className="flex h-screen w-full bg-white dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 overflow-hidden transition-colors">
-      <HostList 
-        hosts={hosts} 
-        selectedHost={selectedHost} 
-        onSelectHost={handleSelectHost} 
-      />
+      {showHosts && (
+        <HostList 
+          hosts={hosts} 
+          selectedHost={selectedHost} 
+          onSelectHost={handleSelectHost} 
+        />
+      )}
       
-      {selectedHost && (
+      {showFiles && selectedHost && (
         <FileList 
           files={files} 
           selectedFile={selectedFile} 
@@ -98,6 +108,10 @@ export default function Dashboard() {
         filename={selectedFile}
         isLive={isLive}
         setIsLive={setIsLive}
+        showHosts={showHosts}
+        showFiles={showFiles}
+        onToggleHosts={() => setShowHosts(prev => !prev)}
+        onToggleFiles={() => setShowFiles(prev => !prev)}
       />
     </div>
   );

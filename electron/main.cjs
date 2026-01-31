@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, Menu } = require('electron');
 const path = require('path');
 const net = require('net');
 
@@ -50,6 +50,7 @@ const startNextServer = async () => {
 };
 
 const createWindow = async () => {
+  Menu.setApplicationMenu(null);
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -58,6 +59,7 @@ const createWindow = async () => {
       preload: path.join(__dirname, 'preload.cjs')
     }
   });
+  win.setMenuBarVisibility(false);
 
   if (isDev) {
     await win.loadURL(process.env.ELECTRON_START_URL);
