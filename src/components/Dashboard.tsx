@@ -111,13 +111,51 @@ export default function Dashboard() {
 
   useEffect(() => {
     const loadOnboarding = async () => {
+      const forceOnboarding = localStorage.getItem('alogi.forceOnboarding') === 'true';
+      if (forceOnboarding) {
+        setShowOnboarding(true);
+        return;
+      }
+
+      const markDismissed = async () => {
+        try {
+          await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ui: { onboardingDismissed: true } }),
+          });
+        } catch {
+          // ignore
+        }
+        localStorage.setItem('alogi.onboarded', 'true');
+      };
+
+      const hasUsedAppBefore = () => {
+        try {
+          const raw = localStorage.getItem(SESSION_KEY);
+          if (!raw) return false;
+          const session = JSON.parse(raw) as {
+            selectedHost?: string | null;
+            selectedFile?: string | null;
+          };
+          return Boolean(session?.selectedHost || session?.selectedFile);
+        } catch {
+          return false;
+        }
+      };
+
       try {
         const res = await fetch('/api/settings');
         if (res.ok) {
           const data = await res.json();
-          if (!data?.ui?.onboardingDismissed) {
-            setShowOnboarding(true);
+          const hostCount = Array.isArray(data?.hosts) ? data.hosts.length : 0;
+          const isExperienced = hostCount >= 2 || hasUsedAppBefore();
+          if (data?.ui?.onboardingDismissed || isExperienced) {
+            await markDismissed();
+            setShowOnboarding(false);
+            return;
           }
+          setShowOnboarding(true);
           return;
         }
       } catch {
@@ -406,6 +444,7 @@ export default function Dashboard() {
             } catch {
               // ignore
             }
+            localStorage.removeItem('alogi.forceOnboarding');
             localStorage.setItem('alogi.onboarded', 'true');
             setShowOnboarding(false);
           }}
@@ -419,6 +458,7 @@ export default function Dashboard() {
             } catch {
               // ignore
             }
+            localStorage.removeItem('alogi.forceOnboarding');
             localStorage.setItem('alogi.onboarded', 'true');
             setShowOnboarding(false);
           }}

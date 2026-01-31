@@ -13,6 +13,7 @@ export default function SettingsPage() {
   const [config, setConfig] = useState<AlogiConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [resettingOnboarding, setResettingOnboarding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [missingKeyById, setMissingKeyById] = useState<Record<string, string>>({});
   const [missingPasswordById, setMissingPasswordById] = useState<Record<string, true>>({});
@@ -109,6 +110,27 @@ export default function SettingsPage() {
       alert("Failed to save settings");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleResetOnboarding = async () => {
+    setResettingOnboarding(true);
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ui: { onboardingDismissed: false } }),
+      });
+      if (!res.ok) {
+        throw new Error(`Failed to reset onboarding (${res.status})`);
+      }
+      localStorage.removeItem('alogi.onboarded');
+      localStorage.setItem('alogi.forceOnboarding', 'true');
+      alert('Onboarding reset. Reload the app to see it again.');
+    } catch {
+      alert('Failed to reset onboarding');
+    } finally {
+      setResettingOnboarding(false);
     }
   };
 
@@ -267,6 +289,26 @@ export default function SettingsPage() {
                             </div>
                         </>
                     )}
+                </div>
+            </div>
+
+            {/* Onboarding Section */}
+            <div>
+                <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <Key className="w-4 h-4" /> Onboarding
+                </h2>
+                <div className="space-y-3">
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                        Replay the guided overlay the next time you open the app.
+                    </p>
+                    <button
+                        onClick={handleResetOnboarding}
+                        disabled={resettingOnboarding}
+                        className="inline-flex items-center gap-2 rounded-md border border-indigo-200 dark:border-indigo-500/40 px-3 py-2 text-sm text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors disabled:opacity-50"
+                    >
+                        <Key className="w-4 h-4" />
+                        {resettingOnboarding ? 'Resetting...' : 'Restart onboarding'}
+                    </button>
                 </div>
             </div>
 
