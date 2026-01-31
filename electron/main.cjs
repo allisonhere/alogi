@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu } = require('electron');
+const { app, BrowserWindow, Menu, shell } = require('electron');
 const path = require('path');
 const net = require('net');
 
@@ -49,6 +49,34 @@ const startNextServer = async () => {
   return port;
 };
 
+const attachExternalLinkHandlers = (win, appOrigin) => {
+  const isExternalUrl = (url) => {
+    if (!url) return false;
+    if (!/^https?:/i.test(url)) return false;
+    if (!appOrigin) return true;
+    try {
+      return new URL(url).origin !== appOrigin;
+    } catch (err) {
+      return true;
+    }
+  };
+
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (isExternalUrl(url)) {
+      shell.openExternal(url);
+      return { action: 'deny' };
+    }
+    return { action: 'allow' };
+  });
+
+  win.webContents.on('will-navigate', (event, url) => {
+    if (isExternalUrl(url)) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
+};
+
 const createWindow = async () => {
   Menu.setApplicationMenu(null);
   const win = new BrowserWindow({
@@ -62,13 +90,17 @@ const createWindow = async () => {
   win.setMenuBarVisibility(false);
 
   if (isDev) {
+    const appOrigin = new URL(process.env.ELECTRON_START_URL).origin;
+    attachExternalLinkHandlers(win, appOrigin);
     await win.loadURL(process.env.ELECTRON_START_URL);
     win.webContents.openDevTools({ mode: 'detach' });
     return;
   }
 
   const port = await startNextServer();
-  await loadUrlWithRetry(win, `http://127.0.0.1:${port}`);
+  const appOrigin = `http://127.0.0.1:${port}`;
+  attachExternalLinkHandlers(win, appOrigin);
+  await loadUrlWithRetry(win, appOrigin);
 };
 
 app.whenReady().then(createWindow);
