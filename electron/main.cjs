@@ -52,8 +52,8 @@ const startNextServer = async () => {
 const createWindow = async () => {
   Menu.setApplicationMenu(null);
   const win = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    width: 1440,
+    height: 900,
     backgroundColor: '#09090b',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs')
