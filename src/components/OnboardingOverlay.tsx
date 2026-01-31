@@ -6,7 +6,7 @@ export interface OnboardingStep {
   id: string;
   title: string;
   body: string;
-  target: React.RefObject<HTMLElement>;
+  target: React.RefObject<HTMLElement | null>;
   enabled?: boolean;
 }
 
