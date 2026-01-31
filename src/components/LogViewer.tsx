@@ -39,7 +39,8 @@ function LogLine({
       parts.push(
         <mark
           key={`${matchIndex}-${keyIndex}`}
-          className="bg-amber-200/70 dark:bg-amber-400/25 rounded px-0.5"
+          className="rounded px-0.5"
+          style={{ backgroundColor: 'oklch(60.6% 0.25 292.717)' }}
         >
           {matchText}
         </mark>
