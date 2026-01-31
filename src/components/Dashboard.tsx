@@ -117,6 +117,12 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+    if (!showOnboarding) return;
+    if (!showHosts) setShowHosts(true);
+    if (!showFiles) setShowFiles(true);
+  }, [showOnboarding, showHosts, showFiles]);
+
+  useEffect(() => {
     if (!hasRestored) return;
     localStorage.setItem(
       STORAGE_KEY,
