@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Sparkles, Terminal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VibeCheckBar } from './VibeCheckBar';
@@ -170,8 +170,25 @@ export function LogViewer({
   const [wrapLines, setWrapLines] = useState(true);
   const [fontSize, setFontSize] = useState(13);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const [viewportRange, setViewportRange] = useState({ start: 0, end: 0 });
   const scrollRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const updateViewport = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const totalScrollable = el.scrollHeight - el.clientHeight;
+    if (totalScrollable <= 0) {
+      setViewportRange({ start: 0, end: 1 });
+      return;
+    }
+    const start = el.scrollTop / totalScrollable;
+    const end = (el.scrollTop + el.clientHeight) / el.scrollHeight;
+    setViewportRange({
+      start: Math.max(0, Math.min(1, start)),
+      end: Math.max(0, Math.min(1, end)),
+    });
+  }, []);
 
   // Reset analysis and search when file changes
   useEffect(() => {
@@ -187,6 +204,12 @@ export function LogViewer({
         scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [content, isLive]);
+
+  useEffect(() => {
+    updateViewport();
+    window.addEventListener('resize', updateViewport);
+    return () => window.removeEventListener('resize', updateViewport);
+  }, [updateViewport, content, searchQuery, showAllLines, isLive]);
 
   useEffect(() => {
     try {
@@ -547,13 +570,16 @@ export function LogViewer({
         onScrollTo={(index) => {
             const child = scrollRef.current?.children[index] as HTMLElement;
             if (child) child.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        }} 
+        }}
+        viewportStart={viewportRange.start}
+        viewportEnd={viewportRange.end}
       />
 
       <div className="flex-1 flex overflow-hidden">
         {/* Code View */}
         <div 
             ref={scrollRef}
+            onScroll={updateViewport}
             className="flex-1 overflow-auto p-4 font-mono text-sm text-zinc-300 leading-relaxed custom-scrollbar"
         >
             {windowedLines.length > 0 ? windowedLines.map(({ line, index }) => (
