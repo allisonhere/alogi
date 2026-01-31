@@ -13,9 +13,13 @@
     *   **Syntax Highlighting:** Dates, IPs, and Keywords are color-coded.
     *   **JSON Pretty-Printing:** Automatically detects and formats JSON log lines.
     *   **Pills:** Visual badges for INFO, WARN, and ERROR levels.
+    *   **Inline Search Highlighting:** Matches are highlighted directly in the log output.
 *   **📓 System Journal:** Integrated support for `journalctl` to browse system services and logs alongside files.
 *   **🛰️ Remote Logs (SSH):** Browse `/var/log` on remote hosts over SSH.
 *   **🐳 Docker Logs (SSH):** List running containers and view `docker logs` from remote hosts.
+*   **📊 Insights Sidebar:** Top errors/warnings, trend buckets, and spike detection with jump-to actions.
+*   **🧩 Resizable Panels:** Drag to resize host/file panels with size persistence.
+*   **✨ Onboarding Overlay:** First-run guidance for hosts, files, live, and AI actions.
 *   **⚙️ Configurable:** Manage log paths, AI providers, and hosts via Settings (persisted to `~/.config/alogi/config.json`).
 
 ## 🛠️ Tech Stack
@@ -64,6 +68,19 @@ You can also prefill values via environment variables:
 *   **Analyze:** Click the **Sparkles** button to generate an AI summary.
 *   **Go Live:** Toggle "Go Live" to stream updates automatically.
 *   **Filter:** Use the search bar to filter lines instantly.
+*   **Insights:** Toggle the Insights button to see top errors/warnings and trends.
+*   **Wrap/Font:** Use Wrap + A-/A/A+ to control line wrapping and font size.
+
+### ⌨️ Keyboard Shortcuts
+
+*   `/` or `F` — Focus filter
+*   `Cmd/Ctrl + K` — Focus filter
+*   `L` — Toggle Live
+*   `W` — Toggle Wrap
+*   `Cmd/Ctrl + +` — Increase font size
+*   `Cmd/Ctrl + -` — Decrease font size
+*   `Cmd/Ctrl + 0` — Reset font size
+*   `J / K` — Next/previous file in the file list
 
 ## 🐳 Docker Notes
 
