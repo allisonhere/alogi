@@ -12,12 +12,14 @@ function LogLine({
   wrapLines,
   fontSizeClass,
   searchQuery,
+  disablePrettyJson = false,
 }: {
   line: string;
   index: number;
   wrapLines: boolean;
   fontSizeClass: string;
   searchQuery: string;
+  disablePrettyJson?: boolean;
 }) {
   const lower = line.toLowerCase();
   const isError = lower.includes('error') || lower.includes('critical') || lower.includes('fatal') || lower.includes('failed') || lower.includes('denied');
@@ -58,7 +60,7 @@ function LogLine({
 
   // 1. Try JSON
   let parsedJson: unknown | null = null;
-  if (line.trim().startsWith('{') && line.trim().endsWith('}')) {
+  if (!disablePrettyJson && line.trim().startsWith('{') && line.trim().endsWith('}')) {
     try {
       parsedJson = JSON.parse(line);
     } catch {
@@ -176,6 +178,7 @@ export function LogViewer({
   const [fontSize, setFontSize] = useState(13);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [viewportRange, setViewportRange] = useState({ start: 0, end: 0 });
+  const [scrollMetrics, setScrollMetrics] = useState({ top: 0, height: 0, scrollHeight: 0 });
   const [insightsOpen, setInsightsOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -192,6 +195,11 @@ export function LogViewer({
     setViewportRange({
       start: Math.max(0, Math.min(1, start)),
       end: Math.max(0, Math.min(1, end)),
+    });
+    setScrollMetrics({
+      top: el.scrollTop,
+      height: el.clientHeight,
+      scrollHeight: el.scrollHeight,
     });
   }, []);
 
@@ -384,6 +392,19 @@ export function LogViewer({
   const shouldWindow = !searchQuery && filteredLines.length > MAX_RENDER_LINES && !showAllLines;
   const windowStart = shouldWindow ? filteredLines.length - MAX_RENDER_LINES : 0;
   const windowedLines = shouldWindow ? filteredLines.slice(windowStart) : filteredLines;
+  const shouldVirtualize = !wrapLines && windowedLines.length > MAX_RENDER_LINES;
+  const rowHeight = fontSize + 12;
+  const overscan = 12;
+  const visibleCount = shouldVirtualize
+    ? Math.ceil((scrollMetrics.height || 0) / rowHeight) + overscan * 2
+    : windowedLines.length;
+  const startIndex = shouldVirtualize
+    ? Math.max(0, Math.floor(scrollMetrics.top / rowHeight) - overscan)
+    : 0;
+  const endIndex = shouldVirtualize
+    ? Math.min(windowedLines.length, startIndex + visibleCount)
+    : windowedLines.length;
+  const visibleLines = shouldVirtualize ? windowedLines.slice(startIndex, endIndex) : windowedLines;
   const allWindowed = lines.length > MAX_RENDER_LINES && !showAllLines
     ? lines.map((line, index) => ({ line, index })).slice(lines.length - MAX_RENDER_LINES)
     : lines.map((line, index) => ({ line, index }));
@@ -682,8 +703,13 @@ export function LogViewer({
 
       {filteredLines.length > MAX_RENDER_LINES && !searchQuery && (
         <div className="px-6 py-2 text-xs bg-amber-50 text-amber-900 border-b border-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:border-amber-500/20 flex items-center justify-between">
-          <span>
+          <span className="flex flex-wrap items-center gap-2">
             Large log: {shouldWindow ? `showing last ${MAX_RENDER_LINES} of ${filteredLines.length} lines` : `showing all ${filteredLines.length} lines`}
+            {wrapLines && (
+              <span className="text-amber-700/80 dark:text-amber-200/70">
+                Tip: turn off Wrap for smoother scrolling.
+              </span>
+            )}
           </span>
           <button
             onClick={() => setShowAllLines(!showAllLines)}
@@ -699,6 +725,11 @@ export function LogViewer({
         onScrollTo={(index) => {
             const container = scrollRef.current;
             if (!container) return;
+            if (shouldVirtualize) {
+              const targetTop = index * rowHeight - container.clientHeight / 2 + rowHeight / 2;
+              container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+              return;
+            }
             const child = container.children[index] as HTMLElement | undefined;
             if (!child) return;
             const targetTop = child.offsetTop - container.clientHeight / 2 + child.clientHeight / 2;
@@ -722,16 +753,48 @@ export function LogViewer({
             onScroll={scheduleViewportUpdate}
             className="flex-1 min-h-0 overflow-auto p-4 font-mono text-sm text-zinc-300 leading-relaxed custom-scrollbar"
         >
-            {windowedLines.length > 0 ? windowedLines.map(({ line, index }) => (
-                <LogLine
-                  key={index}
-                  line={line}
-                  index={index}
-                  wrapLines={wrapLines}
-                  fontSizeClass={fontSizeClass}
-                  searchQuery={searchQuery}
-                />
-            )) : (
+            {windowedLines.length > 0 ? (
+              shouldVirtualize ? (
+                <div style={{ height: windowedLines.length * rowHeight, position: 'relative' }}>
+                  {visibleLines.map(({ line, index }, i) => {
+                    const absoluteIndex = startIndex + i;
+                    return (
+                      <div
+                        key={index}
+                        style={{
+                          position: 'absolute',
+                          top: absoluteIndex * rowHeight,
+                          left: 0,
+                          right: 0,
+                          height: rowHeight,
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <LogLine
+                          line={line}
+                          index={index}
+                          wrapLines={wrapLines}
+                          fontSizeClass={fontSizeClass}
+                          searchQuery={searchQuery}
+                          disablePrettyJson
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                windowedLines.map(({ line, index }) => (
+                  <LogLine
+                    key={index}
+                    line={line}
+                    index={index}
+                    wrapLines={wrapLines}
+                    fontSizeClass={fontSizeClass}
+                    searchQuery={searchQuery}
+                  />
+                ))
+              )
+            ) : (
                 <div className="flex flex-col items-center justify-center h-full text-zinc-600 space-y-2">
                     <div className="text-sm italic">No matches found for {`"${searchQuery}"`}</div>
                     <button onClick={() => setSearchQuery('')} className="text-xs text-indigo-400 hover:underline">Clear search</button>
@@ -746,6 +809,11 @@ export function LogViewer({
                   onJump={(index) => {
                     const position = windowedLines.findIndex(item => item.index === index);
                     if (position === -1) return;
+                    if (shouldVirtualize && scrollRef.current) {
+                      const targetTop = position * rowHeight - scrollRef.current.clientHeight / 2 + rowHeight / 2;
+                      scrollRef.current.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+                      return;
+                    }
                     const child = scrollRef.current?.children[position] as HTMLElement | undefined;
                     if (child) {
                       const targetTop = child.offsetTop - scrollRef.current!.clientHeight / 2 + child.clientHeight / 2;
