@@ -40,7 +40,7 @@ function LogLine({
         <mark
           key={`${matchIndex}-${keyIndex}`}
           className="rounded px-0.5"
-          style={{ backgroundColor: 'oklch(82.8% 0.189 84.429)' }}
+          style={{ backgroundColor: 'oklch(66.6% 0.179 58.318)' }}
         >
           {matchText}
         </mark>
