@@ -28,6 +28,10 @@ jobs:
       - name: Build Linux artifacts
         run: npm run dist:linux:all
 
+      - name: Smoke check linux-unpacked
+        run: |
+          test -f dist-electron/linux-unpacked/resources/.next/standalone/server.js
+
       - name: Pack linux-unpacked
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
@@ -57,6 +61,10 @@ jobs:
         run: |
           PKG=$(ls packaging/arch/alogi-*.pkg.tar.zst | head -n1)
           cp "$PKG" alogi-arch.pkg.tar.zst
+
+      - name: Smoke check Arch package
+        run: |
+          tar --zstd -tf alogi-arch.pkg.tar.zst | grep -q '^opt/alogi/resources/.next/standalone/server.js$'
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
