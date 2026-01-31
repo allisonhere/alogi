@@ -140,8 +140,8 @@ interface LogViewerProps {
   showFiles: boolean;
   onToggleHosts: () => void;
   onToggleFiles: () => void;
-  liveButtonRef?: React.RefObject<HTMLButtonElement>;
-  analyzeButtonRef?: React.RefObject<HTMLButtonElement>;
+  liveButtonRef?: React.RefObject<HTMLButtonElement | null>;
+  analyzeButtonRef?: React.RefObject<HTMLButtonElement | null>;
 }
 
 interface AIAnalysis {
