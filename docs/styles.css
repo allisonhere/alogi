@@ -255,6 +255,41 @@ h1 {
   margin: 16px 0 12px;
 }
 
+.code-block {
+  position: relative;
+}
+
+.code-block pre {
+  padding-top: 44px;
+}
+
+.copy-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(10, 12, 18, 0.6);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 0.15s ease, border 0.15s ease, background 0.15s ease;
+}
+
+.copy-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(95, 213, 255, 0.5);
+  background: rgba(95, 213, 255, 0.16);
+}
+
+.copy-btn[data-copied="true"] {
+  border-color: rgba(79, 247, 161, 0.6);
+  background: rgba(79, 247, 161, 0.2);
+  color: #0a0d14;
+}
+
 .install {
   scroll-margin-top: 96px;
   transition: border 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;

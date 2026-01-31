@@ -118,25 +118,40 @@
           <article class="panel install" id="install-appimage">
             <h3>AppImage (portable)</h3>
             <p>Works on most Linux distros, no root required.</p>
-            <pre><code>curl -L -o Alogi-x86_64.AppImage https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x86_64.AppImage
+            <div class="code-block">
+              <button class="copy-btn" type="button" data-copy-target="install-appimage-code" aria-label="Copy AppImage install commands">
+                Copy
+              </button>
+              <pre><code id="install-appimage-code">curl -L -o Alogi-x86_64.AppImage https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x86_64.AppImage
 chmod +x Alogi-x86_64.AppImage
 ./Alogi-x86_64.AppImage</code></pre>
+            </div>
             <a class="btn ghost" href="https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x86_64.AppImage">Download AppImage</a>
           </article>
 
           <article class="panel install" id="install-deb">
             <h3>Ubuntu / Debian (.deb)</h3>
             <p>Native package for Ubuntu and Debian-based systems.</p>
-            <pre><code>curl -L -o Alogi-amd64.deb https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb
+            <div class="code-block">
+              <button class="copy-btn" type="button" data-copy-target="install-deb-code" aria-label="Copy Debian install commands">
+                Copy
+              </button>
+              <pre><code id="install-deb-code">curl -L -o Alogi-amd64.deb https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb
 sudo apt install ./Alogi-amd64.deb</code></pre>
+            </div>
             <a class="btn ghost" href="https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb">Download .deb</a>
           </article>
 
           <article class="panel install" id="install-arch">
             <h3>Arch / CachyOS (pacman)</h3>
             <p>Install the prebuilt pacman package or build locally from the PKGBUILD.</p>
-            <pre><code>curl -L -o alogi-arch.pkg.tar.zst https://github.com/allisonhere/alogi/releases/latest/download/alogi-arch.pkg.tar.zst
+            <div class="code-block">
+              <button class="copy-btn" type="button" data-copy-target="install-arch-code" aria-label="Copy Arch install commands">
+                Copy
+              </button>
+              <pre><code id="install-arch-code">curl -L -o alogi-arch.pkg.tar.zst https://github.com/allisonhere/alogi/releases/latest/download/alogi-arch.pkg.tar.zst
 sudo pacman -U alogi-arch.pkg.tar.zst</code></pre>
+            </div>
             <a class="btn ghost" href="https://github.com/allisonhere/alogi/releases/latest/download/alogi-arch.pkg.tar.zst">Download pacman pkg</a>
           </article>
         </div>
@@ -152,5 +167,38 @@ sudo pacman -U alogi-arch.pkg.tar.zst</code></pre>
         <a class="btn" href="https://github.com/allisonhere/alogi/issues">Report an issue</a>
       </section>
     </main>
+    <script>
+      const copyButtons = document.querySelectorAll('.copy-btn');
+      const copyText = async (button) => {
+        const targetId = button.getAttribute('data-copy-target');
+        if (!targetId) return;
+        const target = document.getElementById(targetId);
+        if (!target) return;
+        const text = target.textContent || '';
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch {
+          const textarea = document.createElement('textarea');
+          textarea.value = text;
+          textarea.setAttribute('readonly', '');
+          textarea.style.position = 'absolute';
+          textarea.style.left = '-9999px';
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+        }
+        const original = button.textContent;
+        button.textContent = 'Copied!';
+        button.setAttribute('data-copied', 'true');
+        setTimeout(() => {
+          button.textContent = original;
+          button.removeAttribute('data-copied');
+        }, 1600);
+      };
+      copyButtons.forEach((button) => {
+        button.addEventListener('click', () => copyText(button));
+      });
+    </script>
   </body>
 </html>
