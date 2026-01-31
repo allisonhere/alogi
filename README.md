@@ -36,10 +36,16 @@
 
 ## 📦 Installation
 
-Prefer ready-to-go apps? Visit the install page for direct downloads and distro-specific instructions:
+### ✅ Prebuilt apps (recommended)
 
 - Install page: https://allisonhere.github.io/alogi/
 - Latest release assets: https://github.com/allisonhere/alogi/releases/latest
+- Direct downloads:
+  - AppImage: https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x86_64.AppImage
+  - Ubuntu deb: https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb
+  - Arch pkg: https://github.com/allisonhere/alogi/releases/latest/download/alogi-arch.pkg.tar.zst
+
+### 🧑‍💻 Build from source (dev)
 
 1.  **Clone the repo:**
     ```bash
@@ -98,12 +104,7 @@ You can also prefill values via environment variables:
 
 ## 📦 Desktop Packaging (Linux)
 
-Install page: **https://allisonhere.github.io/alogi/**
-
-Direct downloads (latest):
-* AppImage: `https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x86_64.AppImage`
-* Ubuntu deb: `https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb`
-* Arch pkg: `https://github.com/allisonhere/alogi/releases/latest/download/alogi-arch.pkg.tar.zst`
+For releases, use the install page above. The steps below are for building artifacts locally.
 
 ### AppImage + Debian (.deb)
 
