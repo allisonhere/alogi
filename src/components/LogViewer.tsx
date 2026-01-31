@@ -370,15 +370,7 @@ export function LogViewer({
     }
   };
 
-  if (loading && !content) { // Only show full loading if no content yet
-    return <div className="flex-1 flex items-center justify-center text-zinc-500">Loading content...</div>;
-  }
-
-  if (!content) {
-    return <div className="flex-1 flex items-center justify-center text-zinc-600">Select a file to view logs.</div>;
-  }
-
-  const lines = content.split('\n');
+  const lines = content ? content.split('\n') : [];
   const filteredLines = searchQuery 
     ? lines.map((line, index) => ({ line, index })).filter(item => item.line.toLowerCase().includes(searchQuery.toLowerCase()))
     : lines.map((line, index) => ({ line, index }));
@@ -452,6 +444,14 @@ export function LogViewer({
       totalLines: insightsLines.length,
     };
   }, [insightsLines]);
+
+  if (loading && !content) { // Only show full loading if no content yet
+    return <div className="flex-1 flex items-center justify-center text-zinc-500">Loading content...</div>;
+  }
+
+  if (!content) {
+    return <div className="flex-1 flex items-center justify-center text-zinc-600">Select a file to view logs.</div>;
+  }
 
     return (
 
