@@ -21,12 +21,12 @@ export async function POST(request: Request) {
       Provide a JSON response with the following structure:
       {
         "summary": "A concise 1-sentence summary of the log status.",
-        "key_findings": ["List of 2-4 critical events, errors, or patterns found."],
-        "recommendation": "One clear actionable step to resolve issues or 'Monitor' if healthy.",
+        "key_findings": ["List of 2-4 concrete events/errors/patterns with evidence if possible (timestamps, services, error codes)."],
+        "recommendation": "2-3 actionable steps written as short bullet lines (use '-' bullets), or 'Monitor' if healthy.",
         "severity": "high" | "medium" | "low"
       }
 
-      Return ONLY the JSON. No markdown.
+      Return ONLY the JSON. No markdown outside the JSON.
     `;
 
     // --- GEMINI HANDLER ---

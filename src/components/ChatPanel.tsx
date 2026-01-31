@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, User, Sparkles, Bot, AlertCircle, CheckCircle } from 'lucide-react';
+import { Send, User, Sparkles, Bot, AlertCircle, CheckCircle, ChevronDown, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Message {
@@ -21,7 +21,10 @@ export function ChatPanel({ initialSummary, logContext }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [copyNotice, setCopyNotice] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const exportRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll when messages change
   useEffect(() => {
@@ -29,6 +32,69 @@ export function ChatPanel({ initialSummary, logContext }: ChatPanelProps) {
         scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, loading]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!exportRef.current) return;
+      if (exportRef.current.contains(event.target as Node)) return;
+      setExportOpen(false);
+    };
+    window.addEventListener('mousedown', handleClickOutside);
+    return () => window.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyNotice(`${label} copied`);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'absolute';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setCopyNotice(`${label} copied`);
+    } finally {
+      setExportOpen(false);
+      setTimeout(() => setCopyNotice(null), 1600);
+    }
+  };
+
+  const summaryPlain = initialSummary.summary || '';
+  const summaryMarkdown = [
+    `# Summary`,
+    `${initialSummary.summary || ''}`,
+    ``,
+    `## Key findings`,
+    ...(initialSummary.key_findings || []).map((finding) => `- ${finding}`),
+    ``,
+    `## Recommendation`,
+    `${initialSummary.recommendation || ''}`,
+    ``,
+    `**Severity:** ${initialSummary.severity || 'low'}`,
+  ].join('\n');
+
+  const summaryJson = JSON.stringify(initialSummary, null, 2);
+
+  const cliPrompt = [
+    `You are an expert DevOps engineer. Analyze the following log data (truncated).`,
+    `Return plain text (no JSON, no markdown code blocks).`,
+    ``,
+    `Format:`,
+    `Summary: <one sentence>`,
+    `Key findings:`,
+    `- <2-4 concrete events/errors/patterns with evidence if possible>`,
+    `Actionable steps:`,
+    `- <2-3 clear, imperative steps; or 'Monitor' if healthy>`,
+    `Severity: high | medium | low`,
+    ``,
+    `Log Data:`,
+    logContext.slice(-15000),
+  ].join('\n');
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
@@ -65,9 +131,58 @@ export function ChatPanel({ initialSummary, logContext }: ChatPanelProps) {
   return (
     <div className="flex flex-col h-full bg-zinc-50 dark:bg-zinc-900/30 border-l border-zinc-200 dark:border-zinc-800 w-96 transition-colors">
       {/* Header */}
-      <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2 bg-white dark:bg-zinc-950">
-        <Sparkles className="w-4 h-4 text-purple-500 dark:text-purple-400" />
-        <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm">AI Investigator</h3>
+      <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-2 bg-white dark:bg-zinc-950">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-purple-500 dark:text-purple-400" />
+          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm">AI Investigator</h3>
+        </div>
+        <div className="relative" ref={exportRef}>
+          <button
+            type="button"
+            onClick={() => setExportOpen((prev) => !prev)}
+            className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+          >
+            Export
+            <ChevronDown className="w-3.5 h-3.5" />
+          </button>
+          {exportOpen && (
+            <div className="absolute right-0 mt-2 w-64 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xl overflow-hidden z-10">
+              <button
+                className="w-full text-left text-xs px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors flex items-center gap-2"
+                onClick={() => copyToClipboard(summaryPlain, 'Summary')}
+              >
+                <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                Copy summary (plain)
+              </button>
+              <button
+                className="w-full text-left text-xs px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors flex items-center gap-2"
+                onClick={() => copyToClipboard(summaryMarkdown, 'Summary + findings')}
+              >
+                <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                Copy summary + key findings (markdown)
+              </button>
+              <button
+                className="w-full text-left text-xs px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors flex items-center gap-2"
+                onClick={() => copyToClipboard(summaryJson, 'Analysis JSON')}
+              >
+                <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                Copy full analysis JSON
+              </button>
+              <button
+                className="w-full text-left text-xs px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors flex items-center gap-2 border-t border-zinc-200 dark:border-zinc-800"
+                onClick={() => copyToClipboard(cliPrompt, 'CLI prompt')}
+              >
+                <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                Copy CLI-ready prompt
+              </button>
+              {copyNotice && (
+                <div className="px-3 py-2 text-[11px] text-emerald-600 dark:text-emerald-400 border-t border-zinc-200 dark:border-zinc-800">
+                  {copyNotice}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Messages & Summary */}
