@@ -19,44 +19,56 @@ function resolveHome(filepath: string): string {
     return filepath;
 }
 
+const EXEC_TIMEOUT = 30000;
+
 export function sshExec(config: SSHHostConfig, command: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const conn = new Client();
-    
+    let settled = false;
+
+    const settle = (fn: typeof resolve | typeof reject, value: string | Error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      conn.end();
+      (fn as (v: string | Error) => void)(value);
+    };
+
+    const timer = setTimeout(() => {
+      settle(reject, new Error(`SSH command timed out after ${EXEC_TIMEOUT / 1000}s`));
+    }, EXEC_TIMEOUT);
+
     const usePassword = config.authMethod === 'password';
     let privateKey: Buffer | undefined;
 
     if (!usePassword) {
       const keyPath = resolveHome(config.keyPath || '~/.ssh/id_rsa');
 
-      // Check if key exists
       try {
           privateKey = fs.readFileSync(keyPath);
       } catch {
+          clearTimeout(timer);
           return reject(new Error(`Private key not found at ${keyPath}`));
       }
     } else if (!config.password) {
+      clearTimeout(timer);
       return reject(new Error('SSH password not provided'));
     }
 
     conn.on('ready', () => {
       conn.exec(command, (err, stream) => {
         if (err) {
-            conn.end();
-            return reject(err);
+            settle(reject, err);
+            return;
         }
         let stdout = '';
         let stderr = '';
         stream.on('close', (code: number | null, signal: string | null) => {
-          conn.end();
           if (code !== 0 && stderr.trim()) {
               const signalInfo = signal ? ` (signal: ${signal})` : '';
               console.warn(`SSH command stderr (exit ${code}${signalInfo}): ${stderr.trim()}`);
           }
-          if (code !== 0) {
-              // reject(new Error(`SSH Command failed: ${stderr}`)); // Optional: don't fail on stderr warnings
-          }
-          resolve(stdout);
+          settle(resolve, stdout);
         }).on('data', (data: Buffer) => {
           stdout += data.toString();
         }).stderr.on('data', (data: Buffer) => {
@@ -64,13 +76,14 @@ export function sshExec(config: SSHHostConfig, command: string): Promise<string>
         });
       });
     }).on('error', (err) => {
-        reject(err);
+        settle(reject, err);
     }).connect({
       host: config.hostname,
       port: config.port || 22,
       username: config.username,
       privateKey,
-      password: usePassword ? config.password : undefined
+      password: usePassword ? config.password : undefined,
+      readyTimeout: 10000,
     });
   });
 }

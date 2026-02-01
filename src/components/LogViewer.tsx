@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { BarChart3, Sparkles, Terminal } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { BarChart3, Bookmark, Sparkles, Terminal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VibeCheckBar } from './VibeCheckBar';
 import { ChatPanel } from './ChatPanel';
@@ -48,12 +48,15 @@ export function LogViewer({
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [regexError, setRegexError] = useState<string | null>(null);
   const [isRegex, setIsRegex] = useState(false);
   const [showAllLines, setShowAllLines] = useState(false);
   const [wrapLines, setWrapLines] = useState(true);
   const [fontSize, setFontSize] = useState(13);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [insightsOpen, setInsightsOpen] = useState(false);
+  const [bookmarks, setBookmarks] = useState<Set<number>>(new Set());
+  const [showBookmarks, setShowBookmarks] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Reset analysis and search when file changes
@@ -63,6 +66,8 @@ export function LogViewer({
     setSearchQuery('');
     setIsRegex(false);
     setShowAllLines(false);
+    setBookmarks(new Set());
+    setShowBookmarks(false);
   }, [filename]);
 
   const fontSizeClass = `text-[${fontSize}px]`;
@@ -71,17 +76,21 @@ export function LogViewer({
   const lines = useMemo(() => content ? content.split('\n') : [], [content]);
   
   const filteredLines = useMemo(() => {
-    if (!searchQuery) return lines.map((line, index) => ({ line, index }));
+    if (!searchQuery) { setRegexError(null); return lines.map((line, index) => ({ line, index })); }
 
     if (isRegex) {
         try {
-            const regex = new RegExp(searchQuery, 'i'); // Case-insensitive regex
+            const regex = new RegExp(searchQuery, 'i');
+            setRegexError(null);
             return lines.map((line, index) => ({ line, index })).filter(item => regex.test(item.line));
-        } catch {
-            return []; // Invalid regex returns empty
+        } catch (e) {
+            const msg = e instanceof SyntaxError ? e.message.replace(/^Invalid regular expression: /, '') : 'Invalid regex';
+            setRegexError(msg);
+            return lines.map((line, index) => ({ line, index }));
         }
     }
 
+    setRegexError(null);
     return lines.map((line, index) => ({ line, index })).filter(item => item.line.toLowerCase().includes(searchQuery.toLowerCase()));
   }, [lines, searchQuery, isRegex]);
 
@@ -152,6 +161,32 @@ export function LogViewer({
       JSON.stringify({ wrapLines, fontSize, insightsOpen })
     );
   }, [wrapLines, fontSize, insightsOpen, prefsLoaded]);
+
+  const toggleBookmark = useCallback((index: number) => {
+    setBookmarks(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  }, []);
+
+  const jumpToLine = useCallback((index: number) => {
+    const position = windowedLines.findIndex(item => item.index === index);
+    if (position === -1) return;
+    const container = scrollRef.current;
+    if (!container) return;
+    if (shouldVirtualize) {
+      const targetTop = position * rowHeight - container.clientHeight / 2 + rowHeight / 2;
+      container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+      return;
+    }
+    const child = container.children[position] as HTMLElement | undefined;
+    if (child) {
+      const targetTop = child.offsetTop - container.clientHeight / 2 + child.clientHeight / 2;
+      container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+    }
+  }, [windowedLines, shouldVirtualize, rowHeight, scrollRef]);
 
   const adjustFontSize = (delta: number) => {
     const index = FONT_SIZES.indexOf(fontSize);
@@ -229,6 +264,32 @@ export function LogViewer({
         setFontSize(13);
         return;
       }
+      if ((event.metaKey || event.ctrlKey) && key === 'b') {
+        event.preventDefault();
+        // Toggle bookmark on line closest to viewport center
+        const container = scrollRef.current;
+        if (container && windowedLines.length > 0) {
+          const centerY = container.scrollTop + container.clientHeight / 2;
+          let centerIndex: number;
+          if (shouldVirtualize) {
+            centerIndex = Math.min(windowedLines.length - 1, Math.max(0, Math.round(centerY / rowHeight)));
+          } else {
+            // Find child closest to center
+            centerIndex = 0;
+            let minDist = Infinity;
+            for (let i = 0; i < container.children.length; i++) {
+              const child = container.children[i] as HTMLElement;
+              const childCenter = child.offsetTop + child.clientHeight / 2;
+              const dist = Math.abs(childCenter - centerY);
+              if (dist < minDist) { minDist = dist; centerIndex = i; }
+            }
+          }
+          if (windowedLines[centerIndex]) {
+            toggleBookmark(windowedLines[centerIndex].index);
+          }
+        }
+        return;
+      }
       if (!event.metaKey && !event.ctrlKey && !event.altKey && key === 'l') {
         event.preventDefault();
         setIsLive(!isLive);
@@ -237,7 +298,7 @@ export function LogViewer({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isLive, setIsLive, fontSize]);
+  }, [isLive, setIsLive, fontSize, toggleBookmark, windowedLines, shouldVirtualize, rowHeight, scrollRef]);
 
   const handleAnalyze = async () => {
     if (!content) return;
@@ -425,7 +486,7 @@ export function LogViewer({
 
                               ? "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20 hover:bg-emerald-200 dark:hover:bg-emerald-500/20" 
 
-                              : "bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:text-zinc-800 dark:hover:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-700"
+                              : "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20 hover:bg-red-200 dark:hover:bg-red-500/20"
 
                       )}
 
@@ -438,7 +499,7 @@ export function LogViewer({
                                   <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
                               </span>
                           )}
-                          {isLive ? 'Live On' : 'Go Live'}
+                          {isLive ? 'Live On' : 'Live Off'}
                       </span>
 
                   </button>
@@ -458,6 +519,64 @@ export function LogViewer({
                   )}
 
                   <div className="flex items-center gap-1 flex-shrink-0">
+                      <div className="relative">
+                        <button
+                            onClick={() => setShowBookmarks(prev => !prev)}
+                            className={cn(
+                                "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors border flex items-center gap-1",
+                                showBookmarks
+                                    ? "border-indigo-300 dark:border-indigo-500/60 text-indigo-600 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-500/10"
+                                    : "border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                            )}
+                            title="Toggle bookmarks (Ctrl/Cmd + B to bookmark a line)"
+                        >
+                            <Bookmark className="w-3 h-3" />
+                            Bookmarks
+                            {bookmarks.size > 0 && (
+                              <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-indigo-500 text-white text-[9px] leading-none font-bold">
+                                {bookmarks.size}
+                              </span>
+                            )}
+                        </button>
+                        {showBookmarks && bookmarks.size > 0 && (
+                          <div className="absolute top-full right-0 mt-1 z-50 w-80 max-h-64 overflow-y-auto rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl">
+                            <div className="p-2 space-y-0.5">
+                              {Array.from(bookmarks).sort((a, b) => a - b).map(idx => {
+                                const lineText = lines[idx] ?? '';
+                                const severity = getSeverity(lineText);
+                                return (
+                                  <button
+                                    key={idx}
+                                    onClick={() => { jumpToLine(idx); setShowBookmarks(false); }}
+                                    className="w-full text-left px-2 py-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2 group transition-colors"
+                                  >
+                                    <span className={cn(
+                                      "w-1.5 h-1.5 rounded-full flex-shrink-0",
+                                      severity === 'error' ? "bg-red-500" : severity === 'warn' ? "bg-orange-400" : "bg-zinc-400"
+                                    )} />
+                                    <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 flex-shrink-0 w-8 text-right">{idx + 1}</span>
+                                    <span className="text-xs text-zinc-600 dark:text-zinc-300 truncate font-mono">{lineText.trim().slice(0, 80)}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <div className="border-t border-zinc-200 dark:border-zinc-700 p-1.5">
+                              <button
+                                onClick={() => { setBookmarks(new Set()); setShowBookmarks(false); }}
+                                className="w-full text-center text-[11px] text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 py-1 rounded hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                              >
+                                Clear all bookmarks
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                        {showBookmarks && bookmarks.size === 0 && (
+                          <div className="absolute top-full right-0 mt-1 z-50 w-64 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl p-4 text-center">
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400">No bookmarks yet.</p>
+                            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">Click the gutter icon or press Ctrl+B</p>
+                          </div>
+                        )}
+                      </div>
                       <button
                           onClick={() => setInsightsOpen(prev => !prev)}
                           className={cn(
@@ -513,20 +632,32 @@ export function LogViewer({
             <div className="mt-2 flex flex-wrap items-center gap-3">
                 <div className="relative w-full max-w-[420px]">
 
-                    <input 
+                    <input
                         ref={searchInputRef}
 
-                        type="text" 
+                        type="text"
 
-                        placeholder={isRegex ? "Filter logs (Regex)..." : "Filter logs..."} 
+                        aria-label="Filter logs"
+
+                        placeholder={isRegex ? "Filter logs (Regex)..." : "Filter logs..."}
 
                         value={searchQuery}
 
                         onChange={(e) => setSearchQuery(e.target.value)}
 
-                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md py-1.5 pl-8 pr-16 text-xs text-zinc-800 dark:text-zinc-200 dark:focus:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-colors placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
+                        className={cn(
+                            "w-full bg-white dark:bg-zinc-900 border rounded-md py-1.5 pl-8 pr-16 text-xs text-zinc-800 dark:text-zinc-200 dark:focus:text-white focus:outline-none focus:ring-1 transition-colors placeholder:text-zinc-400 dark:placeholder:text-zinc-600",
+                            regexError
+                                ? "border-red-400 dark:border-red-500 focus:ring-red-500/50"
+                                : "border-zinc-200 dark:border-zinc-800 focus:ring-indigo-500/50"
+                        )}
 
                     />
+                    {regexError && (
+                        <div className="absolute left-0 top-full mt-1 text-[10px] text-red-500 dark:text-red-400 truncate max-w-full px-1">
+                            {regexError}
+                        </div>
+                    )}
 
                     <div className="absolute left-2.5 top-2 text-zinc-400 dark:text-zinc-500">
 
@@ -675,6 +806,8 @@ export function LogViewer({
                           searchQuery={searchQuery}
                           isRegex={isRegex}
                           disablePrettyJson
+                          isBookmarked={bookmarks.has(index)}
+                          onToggleBookmark={toggleBookmark}
                         />
                       </div>
                     );
@@ -690,6 +823,9 @@ export function LogViewer({
                     fontSizeClass={fontSizeClass}
                     searchQuery={searchQuery}
                     isRegex={isRegex}
+                    disablePrettyJson
+                    isBookmarked={bookmarks.has(index)}
+                    onToggleBookmark={toggleBookmark}
                   />
                 ))
               )

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 import { getConfig } from '@/lib/config';
 
 type ChatMessage = {
@@ -65,12 +66,14 @@ Answer the user's questions based strictly on these logs. Be technical, precise,
         // Retry Logic
         let attempts = 0;
         const maxAttempts = 3;
+        let lastError: unknown;
         while (attempts < maxAttempts) {
             try {
                 const result = await chat.sendMessage(lastMessage.content);
                 return NextResponse.json({ role: 'assistant', content: result.response.text() });
             } catch (e) {
                 attempts++;
+                lastError = e;
                 const err = e as { message?: string; status?: number };
                 const message = typeof err.message === 'string' ? err.message : '';
                 if (message.includes('429') || err.status === 429) {
@@ -80,6 +83,7 @@ Answer the user's questions based strictly on these logs. Be technical, precise,
                 throw e;
             }
         }
+        throw lastError ?? new Error('Rate limited after multiple retries');
     }
 
     // --- OPENAI HANDLER ---
@@ -99,6 +103,23 @@ Answer the user's questions based strictly on these logs. Be technical, precise,
         });
 
         return NextResponse.json({ role: 'assistant', content: completion.choices[0].message.content });
+    }
+
+    // --- CLAUDE HANDLER ---
+    if (provider === 'claude') {
+        const apiKey = config.ai.claudeApiKey || process.env.ANTHROPIC_API_KEY;
+        if (!apiKey) throw new Error("Claude API Key missing");
+
+        const anthropic = new Anthropic({ apiKey });
+        const result = await anthropic.messages.create({
+            model: config.ai.model || "claude-sonnet-4-20250514",
+            max_tokens: 1024,
+            system: systemPrompt,
+            messages: messages.map(msg => ({ role: msg.role, content: msg.content })),
+        });
+
+        const text = result.content[0].type === 'text' ? result.content[0].text : '';
+        return NextResponse.json({ role: 'assistant', content: text });
     }
 
     return NextResponse.json({ error: 'Invalid AI Provider' }, { status: 400 });

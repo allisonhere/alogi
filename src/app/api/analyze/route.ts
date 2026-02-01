@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 import { getConfig } from '@/lib/config';
 
 // Smart truncation to prioritize errors and recent logs
@@ -144,7 +145,16 @@ export async function POST(request: Request) {
         
         const text = result.response.text();
         const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        return NextResponse.json(JSON.parse(jsonStr));
+        try {
+          return NextResponse.json(JSON.parse(jsonStr));
+        } catch {
+          return NextResponse.json({
+            summary: jsonStr,
+            key_findings: [],
+            recommendation: '',
+            severity: 'low',
+          });
+        }
     }
 
     // --- OPENAI HANDLER ---
@@ -162,8 +172,44 @@ export async function POST(request: Request) {
             response_format: { type: "json_object" }, // Ensure JSON
         });
 
-        const text = completion.choices[0].message.content || "{}";
-        return NextResponse.json(JSON.parse(text));
+        const text = completion.choices[0]?.message?.content || "{}";
+        try {
+          return NextResponse.json(JSON.parse(text));
+        } catch {
+          return NextResponse.json({
+            summary: text,
+            key_findings: [],
+            recommendation: '',
+            severity: 'low',
+          });
+        }
+    }
+
+    // --- CLAUDE HANDLER ---
+    if (provider === 'claude') {
+        const apiKey = config.ai.claudeApiKey || process.env.ANTHROPIC_API_KEY;
+        if (!apiKey) throw new Error("Claude API Key missing");
+
+        const anthropic = new Anthropic({ apiKey });
+        const message = await anthropic.messages.create({
+            model: config.ai.model || "claude-sonnet-4-20250514",
+            max_tokens: 1024,
+            system: systemPrompt,
+            messages: [{ role: "user", content: processedContent }],
+        });
+
+        const text = message.content[0].type === 'text' ? message.content[0].text : '';
+        const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        try {
+          return NextResponse.json(JSON.parse(jsonStr));
+        } catch {
+          return NextResponse.json({
+            summary: jsonStr,
+            key_findings: [],
+            recommendation: '',
+            severity: 'low',
+          });
+        }
     }
 
     return NextResponse.json({ error: 'Invalid AI Provider' }, { status: 400 });

@@ -222,15 +222,23 @@ export default function Dashboard() {
   // Fetch Content
   useEffect(() => {
     if (!selectedHost || !selectedFile) return;
-    
+
+    const controller = new AbortController();
+
     const fetchContent = (showLoading = true) => {
         if (showLoading) setLoadingContent(true);
-        // Add timestamp to prevent browser caching
-        fetch(`/api/content?host=${selectedHost}&file=${selectedFile}&t=${Date.now()}`, { cache: 'no-store' })
+        fetch(`/api/content?host=${selectedHost}&file=${selectedFile}&t=${Date.now()}`, {
+          cache: 'no-store',
+          signal: controller.signal,
+        })
           .then(res => res.json())
           .then(data => {
             setContent(data.content || "");
             if (showLoading) setLoadingContent(false);
+          })
+          .catch(err => {
+            if (err instanceof DOMException && err.name === 'AbortError') return;
+            console.error('Failed to fetch content:', err);
           });
     };
 
@@ -242,7 +250,10 @@ export default function Dashboard() {
         interval = setInterval(() => fetchContent(false), 2000);
     }
 
-    return () => clearInterval(interval);
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
   }, [selectedHost, selectedFile, isLive]);
 
   useEffect(() => {

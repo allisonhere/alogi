@@ -8,12 +8,14 @@ const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 export interface AlogiConfig {
   general: {
     logPath: string;
+    tailLines?: number;
   };
   ai: {
     enabled?: boolean;
-    provider: 'gemini' | 'openai';
+    provider: 'gemini' | 'openai' | 'claude';
     apiKey: string;       // Gemini
     openaiApiKey: string; // OpenAI
+    claudeApiKey: string; // Claude
     model: string;
   };
   hosts: Array<{
@@ -41,6 +43,7 @@ const DEFAULT_CONFIG: AlogiConfig = {
     provider: 'gemini',
     apiKey: process.env.GEMINI_API_KEY || '',
     openaiApiKey: process.env.OPENAI_API_KEY || '',
+    claudeApiKey: process.env.ANTHROPIC_API_KEY || '',
     model: 'gemini-flash-latest',
   },
   hosts: [],

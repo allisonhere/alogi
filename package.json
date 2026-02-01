@@ -1,6 +1,6 @@
 {
   "name": "alogi",
-  "version": "0.1.22",
+  "version": "0.1.23",
   "description": "AI-powered log viewer for local and remote logs",
   "author": "allisonhere <allisonhere@users.noreply.github.com>",
   "homepage": "https://allisonhere.github.io/alogi/",
@@ -22,6 +22,7 @@
     "dist:linux:all": "npm run build:desktop && electron-builder --linux AppImage deb dir --publish never"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.72.1",
     "@google/generative-ai": "^0.24.1",
     "@types/ssh2": "^1.15.5",
     "clsx": "^2.1.1",

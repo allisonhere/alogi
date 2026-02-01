@@ -1,4 +1,5 @@
 import React, { memo } from 'react';
+import { Bookmark } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { parseLogLine, type ParsedLogLine, type LogToken } from '@/lib/logParser';
 
@@ -10,6 +11,8 @@ interface LogLineProps {
   searchQuery: string;
   isRegex?: boolean;
   disablePrettyJson?: boolean;
+  isBookmarked?: boolean;
+  onToggleBookmark?: (index: number) => void;
 }
 
 const LogLine = memo(function LogLine({
@@ -20,6 +23,8 @@ const LogLine = memo(function LogLine({
   searchQuery,
   isRegex = false,
   disablePrettyJson = false,
+  isBookmarked = false,
+  onToggleBookmark,
 }: LogLineProps) {
   // Use the extracted parser
   const parsed = parseLogLine(line, searchQuery, isRegex, disablePrettyJson);
@@ -40,6 +45,16 @@ const LogLine = memo(function LogLine({
         "flex hover:bg-zinc-100 dark:hover:bg-zinc-800/30 -mx-4 px-4 py-1 transition-colors",
         severityBg
       )}>
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleBookmark?.(index); }}
+          className={cn(
+            "w-4 flex-shrink-0 flex items-center justify-center mr-0.5 transition-colors",
+            isBookmarked ? "text-indigo-500 dark:text-indigo-400" : "text-transparent hover:text-zinc-400 dark:hover:text-zinc-600"
+          )}
+          title={isBookmarked ? "Remove bookmark" : "Add bookmark"}
+        >
+          <Bookmark className="w-3 h-3" fill={isBookmarked ? "currentColor" : "none"} />
+        </button>
         <span className="w-10 text-zinc-400 dark:text-zinc-600 select-none text-right mr-4 flex-shrink-0 text-xs mt-0.5 font-mono">{index + 1}</span>
         <pre className={cn(
           "font-mono text-emerald-600 dark:text-emerald-400 bg-zinc-50 dark:bg-zinc-900/50 p-2 rounded w-full overflow-x-auto border border-zinc-200 dark:border-zinc-800",
@@ -59,6 +74,16 @@ const LogLine = memo(function LogLine({
         severity === 'warn' ? "bg-orange-50 border-orange-500/30 dark:bg-orange-950/20 dark:border-orange-500/40" :
         "bg-transparent border-transparent"
     )}>
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleBookmark?.(index); }}
+          className={cn(
+            "w-4 flex-shrink-0 flex items-center justify-center mr-0.5 transition-colors",
+            isBookmarked ? "text-indigo-500 dark:text-indigo-400" : "text-transparent group-hover:text-zinc-400 dark:group-hover:text-zinc-600"
+          )}
+          title={isBookmarked ? "Remove bookmark" : "Add bookmark"}
+        >
+          <Bookmark className="w-3 h-3" fill={isBookmarked ? "currentColor" : "none"} />
+        </button>
         <span className="w-10 text-zinc-400 dark:text-zinc-700 select-none text-right mr-4 flex-shrink-0 text-xs mt-[3px] font-mono group-hover:text-zinc-500">{index + 1}</span>
         <span className={cn(
           "text-zinc-700 dark:text-zinc-300 break-all flex-1 font-mono leading-tight tracking-tight",

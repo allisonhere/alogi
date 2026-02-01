@@ -17,11 +17,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Host and file parameters are required' }, { status: 400 });
   }
 
+  const config = getConfig();
+  const tailLines = config.general.tailLines || 2000;
+
   // Handle Remote Hosts
   if (host.startsWith('remote:') || host.startsWith('docker:')) {
       const isDocker = host.startsWith('docker:');
       const alias = host.replace('remote:', '').replace('docker:', '');
-      const config = getConfig();
       const hostConfig = config.hosts.find(h => h.alias === alias);
 
       if (!hostConfig) {
@@ -30,32 +32,33 @@ export async function GET(request: Request) {
 
       try {
           // Sanitize input
-          const safeFile = file.replace(/[^a-zA-Z0-9\.\-\_\@]/g, ''); 
-          
+          const safeFile = file.replace(/[^a-zA-Z0-9\.\-\_\@]/g, '');
+
           let command;
           if (isDocker) {
-              // Fetch last 2000 lines of container logs
-              command = `docker logs --tail 2000 ${safeFile} 2>&1`;
+              command = `docker logs --tail ${tailLines} ${safeFile} 2>&1`;
           } else {
-              // Standard File Logic
-              command = file.endsWith('.gz') 
-                ? `zcat /var/log/${safeFile} | tail -n 2000` 
-                : `tail -n 2000 /var/log/${safeFile}`;
+              command = file.endsWith('.gz')
+                ? `zcat /var/log/${safeFile} | tail -n ${tailLines}`
+                : `tail -n ${tailLines} /var/log/${safeFile}`;
           }
-          
+
           const content = await sshExec(hostConfig, command);
           return NextResponse.json({ content });
       } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          return NextResponse.json({ error: `SSH Read Failed: ${message}` }, { status: 500 });
+          const msg = error instanceof Error ? error.message : String(error);
+          if (msg.includes('ECONNREFUSED') || msg.includes('ETIMEDOUT') || msg.includes('ENOTFOUND') || msg.includes('EHOSTUNREACH') || msg.includes('handshake') || msg.includes('authentication')) {
+              return NextResponse.json({ error: `Connection failed: ${msg}` }, { status: 502 });
+          }
+          return NextResponse.json({ error: `Failed to read remote file: ${msg}` }, { status: 500 });
       }
   }
 
   // Handle System Journal - Fetch Logs
   if (host === '(system-journal)') {
       try {
-          let command = 'journalctl -n 200 --no-pager';
-          
+          let command = `journalctl -n ${tailLines} --no-pager`;
+
           if (file !== 'ALL_SYSTEM_LOGS') {
               const service = file.replace(/[^a-zA-Z0-9\.\-\_\@]/g, '');
               command += ` -u ${service}`;
@@ -74,7 +77,6 @@ export async function GET(request: Request) {
      return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 });
   }
 
-  const config = getConfig();
   const baseDir = config.general.logPath || path.join(process.cwd(), 'mock-logs');
   const filePath = path.join(baseDir, host, file);
   

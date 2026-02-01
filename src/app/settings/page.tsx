@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, ArrowLeft, Server, Cpu, Key, Trash2 } from 'lucide-react';
+import { Save, ArrowLeft, Server, Cpu, Key, Trash2, Activity } from 'lucide-react';
 import Link from 'next/link';
 import type { AlogiConfig } from '@/lib/config';
 
@@ -15,6 +15,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [resettingOnboarding, setResettingOnboarding] = useState(false);
   const [aiTestStatus, setAiTestStatus] = useState<{ state: 'idle' | 'testing' | 'success' | 'error'; message?: string }>({ state: 'idle' });
+  const [hostTestStatus, setHostTestStatus] = useState<Record<string, { state: 'idle' | 'testing' | 'success' | 'error'; message?: string }>>({});
   const [error, setError] = useState<string | null>(null);
   const [missingKeyById, setMissingKeyById] = useState<Record<string, string>>({});
   const [missingPasswordById, setMissingPasswordById] = useState<Record<string, true>>({});
@@ -138,7 +139,7 @@ export default function SettingsPage() {
   const handleTestKey = async () => {
     if (!config) return;
     const provider = config.ai.provider || 'gemini';
-    const apiKey = provider === 'openai' ? (config.ai.openaiApiKey || '') : (config.ai.apiKey || '');
+    const apiKey = provider === 'openai' ? (config.ai.openaiApiKey || '') : provider === 'claude' ? (config.ai.claudeApiKey || '') : (config.ai.apiKey || '');
     if (!apiKey.trim()) {
       setAiTestStatus({ state: 'error', message: 'Paste an API key first.' });
       return;
@@ -161,9 +162,39 @@ export default function SettingsPage() {
     }
   };
 
+  const handleTestConnection = async (hostIndex: number) => {
+    if (!config) return;
+    const host = config.hosts[hostIndex];
+    if (!host.id) return;
+
+    setHostTestStatus(prev => ({ ...prev, [host.id!]: { state: 'testing', message: undefined } }));
+
+    try {
+      const res = await fetch('/api/hosts/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(host),
+      });
+      const data = await res.json();
+      
+      if (!res.ok || !data.success) {
+         setHostTestStatus(prev => ({ ...prev, [host.id!]: { state: 'error', message: data.error || 'Connection failed' } }));
+      } else {
+         setHostTestStatus(prev => ({ ...prev, [host.id!]: { state: 'success', message: 'Connected!' } }));
+      }
+    } catch {
+        setHostTestStatus(prev => ({ ...prev, [host.id!]: { state: 'error', message: 'Network error' } }));
+    }
+  };
+
   useEffect(() => {
     setAiTestStatus({ state: 'idle' });
-  }, [config?.ai?.provider, config?.ai?.apiKey, config?.ai?.openaiApiKey, config?.ai?.model]);
+  }, [config?.ai?.provider, config?.ai?.apiKey, config?.ai?.openaiApiKey, config?.ai?.claudeApiKey, config?.ai?.model]);
+
+  // Reset host test status when host config changes significantly
+  useEffect(() => {
+    setHostTestStatus({});
+  }, [config?.hosts.length]);
 
   if (loading) return <div className="text-zinc-500 p-8">Loading settings...</div>;
   if (error) {
@@ -227,7 +258,8 @@ export default function SettingsPage() {
                         <input 
                             type="text" 
                             value={config.general.logPath}
-                            onChange={(e) => setConfig({...config, general: {...config.general, logPath: e.target.value}})}
+                            onChange={(e) => setConfig({...config, general: {...config.general, logPath: e.target.value}})
+                            }
                             className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
                         />
                         <p className="text-xs text-zinc-500 mt-1">Path to the logs folder on this machine (e.g. /var/log).</p>
@@ -269,6 +301,14 @@ export default function SettingsPage() {
                             >
                                 Get Gemini API key
                             </a>
+                            <a
+                                href="https://console.anthropic.com/settings/keys"
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-xs px-3 py-1 rounded-full border border-indigo-200 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100/60 dark:hover:bg-indigo-500/10 transition-colors"
+                            >
+                                Get Claude API key
+                            </a>
                         </div>
                     </div>
 
@@ -284,12 +324,8 @@ export default function SettingsPage() {
                                 checked={config.ai.enabled !== false}
                                 onChange={(e) => setConfig({ ...config, ai: { ...config.ai, enabled: e.target.checked } })}
                             />
-                            <span className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${
-                                config.ai.enabled !== false ? 'bg-indigo-600' : 'bg-zinc-300 dark:bg-zinc-700'
-                            }`}>
-                                <span className={`bg-white w-4 h-4 rounded-full shadow transform transition-transform ${
-                                    config.ai.enabled !== false ? 'translate-x-5' : 'translate-x-0'
-                                }`} />
+                            <span className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${config.ai.enabled !== false ? 'bg-indigo-600' : 'bg-zinc-300 dark:bg-zinc-700'}`}>
+                                <span className={`bg-white w-4 h-4 rounded-full shadow transform transition-transform ${config.ai.enabled !== false ? 'translate-x-5' : 'translate-x-0'}`} />
                             </span>
                         </label>
                     </div>
@@ -299,13 +335,14 @@ export default function SettingsPage() {
                         <select 
                             value={config.ai.provider || 'gemini'}
                             onChange={(e) => {
-                                const provider = e.target.value as 'gemini' | 'openai';
+                                const provider = e.target.value as 'gemini' | 'openai' | 'claude';
+                                const model = provider === 'openai' ? 'gpt-4o' : provider === 'claude' ? 'claude-sonnet-4-20250514' : 'gemini-flash-latest';
                                 setConfig({
-                                    ...config, 
+                                    ...config,
                                     ai: {
-                                        ...config.ai, 
-                                        provider, 
-                                        model: provider === 'openai' ? 'gpt-4o' : 'gemini-flash-latest'
+                                        ...config.ai,
+                                        provider,
+                                        model,
                                     }
                                 });
                             }}
@@ -313,10 +350,56 @@ export default function SettingsPage() {
                         >
                             <option value="gemini">Google Gemini</option>
                             <option value="openai">OpenAI</option>
+                            <option value="claude">Anthropic Claude</option>
                         </select>
                     </div>
 
-                    {config.ai.provider === 'openai' ? (
+                    {config.ai.provider === 'claude' ? (
+                        <>
+                            <div>
+                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Claude API Key</label>
+                                <div className="relative">
+                                    <input
+                                        type="password"
+                                        value={config.ai.claudeApiKey || ''}
+                                        onChange={(e) => setConfig({...config, ai: {...config.ai, claudeApiKey: e.target.value}})
+                                        }
+                                        placeholder="sk-ant-..."
+                                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md px-3 py-2 pl-9 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
+                                    />
+                                    <Key className="w-4 h-4 text-zinc-500 absolute left-3 top-2.5" />
+                                </div>
+                                <div className="flex items-center gap-3 mt-2">
+                                    <button
+                                        type="button"
+                                        onClick={handleTestKey}
+                                        disabled={aiTestStatus.state === 'testing' || config.ai.enabled === false}
+                                        className="text-xs px-3 py-1.5 rounded-md border border-indigo-200 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 disabled:opacity-50 transition-colors"
+                                    >
+                                        {aiTestStatus.state === 'testing' ? 'Testing...' : 'Test key'}
+                                    </button>
+                                    {aiTestStatus.state !== 'idle' && (
+                                        <span className={`text-xs ${aiTestStatus.state === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                                            {aiTestStatus.message}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Model</label>
+                                <select
+                                    value={config.ai.model}
+                                    onChange={(e) => setConfig({...config, ai: {...config.ai, model: e.target.value}})
+                                    }
+                                    className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
+                                >
+                                    <option value="claude-sonnet-4-20250514">Claude Sonnet 4 (Recommended)</option>
+                                    <option value="claude-opus-4-20250514">Claude Opus 4</option>
+                                    <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku (Fastest)</option>
+                                </select>
+                            </div>
+                        </>
+                    ) : config.ai.provider === 'openai' ? (
                         <>
                             <div>
                                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">OpenAI API Key</label>
@@ -324,7 +407,8 @@ export default function SettingsPage() {
                                     <input 
                                         type="password" 
                                         value={config.ai.openaiApiKey || ''}
-                                        onChange={(e) => setConfig({...config, ai: {...config.ai, openaiApiKey: e.target.value}})}
+                                        onChange={(e) => setConfig({...config, ai: {...config.ai, openaiApiKey: e.target.value}})
+                                        }
                                         placeholder="sk-..."
                                         className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md px-3 py-2 pl-9 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
                                     />
@@ -340,9 +424,7 @@ export default function SettingsPage() {
                                         {aiTestStatus.state === 'testing' ? 'Testing...' : 'Test key'}
                                     </button>
                                     {aiTestStatus.state !== 'idle' && (
-                                        <span className={`text-xs ${
-                                            aiTestStatus.state === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
-                                        }`}>
+                                        <span className={`text-xs ${aiTestStatus.state === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                                             {aiTestStatus.message}
                                         </span>
                                     )}
@@ -352,7 +434,8 @@ export default function SettingsPage() {
                                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Model</label>
                                 <select 
                                     value={config.ai.model}
-                                    onChange={(e) => setConfig({...config, ai: {...config.ai, model: e.target.value}})}
+                                    onChange={(e) => setConfig({...config, ai: {...config.ai, model: e.target.value}})
+                                    }
                                     className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
                                 >
                                     <option value="gpt-4o">GPT-4o (Smartest)</option>
@@ -370,7 +453,8 @@ export default function SettingsPage() {
                                     <input 
                                         type="password" 
                                         value={config.ai.apiKey}
-                                        onChange={(e) => setConfig({...config, ai: {...config.ai, apiKey: e.target.value}})}
+                                        onChange={(e) => setConfig({...config, ai: {...config.ai, apiKey: e.target.value}})
+                                        }
                                         className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md px-3 py-2 pl-9 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
                                     />
                                     <Key className="w-4 h-4 text-zinc-500 absolute left-3 top-2.5" />
@@ -385,9 +469,7 @@ export default function SettingsPage() {
                                         {aiTestStatus.state === 'testing' ? 'Testing...' : 'Test key'}
                                     </button>
                                     {aiTestStatus.state !== 'idle' && (
-                                        <span className={`text-xs ${
-                                            aiTestStatus.state === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
-                                        }`}>
+                                        <span className={`text-xs ${aiTestStatus.state === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                                             {aiTestStatus.message}
                                         </span>
                                     )}
@@ -397,7 +479,8 @@ export default function SettingsPage() {
                                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Model</label>
                                 <select 
                                     value={config.ai.model}
-                                    onChange={(e) => setConfig({...config, ai: {...config.ai, model: e.target.value}})}
+                                    onChange={(e) => setConfig({...config, ai: {...config.ai, model: e.target.value}})
+                                    }
                                     className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
                                 >
                                     <option value="gemini-flash-latest">Gemini Flash (Recommended)</option>
@@ -439,7 +522,7 @@ export default function SettingsPage() {
                     <button
                         onClick={() => setConfig({
                             ...config, 
-                            hosts: [...config.hosts, { id: Math.random().toString(36).substring(2, 9), alias: 'New Server', hostname: '', username: 'root', keyPath: '~/.ssh/id_rsa', password: '', authMethod: 'key' }] 
+                            hosts: [...config.hosts, { id: Math.random().toString(36).substring(2, 9), alias: 'New Server', hostname: '', username: 'root', keyPath: '~/.ssh/id_rsa', password: '', authMethod: 'key' }]
                         })}
                         className="text-xs bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 px-2 py-1 rounded text-zinc-700 dark:text-zinc-300 transition-colors border border-zinc-300 dark:border-zinc-700"
                     >
@@ -517,11 +600,7 @@ export default function SettingsPage() {
                                                     setMissingPasswordById(next);
                                                 }
                                             }}
-                                            className={`px-3 py-1 text-xs transition-colors ${
-                                                (host.authMethod ?? 'key') === 'key'
-                                                  ? "bg-indigo-600 text-white"
-                                                  : "bg-white dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900"
-                                            }`}
+                                            className={`px-3 py-1 text-xs transition-colors ${ (host.authMethod ?? 'key') === 'key' ? "bg-indigo-600 text-white" : "bg-white dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900"}`}
                                         >
                                             Key
                                         </button>
@@ -537,11 +616,7 @@ export default function SettingsPage() {
                                                     setMissingKeyById(next);
                                                 }
                                             }}
-                                            className={`px-3 py-1 text-xs transition-colors ${
-                                                (host.authMethod ?? 'key') === 'password'
-                                                  ? "bg-indigo-600 text-white"
-                                                  : "bg-white dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900"
-                                            }`}
+                                            className={`px-3 py-1 text-xs transition-colors ${ (host.authMethod ?? 'key') === 'password' ? "bg-indigo-600 text-white" : "bg-white dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900"}`}
                                         >
                                             Password
                                         </button>
@@ -603,11 +678,7 @@ export default function SettingsPage() {
                                                     setMissingKeyById(next);
                                                 }
                                             }}
-                                            className={`w-full bg-white dark:bg-zinc-950 border rounded px-2 py-1 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 outline-none ${
-                                                host.id && missingKeyById[host.id]
-                                                  ? "border-red-400 dark:border-red-500 focus:ring-red-500"
-                                                  : "border-zinc-300 dark:border-zinc-800 focus:ring-indigo-500"
-                                            }`}
+                                            className={`w-full bg-white dark:bg-zinc-950 border rounded px-2 py-1 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 outline-none ${host.id && missingKeyById[host.id] ? "border-red-400 dark:border-red-500 focus:ring-red-500" : "border-zinc-300 dark:border-zinc-800 focus:ring-indigo-500"}`}
                                         />
                                         {host.id && missingKeyById[host.id] && (
                                             <p className="text-xs text-red-600 dark:text-red-400 mt-1">
@@ -632,11 +703,7 @@ export default function SettingsPage() {
                                                         setMissingPasswordById(next);
                                                     }
                                                 }}
-                                                className={`w-full bg-white dark:bg-zinc-950 border rounded px-2 py-1 pr-12 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 outline-none ${
-                                                    host.id && missingPasswordById[host.id]
-                                                      ? "border-red-400 dark:border-red-500 focus:ring-red-500"
-                                                      : "border-zinc-300 dark:border-zinc-800 focus:ring-indigo-500"
-                                                }`}
+                                                className={`w-full bg-white dark:bg-zinc-950 border rounded px-2 py-1 pr-12 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 outline-none ${host.id && missingPasswordById[host.id] ? "border-red-400 dark:border-red-500 focus:ring-red-500" : "border-zinc-300 dark:border-zinc-800 focus:ring-indigo-500"}`}
                                             />
                                             <button
                                                 type="button"
@@ -656,6 +723,23 @@ export default function SettingsPage() {
                                         )}
                                     </div>
                                 )}
+                            </div>
+
+                            {/* Test Connection Button */}
+                            <div className="col-span-2 flex items-center justify-end gap-3 mt-2 border-t border-zinc-200 dark:border-zinc-800 pt-3">
+                                {host.id && hostTestStatus[host.id]?.state !== 'idle' && (
+                                    <span className={`text-xs ${hostTestStatus[host.id]?.state === 'success' ? 'text-emerald-600 dark:text-emerald-400' : hostTestStatus[host.id]?.state === 'error' ? 'text-red-600 dark:text-red-400' : 'text-zinc-500'}`}>
+                                        {hostTestStatus[host.id]?.message || (hostTestStatus[host.id]?.state === 'testing' ? 'Connecting...' : '')}
+                                    </span>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => handleTestConnection(index)}
+                                    disabled={host.id ? hostTestStatus[host.id]?.state === 'testing' : false}
+                                    className={`px-3 py-1.5 rounded text-xs font-medium transition-colors border ${host.id && hostTestStatus[host.id]?.state === 'success' ? "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20" : host.id && hostTestStatus[host.id]?.state === 'error' ? "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20" : "bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800"}`}
+                                >
+                                    {host.id && hostTestStatus[host.id]?.state === 'testing' ? 'Testing...' : 'Test Connection'}
+                                </button>
                             </div>
                         </div>
                     ))}
