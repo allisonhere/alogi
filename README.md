@@ -13,6 +13,7 @@
 *   **⚡️ Live Tailing:** Watch logs stream in real-time (like `tail -f`) with auto-scrolling.
 *   **🧠 AI Analysis:** Click "Analyze" to scan your logs for errors, root causes, and actionable recommendations (Gemini or OpenAI).
 *   **💬 AI Chat:** Ask questions about the current log context with a conversational panel (Gemini or OpenAI).
+*   **🔍 Regex Search:** Filter logs using regular expressions (toggle with `.*` or `Ctrl+R`).
 *   **🎨 Smart Highlighting:**
     *   **Vibe Check Bar:** A visual heatmap at the top of the screen showing where errors (Red) and warnings (Orange) are buried.
     *   **Syntax Highlighting:** Dates, IPs, and Keywords are color-coded.
