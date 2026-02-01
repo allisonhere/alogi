@@ -11,7 +11,7 @@
 ## 🚀 Features
 
 *   **⚡️ Live Tailing:** Watch logs stream in real-time (like `tail -f`) with auto-scrolling.
-*   **🧠 AI Analysis:** Click "Analyze" to scan your logs for errors, root causes, and actionable recommendations (Gemini or OpenAI).
+*   **🧠 AI Analysis:** Click "Analyze" to scan your logs for errors, root causes, and actionable recommendations (Gemini or OpenAI). Uses **Smart Context** to capture errors and recent logs even in massive files.
 *   **💬 AI Chat:** Ask questions about the current log context with a conversational panel (Gemini or OpenAI).
 *   **🔍 Regex Search:** Filter logs using regular expressions (toggle with `.*` or `Ctrl+R`).
 *   **🎨 Smart Highlighting:**
