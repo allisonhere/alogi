@@ -1,4 +1,4 @@
-import { HardDrive, Settings, Moon, Sun } from 'lucide-react';
+import { ExternalLink, HardDrive, Settings, Moon, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useTheme } from "next-themes";
@@ -55,9 +55,17 @@ export function HostList({ hosts, selectedHost, onSelectHost }: HostListProps) {
         )}
       </div>
 
-      {/* Settings & Theme */}
-      <div className="p-2 border-t border-zinc-200 dark:border-zinc-900 grid grid-cols-[1fr_auto] gap-1">
-        <Link 
+      {/* Links, Settings & Theme */}
+      <div className="px-3 pt-2 flex items-center gap-3 text-[11px] text-zinc-400 dark:text-zinc-600">
+        <a href="https://github.com/allisonhere/alogi" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors flex items-center gap-1">
+          GitHub <ExternalLink className="w-2.5 h-2.5" />
+        </a>
+        <a href="https://github.com/allisonhere/alogi/issues" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors flex items-center gap-1">
+          Issues <ExternalLink className="w-2.5 h-2.5" />
+        </a>
+      </div>
+      <div className="p-2 border-t border-zinc-200 dark:border-zinc-900 grid grid-cols-[1fr_auto] gap-1 mt-1">
+        <Link
             href="/settings"
             className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-zinc-600 dark:text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-300 transition-colors"
         >

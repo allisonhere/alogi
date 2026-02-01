@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseLogLine } from '../logParser';
+import { parseLogLine, extractTimestamp } from '../logParser';
 
 describe('logParser', () => {
   it('should detect error severity', () => {
@@ -58,5 +58,51 @@ describe('logParser', () => {
     expect(matchToken).toBeUndefined();
     // Should still parse other tokens normally
     expect(result.tokens.length).toBeGreaterThan(0);
+  });
+});
+
+describe('extractTimestamp', () => {
+  it('should parse ISO 8601 with T separator', () => {
+    const d = extractTimestamp('2024-01-15T14:30:00.000Z some log');
+    expect(d).toBeInstanceOf(Date);
+    expect(d!.getUTCHours()).toBe(14);
+    expect(d!.getUTCMinutes()).toBe(30);
+  });
+
+  it('should parse ISO 8601 with space separator', () => {
+    const d = extractTimestamp('2024-01-15 14:30:00 INFO starting');
+    expect(d).toBeInstanceOf(Date);
+    expect(d!.getHours()).toBe(14);
+  });
+
+  it('should parse syslog format', () => {
+    const d = extractTimestamp('Jan 15 14:30:00 myhost kernel: stuff');
+    expect(d).toBeInstanceOf(Date);
+    expect(d!.getMonth()).toBe(0); // January
+    expect(d!.getDate()).toBe(15);
+  });
+
+  it('should parse bracket-wrapped datetime', () => {
+    const d = extractTimestamp('[2024-01-15 14:30:00] INFO hello');
+    expect(d).toBeInstanceOf(Date);
+    expect(d!.getHours()).toBe(14);
+  });
+
+  it('should parse bracket-wrapped time only', () => {
+    const d = extractTimestamp('[14:30:00] some message');
+    expect(d).toBeInstanceOf(Date);
+    expect(d!.getHours()).toBe(14);
+    expect(d!.getMinutes()).toBe(30);
+  });
+
+  it('should parse common log format', () => {
+    const d = extractTimestamp('127.0.0.1 - - [15/Jan/2024:14:30:00 +0000] "GET /"');
+    expect(d).toBeInstanceOf(Date);
+    expect(d!.getDate()).toBe(15);
+  });
+
+  it('should return null for lines without timestamps', () => {
+    expect(extractTimestamp('just some plain text')).toBeNull();
+    expect(extractTimestamp('')).toBeNull();
   });
 });

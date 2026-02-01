@@ -23,6 +23,7 @@
 *   **📓 System Journal:** Integrated support for `journalctl` to browse system services and logs alongside files.
 *   **🛰️ Remote Logs (SSH):** Browse `/var/log` on remote hosts over SSH.
 *   **🐳 Docker Logs (SSH):** List running containers and view `docker logs` from remote hosts.
+*   **🕐 Time Navigation:** Filter log lines by time range (HH:MM start/end) with auto-detected log time range hints.
 *   **📊 Insights Sidebar:** Top errors/warnings, trend buckets, and spike detection with jump-to actions.
 *   **🧩 Resizable Panels:** Drag to resize host/file panels with size persistence.
 *   **✨ Onboarding Overlay:** First-run guidance for hosts, files, live, and AI actions.

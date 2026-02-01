@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { BarChart3, Bookmark, Sparkles, Terminal } from 'lucide-react';
+import { BarChart3, Bookmark, Clock, Sparkles, Terminal } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { extractTimestamp } from '@/lib/logParser';
 import { VibeCheckBar } from './VibeCheckBar';
 import { ChatPanel } from './ChatPanel';
 import { InsightsPanel } from './InsightsPanel';
@@ -57,6 +58,10 @@ export function LogViewer({
   const [insightsOpen, setInsightsOpen] = useState(false);
   const [bookmarks, setBookmarks] = useState<Set<number>>(new Set());
   const [showBookmarks, setShowBookmarks] = useState(false);
+  const [timeRange, setTimeRange] = useState<{ start: string; end: string } | null>(null);
+  const [showTimeFilter, setShowTimeFilter] = useState(false);
+  const [timeStart, setTimeStart] = useState('');
+  const [timeEnd, setTimeEnd] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Reset analysis and search when file changes
@@ -68,6 +73,10 @@ export function LogViewer({
     setShowAllLines(false);
     setBookmarks(new Set());
     setShowBookmarks(false);
+    setTimeRange(null);
+    setShowTimeFilter(false);
+    setTimeStart('');
+    setTimeEnd('');
   }, [filename]);
 
   const fontSizeClass = `text-[${fontSize}px]`;
@@ -94,9 +103,42 @@ export function LogViewer({
     return lines.map((line, index) => ({ line, index })).filter(item => item.line.toLowerCase().includes(searchQuery.toLowerCase()));
   }, [lines, searchQuery, isRegex]);
 
-  const shouldWindow = !searchQuery && filteredLines.length > MAX_RENDER_LINES && !showAllLines;
-  const windowStart = shouldWindow ? filteredLines.length - MAX_RENDER_LINES : 0;
-  const windowedLines = shouldWindow ? filteredLines.slice(windowStart) : filteredLines;
+  const timeFilteredLines = useMemo(() => {
+    if (!timeRange) return filteredLines;
+    const [startH, startM] = timeRange.start.split(':').map(Number);
+    const [endH, endM] = timeRange.end.split(':').map(Number);
+    const startMinutes = startH * 60 + startM;
+    const endMinutes = endH * 60 + endM;
+    return filteredLines.filter(item => {
+      const ts = extractTimestamp(item.line);
+      if (!ts) return true; // pass through lines without timestamps
+      const mins = ts.getHours() * 60 + ts.getMinutes();
+      return startMinutes <= endMinutes
+        ? mins >= startMinutes && mins <= endMinutes
+        : mins >= startMinutes || mins <= endMinutes; // wrap around midnight
+    });
+  }, [filteredLines, timeRange]);
+
+  // Detect time range in log for hint display
+  const detectedTimeRange = useMemo(() => {
+    if (!lines.length) return null;
+    let earliest: string | null = null;
+    let latest: string | null = null;
+    for (const line of lines) {
+      const ts = extractTimestamp(line);
+      if (ts) {
+        const hm = `${String(ts.getHours()).padStart(2, '0')}:${String(ts.getMinutes()).padStart(2, '0')}`;
+        if (!earliest) earliest = hm;
+        latest = hm;
+      }
+    }
+    if (!earliest || !latest) return null;
+    return { earliest, latest };
+  }, [lines]);
+
+  const shouldWindow = !searchQuery && !timeRange && timeFilteredLines.length > MAX_RENDER_LINES && !showAllLines;
+  const windowStart = shouldWindow ? timeFilteredLines.length - MAX_RENDER_LINES : 0;
+  const windowedLines = shouldWindow ? timeFilteredLines.slice(windowStart) : timeFilteredLines;
   const shouldVirtualize = !wrapLines && windowedLines.length > MAX_RENDER_LINES;
   const rowHeight = fontSize + 12;
 
@@ -521,6 +563,80 @@ export function LogViewer({
                   <div className="flex items-center gap-1 flex-shrink-0">
                       <div className="relative">
                         <button
+                            onClick={() => setShowTimeFilter(prev => !prev)}
+                            className={cn(
+                                "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors border flex items-center gap-1",
+                                timeRange
+                                    ? "border-indigo-300 dark:border-indigo-500/60 text-indigo-600 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-500/10"
+                                    : "border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                            )}
+                            title="Filter by time range"
+                        >
+                            <Clock className="w-3 h-3" />
+                            Time
+                            {timeRange && (
+                              <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-indigo-500 text-white text-[9px] leading-none font-bold">
+                                {timeRange.start}-{timeRange.end}
+                              </span>
+                            )}
+                        </button>
+                        {showTimeFilter && (
+                          <div className="absolute top-full right-0 mt-1 z-50 w-64 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl p-3 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <label className="text-[11px] text-zinc-500 dark:text-zinc-400 w-10">Start</label>
+                              <input
+                                type="time"
+                                value={timeStart}
+                                onChange={(e) => setTimeStart(e.target.value)}
+                                className="flex-1 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded px-2 py-1 text-xs text-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <label className="text-[11px] text-zinc-500 dark:text-zinc-400 w-10">End</label>
+                              <input
+                                type="time"
+                                value={timeEnd}
+                                onChange={(e) => setTimeEnd(e.target.value)}
+                                className="flex-1 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded px-2 py-1 text-xs text-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                              />
+                            </div>
+                            {detectedTimeRange ? (
+                              <p className="text-[10px] text-zinc-400 dark:text-zinc-500">
+                                Log range: {detectedTimeRange.earliest} &ndash; {detectedTimeRange.latest}
+                              </p>
+                            ) : (
+                              <p className="text-[10px] text-zinc-400 dark:text-zinc-500">No timestamps detected</p>
+                            )}
+                            <div className="flex gap-1.5 pt-1">
+                              <button
+                                onClick={() => {
+                                  if (timeStart && timeEnd) {
+                                    setTimeRange({ start: timeStart, end: timeEnd });
+                                    setShowTimeFilter(false);
+                                  }
+                                }}
+                                disabled={!timeStart || !timeEnd}
+                                className="flex-1 px-2 py-1 rounded text-[11px] font-medium bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                              >
+                                Apply
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setTimeRange(null);
+                                  setTimeStart('');
+                                  setTimeEnd('');
+                                  setShowTimeFilter(false);
+                                }}
+                                className="flex-1 px-2 py-1 rounded text-[11px] font-medium border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                              >
+                                Clear
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <button
                             onClick={() => setShowBookmarks(prev => !prev)}
                             className={cn(
                                 "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors border flex items-center gap-1",
@@ -729,10 +845,10 @@ export function LogViewer({
 
         </div>
 
-      {filteredLines.length > MAX_RENDER_LINES && !searchQuery && (
+      {timeFilteredLines.length > MAX_RENDER_LINES && !searchQuery && !timeRange && (
         <div className="px-6 py-2 text-xs bg-amber-50 text-amber-900 border-b border-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:border-amber-500/20 flex items-center justify-between">
           <span className="flex flex-wrap items-center gap-2">
-            Large log: {shouldWindow ? `showing last ${MAX_RENDER_LINES} of ${filteredLines.length} lines` : `showing all ${filteredLines.length} lines`}
+            Large log: {shouldWindow ? `showing last ${MAX_RENDER_LINES} of ${timeFilteredLines.length} lines` : `showing all ${timeFilteredLines.length} lines`}
             {wrapLines && (
               <span className="text-amber-700/80 dark:text-amber-200/70">
                 Tip: turn off Wrap for smoother scrolling.

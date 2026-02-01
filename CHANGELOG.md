@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.24] - 2026-02-01
+
+### Added
+- **Time Navigation:** Filter log lines by time range with a clock toolbar button. Supports ISO 8601, syslog, bracket-wrapped, and common log format timestamps. Auto-detects and displays the log's time range as a hint. Lines without timestamps pass through (preserving stack traces and continuation lines).
+
 ## [0.1.22] - 2026-02-01
 
 ### Added
