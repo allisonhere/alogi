@@ -8,6 +8,7 @@ interface LogLineProps {
   wrapLines: boolean;
   fontSizeClass: string;
   searchQuery: string;
+  isRegex?: boolean;
   disablePrettyJson?: boolean;
 }
 
@@ -17,10 +18,11 @@ const LogLine = memo(function LogLine({
   wrapLines,
   fontSizeClass,
   searchQuery,
+  isRegex = false,
   disablePrettyJson = false,
 }: LogLineProps) {
   // Use the extracted parser
-  const parsed = parseLogLine(line, searchQuery, disablePrettyJson);
+  const parsed = parseLogLine(line, searchQuery, isRegex, disablePrettyJson);
   const { isJson, jsonContent, severity, tokens } = parsed;
 
   const severityBg = 

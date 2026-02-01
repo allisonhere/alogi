@@ -48,6 +48,7 @@ export function LogViewer({
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isRegex, setIsRegex] = useState(false);
   const [showAllLines, setShowAllLines] = useState(false);
   const [wrapLines, setWrapLines] = useState(true);
   const [fontSize, setFontSize] = useState(13);
@@ -60,6 +61,7 @@ export function LogViewer({
     setAnalysis(null);
     setIsAiPanelOpen(false);
     setSearchQuery('');
+    setIsRegex(false);
     setShowAllLines(false);
   }, [filename]);
 
@@ -69,10 +71,19 @@ export function LogViewer({
   const lines = useMemo(() => content ? content.split('\n') : [], [content]);
   
   const filteredLines = useMemo(() => {
-    return searchQuery 
-      ? lines.map((line, index) => ({ line, index })).filter(item => item.line.toLowerCase().includes(searchQuery.toLowerCase()))
-      : lines.map((line, index) => ({ line, index }));
-  }, [lines, searchQuery]);
+    if (!searchQuery) return lines.map((line, index) => ({ line, index }));
+
+    if (isRegex) {
+        try {
+            const regex = new RegExp(searchQuery, 'i'); // Case-insensitive regex
+            return lines.map((line, index) => ({ line, index })).filter(item => regex.test(item.line));
+        } catch {
+            return []; // Invalid regex returns empty
+        }
+    }
+
+    return lines.map((line, index) => ({ line, index })).filter(item => item.line.toLowerCase().includes(searchQuery.toLowerCase()));
+  }, [lines, searchQuery, isRegex]);
 
   const shouldWindow = !searchQuery && filteredLines.length > MAX_RENDER_LINES && !showAllLines;
   const windowStart = shouldWindow ? filteredLines.length - MAX_RENDER_LINES : 0;
@@ -191,6 +202,11 @@ export function LogViewer({
         event.preventDefault();
         searchInputRef.current?.focus();
         searchInputRef.current?.select();
+        return;
+      }
+      if ((event.metaKey || event.ctrlKey) && key === 'r') {
+        event.preventDefault();
+        setIsRegex(prev => !prev);
         return;
       }
       if (!event.metaKey && !event.ctrlKey && !event.altKey && key === 'w') {
@@ -502,13 +518,13 @@ export function LogViewer({
 
                         type="text" 
 
-                        placeholder="Filter logs..." 
+                        placeholder={isRegex ? "Filter logs (Regex)..." : "Filter logs..."} 
 
                         value={searchQuery}
 
                         onChange={(e) => setSearchQuery(e.target.value)}
 
-                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md py-1.5 pl-8 pr-3 text-xs text-zinc-800 dark:text-zinc-200 dark:focus:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-colors placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
+                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md py-1.5 pl-8 pr-16 text-xs text-zinc-800 dark:text-zinc-200 dark:focus:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-colors placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
 
                     />
 
@@ -518,21 +534,35 @@ export function LogViewer({
 
                     </div>
 
-                    {searchQuery && (
-
-                        <button 
-
-                            onClick={() => setSearchQuery('')}
-
-                            className="absolute right-2 top-2 text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300"
-
+                    <div className="absolute right-2 top-1.5 flex items-center gap-1">
+                        <button
+                            onClick={() => setIsRegex(prev => !prev)}
+                            className={cn(
+                                "p-0.5 rounded text-[10px] font-mono font-bold transition-colors",
+                                isRegex 
+                                    ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300" 
+                                    : "text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-600 dark:hover:text-zinc-300"
+                            )}
+                            title="Toggle Regex (Ctrl/Cmd + R)"
                         >
-
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-
+                            .*
                         </button>
+                        {searchQuery && (
 
-                    )}
+                            <button 
+
+                                onClick={() => setSearchQuery('')}
+
+                                className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300"
+
+                            >
+
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+
+                            </button>
+
+                        )}
+                    </div>
 
                 </div>
                 <div className="ml-auto flex-shrink-0">
@@ -643,6 +673,7 @@ export function LogViewer({
                           wrapLines={wrapLines}
                           fontSizeClass={fontSizeClass}
                           searchQuery={searchQuery}
+                          isRegex={isRegex}
                           disablePrettyJson
                         />
                       </div>
@@ -658,6 +689,7 @@ export function LogViewer({
                     wrapLines={wrapLines}
                     fontSizeClass={fontSizeClass}
                     searchQuery={searchQuery}
+                    isRegex={isRegex}
                   />
                 ))
               )

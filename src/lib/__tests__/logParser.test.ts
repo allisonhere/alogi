@@ -5,7 +5,7 @@ describe('logParser', () => {
   it('should detect error severity', () => {
     const result = parseLogLine('2023-10-27 10:00:00 [ERROR] Connection failed');
     expect(result.severity).toBe('error');
-    // "[ERROR]" matches the timestamp regex \[.*?\]
+    // "[ERROR]" matches the timestamp regex \[.*?\ ]
     expect(result.tokens).toEqual(expect.arrayContaining([
       expect.objectContaining({ text: '[ERROR]', type: 'timestamp' }),
       expect.objectContaining({ text: 'failed', type: 'keyword-error' })
@@ -41,5 +41,22 @@ describe('logParser', () => {
     const result = parseLogLine(jsonStr);
     expect(result.isJson).toBe(true);
     expect(result.jsonContent).toEqual({ foo: 'bar' });
+  });
+
+  it('should handle regex search', () => {
+    // Regex matching "User" followed by 3 digits
+    const result = parseLogLine('User 123 logged in', 'User \\d{3}', true);
+    const matchToken = result.tokens.find(t => t.type === 'match');
+    expect(matchToken).toBeDefined();
+    expect(matchToken?.text).toBe('User 123');
+  });
+
+  it('should handle invalid regex safely', () => {
+    // Invalid regex (unclosed group)
+    const result = parseLogLine('Some text', '(', true);
+    const matchToken = result.tokens.find(t => t.type === 'match');
+    expect(matchToken).toBeUndefined();
+    // Should still parse other tokens normally
+    expect(result.tokens.length).toBeGreaterThan(0);
   });
 });

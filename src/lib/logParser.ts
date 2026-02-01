@@ -10,7 +10,7 @@ export interface ParsedLogLine {
   tokens: LogToken[];
 }
 
-export function parseLogLine(line: string, searchQuery: string = '', disablePrettyJson: boolean = false): ParsedLogLine {
+export function parseLogLine(line: string, searchQuery: string = '', isRegex: boolean = false, disablePrettyJson: boolean = false): ParsedLogLine {
   const lower = line.toLowerCase();
   
   // 1. Determine Severity
@@ -38,28 +38,63 @@ export function parseLogLine(line: string, searchQuery: string = '', disablePret
 
   // 3. Tokenize
   const query = searchQuery.trim();
-  const queryLower = query.toLowerCase();
+
+  // Prepare Regex if applicable
+  let searchRegex: RegExp | null = null;
+  if (query) {
+    if (isRegex) {
+      try {
+        searchRegex = new RegExp(query, 'gi');
+      } catch {
+        // Invalid regex, treat as no match or fallback to text?
+        // For UI feedback it's better to just not match anything until valid
+        searchRegex = null;
+      }
+    }
+  }
 
   const highlightMatches = (text: string, type: LogToken['type']): LogToken[] => {
     if (!query) return [{ text, type }];
     
-    const lowerText = text.toLowerCase();
     const result: LogToken[] = [];
     let startIndex = 0;
-    let matchIndex = lowerText.indexOf(queryLower, startIndex);
 
-    while (matchIndex !== -1) {
-      if (matchIndex > startIndex) {
-        result.push({ text: text.slice(startIndex, matchIndex), type });
-      }
-      result.push({ 
-        text: text.slice(matchIndex, matchIndex + query.length), 
-        type: 'match' 
-      });
-      startIndex = matchIndex + query.length;
-      matchIndex = lowerText.indexOf(queryLower, startIndex);
+    if (isRegex && searchRegex) {
+        // REGEX MODE
+        // We need to clone regex or reset lastIndex because it's stateful if 'g' flag is used
+        searchRegex.lastIndex = 0;
+        let match;
+        while ((match = searchRegex.exec(text)) !== null) {
+            if (match.index > startIndex) {
+                result.push({ text: text.slice(startIndex, match.index), type });
+            }
+            result.push({ text: match[0], type: 'match' });
+            startIndex = searchRegex.lastIndex;
+            
+            // Prevent infinite loops with zero-width matches
+            if (match.index === searchRegex.lastIndex) {
+                searchRegex.lastIndex++;
+            }
+        }
+    } else if (!isRegex) {
+        // PLAIN TEXT MODE
+        const queryLower = query.toLowerCase();
+        const lowerText = text.toLowerCase();
+        let matchIndex = lowerText.indexOf(queryLower, startIndex);
+
+        while (matchIndex !== -1) {
+            if (matchIndex > startIndex) {
+                result.push({ text: text.slice(startIndex, matchIndex), type });
+            }
+            result.push({ 
+                text: text.slice(matchIndex, matchIndex + query.length), 
+                type: 'match' 
+            });
+            startIndex = matchIndex + query.length;
+            matchIndex = lowerText.indexOf(queryLower, startIndex);
+        }
     }
-    
+
     if (startIndex < text.length) {
       result.push({ text: text.slice(startIndex), type });
     }

@@ -88,7 +88,7 @@ You can also prefill values via environment variables:
 *   **Select a File:** Click a log file to view it.
 *   **Analyze:** Click the **Sparkles** button to generate an AI summary and open the chat panel for follow-up questions.
 *   **Go Live:** Toggle "Go Live" to stream updates automatically.
-*   **Filter:** Use the search bar to filter lines instantly.
+*   **Filter:** Use the search bar to filter lines instantly. Toggle **Regex Mode** with the `.*` button (or `Ctrl+R`).
 *   **Insights:** Toggle the Insights button to see top errors/warnings and trends.
 *   **Wrap/Font:** Use Wrap + A-/A/A+ to control line wrapping and font size.
 
