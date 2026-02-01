@@ -36,7 +36,7 @@ export default function Dashboard() {
 
   const [content, setContent] = useState<string | null>(null);
   const [loadingContent, setLoadingContent] = useState(false);
-  const [isLive, setIsLive] = useState(false);
+  const [isLive, setIsLive] = useState(true);
   const [showHosts, setShowHosts] = useState(true);
   const [showFiles, setShowFiles] = useState(true);
   const [hostWidth, setHostWidth] = useState(DEFAULT_HOST_WIDTH);
@@ -202,7 +202,6 @@ export default function Dashboard() {
     setLoadingFiles(true);
     setSelectedFile(null);
     setContent(null);
-    setIsLive(false);
   };
 
   // Fetch Files
