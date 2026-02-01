@@ -64,7 +64,12 @@
     npm run dev
     ```
 
-4.  **Open in Browser:**
+4.  **Run tests:**
+    ```bash
+    npx vitest
+    ```
+
+5.  **Open in Browser:**
     Go to `http://localhost:3000`
 
 ## 🔑 Configuration

@@ -1,136 +1,11 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { BarChart3, Sparkles, Terminal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VibeCheckBar } from './VibeCheckBar';
 import { ChatPanel } from './ChatPanel';
 import { InsightsPanel } from './InsightsPanel';
-
-// Helper to highlight log parts
-function LogLine({
-  line,
-  index,
-  wrapLines,
-  fontSizeClass,
-  searchQuery,
-  disablePrettyJson = false,
-}: {
-  line: string;
-  index: number;
-  wrapLines: boolean;
-  fontSizeClass: string;
-  searchQuery: string;
-  disablePrettyJson?: boolean;
-}) {
-  const lower = line.toLowerCase();
-  const isError = lower.includes('error') || lower.includes('critical') || lower.includes('fatal') || lower.includes('failed') || lower.includes('denied');
-  const isWarn = lower.includes('warn') || lower.includes('warning') || lower.includes('block') || lower.includes('conflict') || lower.includes('timeout') || lower.includes('retrying');
-  const query = searchQuery.trim();
-  const queryLower = query.toLowerCase();
-
-  const highlightMatches = (text: string) => {
-    if (!query) return text;
-    const lowerText = text.toLowerCase();
-    const parts: Array<string | React.ReactElement> = [];
-    let startIndex = 0;
-    let matchIndex = lowerText.indexOf(queryLower, startIndex);
-    let keyIndex = 0;
-    while (matchIndex !== -1) {
-      if (matchIndex > startIndex) {
-        parts.push(text.slice(startIndex, matchIndex));
-      }
-      const matchText = text.slice(matchIndex, matchIndex + query.length);
-      parts.push(
-        <mark
-          key={`${matchIndex}-${keyIndex}`}
-          className="rounded px-0.5"
-          style={{ backgroundColor: 'oklch(43.2% 0.232 292.759)', color: '#fff' }}
-        >
-          {matchText}
-        </mark>
-      );
-      keyIndex += 1;
-      startIndex = matchIndex + query.length;
-      matchIndex = lowerText.indexOf(queryLower, startIndex);
-    }
-    if (startIndex < text.length) {
-      parts.push(text.slice(startIndex));
-    }
-    return parts;
-  };
-
-  // 1. Try JSON
-  let parsedJson: unknown | null = null;
-  if (!disablePrettyJson && line.trim().startsWith('{') && line.trim().endsWith('}')) {
-    try {
-      parsedJson = JSON.parse(line);
-    } catch {
-      // Not valid JSON, fall through
-    }
-  }
-
-  if (parsedJson !== null) {
-    return (
-      <div className={cn(
-        "flex hover:bg-zinc-100 dark:hover:bg-zinc-800/30 -mx-4 px-4 py-1 transition-colors",
-        isError ? "bg-red-50 dark:bg-red-950/20" : "bg-transparent"
-      )}>
-        <span className="w-10 text-zinc-400 dark:text-zinc-600 select-none text-right mr-4 flex-shrink-0 text-xs mt-0.5 font-mono">{index + 1}</span>
-        <pre className={cn(
-          "font-mono text-emerald-600 dark:text-emerald-400 bg-zinc-50 dark:bg-zinc-900/50 p-2 rounded w-full overflow-x-auto border border-zinc-200 dark:border-zinc-800",
-          fontSizeClass
-        )}>
-          {highlightMatches(JSON.stringify(parsedJson, null, 2))}
-        </pre>
-      </div>
-    );
-  }
-
-  // 2. Standard Highlighting matching pic.png style
-  // Catching: [Timestamp], [Component], Keywords, and HTTP Methods
-  const parts = line.split(/(\[.*?\]|ERROR|WARN|WARNING|INFO|CRITICAL|FATAL|debug|Failed|failed|GET|POST|PUT|DELETE|Accepted|Started|Stopped|BLOCK|conflict|timeout|retrying|Reached|Listening|Created|Mounted|Connected)/gi);
-
-  return (
-    <div className={cn(
-        "flex hover:bg-zinc-100 dark:hover:bg-zinc-800/40 -mx-4 px-4 py-0.5 transition-colors group border-l-2",
-        isError ? "bg-red-50 border-red-500/30 dark:bg-red-950/30 dark:border-red-500/50" : 
-        isWarn ? "bg-orange-50 border-orange-500/30 dark:bg-orange-950/20 dark:border-orange-500/40" :
-        "bg-transparent border-transparent"
-    )}>
-        <span className="w-10 text-zinc-400 dark:text-zinc-700 select-none text-right mr-4 flex-shrink-0 text-xs mt-[3px] font-mono group-hover:text-zinc-500">{index + 1}</span>
-        <span className={cn(
-          "text-zinc-700 dark:text-zinc-300 break-all flex-1 font-mono leading-tight tracking-tight",
-          wrapLines ? "whitespace-pre-wrap" : "whitespace-pre",
-          fontSizeClass
-        )}>
-            {parts.map((part, i) => {
-                const lowerPart = part.toLowerCase();
-                const highlightPart = () => highlightMatches(part);
-                
-                // Brackets [Timestamp] or [Component] -> Zinc 500 (Gray)
-                if (part.startsWith('[') && part.endsWith(']')) return <span key={i} className="text-zinc-400 dark:text-zinc-500">{highlightPart()}</span>;
-                
-                // Keywords matching vibrant pic.png colors - NOW AS LARGER, BRIGHTER PILLS
-                if (['info', 'started', 'reached', 'listening', 'created', 'mounted', 'accepted', 'connected'].includes(lowerPart)) {
-                    return <span key={i} className="inline-block mx-2 px-2.5 py-1 rounded-md text-[11px] font-black bg-[#00f5d4]/10 dark:bg-[#00f5d4]/20 text-emerald-600 dark:text-[#00f5d4] leading-none select-none tracking-tight uppercase shadow-sm shadow-[#00f5d4]/10">{highlightPart()}</span>;
-                }
-                
-                if (['warn', 'warning', 'block', 'conflict', 'timeout', 'retrying'].includes(lowerPart)) {
-                    return <span key={i} className="inline-block mx-2 px-2.5 py-1 rounded-md text-[11px] font-black bg-[#ff9f1c]/10 dark:bg-[#ff9f1c]/25 text-orange-600 dark:text-[#ff9f1c] leading-none select-none tracking-tight uppercase shadow-sm shadow-[#ff9f1c]/10">{highlightPart()}</span>;
-                }
-                
-                if (['error', 'critical', 'fatal', 'failed'].includes(lowerPart)) {
-                    return <span key={i} className="inline-block mx-2 px-2.5 py-1 rounded-md text-[11px] font-black bg-[#ff5d5d]/10 dark:bg-[#ff5d5d]/25 text-red-600 dark:text-[#ff5d5d] leading-none select-none tracking-tight uppercase shadow-sm shadow-[#ff5d5d]/10">{highlightPart()}</span>;
-                }
-
-                // HTTP Methods & Positive Actions (Remaining ones not covered by pills)
-                if (['GET', 'POST', 'PUT', 'DELETE', 'Stopped'].includes(part)) return <span key={i} className="text-indigo-600 dark:text-indigo-400">{highlightPart()}</span>;
-                
-                return highlightPart();
-            })}
-        </span>
-    </div>
-  );
-}
+import LogLine from '@/components/LogLine';
+import { useLogScroller } from '@/hooks/useLogScroller';
 
 interface LogViewerProps {
   content: string | null;
@@ -177,40 +52,8 @@ export function LogViewer({
   const [wrapLines, setWrapLines] = useState(true);
   const [fontSize, setFontSize] = useState(13);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
-  const [viewportRange, setViewportRange] = useState({ start: 0, end: 0 });
-  const [scrollMetrics, setScrollMetrics] = useState({ top: 0, height: 0, scrollHeight: 0 });
   const [insightsOpen, setInsightsOpen] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-
-  const updateViewport = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    if (el.scrollHeight <= 0) {
-      setViewportRange({ start: 0, end: 1 });
-      return;
-    }
-    const start = el.scrollTop / el.scrollHeight;
-    const end = (el.scrollTop + el.clientHeight) / el.scrollHeight;
-    setViewportRange({
-      start: Math.max(0, Math.min(1, start)),
-      end: Math.max(0, Math.min(1, end)),
-    });
-    setScrollMetrics({
-      top: el.scrollTop,
-      height: el.clientHeight,
-      scrollHeight: el.scrollHeight,
-    });
-  }, []);
-
-  const viewportRaf = useRef<number | null>(null);
-  const scheduleViewportUpdate = useCallback(() => {
-    if (viewportRaf.current !== null) return;
-    viewportRaf.current = requestAnimationFrame(() => {
-      viewportRaf.current = null;
-      updateViewport();
-    });
-  }, [updateViewport]);
 
   // Reset analysis and search when file changes
   useEffect(() => {
@@ -220,18 +63,51 @@ export function LogViewer({
     setShowAllLines(false);
   }, [filename]);
 
+  const fontSizeClass = `text-[${fontSize}px]`;
+
+  // Prepare lines data
+  const lines = useMemo(() => content ? content.split('\n') : [], [content]);
+  
+  const filteredLines = useMemo(() => {
+    return searchQuery 
+      ? lines.map((line, index) => ({ line, index })).filter(item => item.line.toLowerCase().includes(searchQuery.toLowerCase()))
+      : lines.map((line, index) => ({ line, index }));
+  }, [lines, searchQuery]);
+
+  const shouldWindow = !searchQuery && filteredLines.length > MAX_RENDER_LINES && !showAllLines;
+  const windowStart = shouldWindow ? filteredLines.length - MAX_RENDER_LINES : 0;
+  const windowedLines = shouldWindow ? filteredLines.slice(windowStart) : filteredLines;
+  const shouldVirtualize = !wrapLines && windowedLines.length > MAX_RENDER_LINES;
+  const rowHeight = fontSize + 12;
+
+  // Use the custom hook for scrolling logic
+  const { 
+    scrollRef, 
+    viewportRange, 
+    scheduleViewportUpdate, 
+    scrollToBottom, 
+    startIndex, 
+    endIndex, 
+    visibleCount 
+  } = useLogScroller({
+    contentLength: windowedLines.length,
+    rowHeight,
+    overscan: 12
+  });
+
+  const visibleLines = shouldVirtualize ? windowedLines.slice(startIndex, endIndex) : windowedLines;
+
   // Auto-scroll to bottom in live mode
   useEffect(() => {
-    if (isLive && scrollRef.current) {
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (isLive) {
+        scrollToBottom();
     }
-  }, [content, isLive]);
+  }, [content, isLive, scrollToBottom]);
 
+  // Update viewport when content changes
   useEffect(() => {
-    updateViewport();
-    window.addEventListener('resize', scheduleViewportUpdate);
-    return () => window.removeEventListener('resize', scheduleViewportUpdate);
-  }, [updateViewport, scheduleViewportUpdate, content, searchQuery, showAllLines, isLive]);
+    scheduleViewportUpdate();
+  }, [content, searchQuery, showAllLines, isLive, scheduleViewportUpdate]);
 
   useEffect(() => {
     try {
@@ -265,8 +141,6 @@ export function LogViewer({
       JSON.stringify({ wrapLines, fontSize, insightsOpen })
     );
   }, [wrapLines, fontSize, insightsOpen, prefsLoaded]);
-
-  const fontSizeClass = `text-[${fontSize}px]`;
 
   const adjustFontSize = (delta: number) => {
     const index = FONT_SIZES.indexOf(fontSize);
@@ -385,26 +259,6 @@ export function LogViewer({
     }
   };
 
-  const lines = content ? content.split('\n') : [];
-  const filteredLines = searchQuery 
-    ? lines.map((line, index) => ({ line, index })).filter(item => item.line.toLowerCase().includes(searchQuery.toLowerCase()))
-    : lines.map((line, index) => ({ line, index }));
-  const shouldWindow = !searchQuery && filteredLines.length > MAX_RENDER_LINES && !showAllLines;
-  const windowStart = shouldWindow ? filteredLines.length - MAX_RENDER_LINES : 0;
-  const windowedLines = shouldWindow ? filteredLines.slice(windowStart) : filteredLines;
-  const shouldVirtualize = !wrapLines && windowedLines.length > MAX_RENDER_LINES;
-  const rowHeight = fontSize + 12;
-  const overscan = 12;
-  const visibleCount = shouldVirtualize
-    ? Math.ceil((scrollMetrics.height || 0) / rowHeight) + overscan * 2
-    : windowedLines.length;
-  const startIndex = shouldVirtualize
-    ? Math.max(0, Math.floor(scrollMetrics.top / rowHeight) - overscan)
-    : 0;
-  const endIndex = shouldVirtualize
-    ? Math.min(windowedLines.length, startIndex + visibleCount)
-    : windowedLines.length;
-  const visibleLines = shouldVirtualize ? windowedLines.slice(startIndex, endIndex) : windowedLines;
   const allWindowed = lines.length > MAX_RENDER_LINES && !showAllLines
     ? lines.map((line, index) => ({ line, index })).slice(lines.length - MAX_RENDER_LINES)
     : lines.map((line, index) => ({ line, index }));
