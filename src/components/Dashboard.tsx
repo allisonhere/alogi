@@ -44,6 +44,11 @@ export default function Dashboard() {
   const [isResizing, setIsResizing] = useState(false);
   const [hasRestored, setHasRestored] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showSudoPrompt, setShowSudoPrompt] = useState(false);
+  const [sudoError, setSudoError] = useState('');
+  const [sudoPassword, setSudoPassword] = useState('');
+  const [sudoLoading, setSudoLoading] = useState(false);
+  const pendingRetry = useRef<(() => void) | null>(null);
   const hostPanelRef = useRef<HTMLDivElement>(null);
   const filePanelRef = useRef<HTMLDivElement>(null);
   const liveButtonRef = useRef<HTMLButtonElement>(null);
@@ -204,19 +209,65 @@ export default function Dashboard() {
     setContent(null);
   };
 
+  const promptSudo = (retry: () => void) => {
+    pendingRetry.current = retry;
+    setSudoError('');
+    setSudoPassword('');
+    setShowSudoPrompt(true);
+  };
+
+  const handleSudoSubmit = async () => {
+    setSudoLoading(true);
+    setSudoError('');
+    try {
+      const res = await fetch('/api/sudo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: sudoPassword }),
+      });
+      if (res.ok) {
+        setShowSudoPrompt(false);
+        setSudoPassword('');
+        pendingRetry.current?.();
+        pendingRetry.current = null;
+      } else {
+        setSudoError('Invalid password');
+      }
+    } catch {
+      setSudoError('Failed to validate password');
+    } finally {
+      setSudoLoading(false);
+    }
+  };
+
   // Fetch Files
   useEffect(() => {
     if (!selectedHost) return;
-    fetch(`/api/files?host=${selectedHost}`)
-      .then(res => res.json())
-      .then(data => {
-        setFiles(data.files || []);
-        setLoadingFiles(false);
-        if (selectedFile && !(data.files || []).some((file: FileInfo) => file.name === selectedFile)) {
-          setSelectedFile(null);
-          setContent(null);
-        }
-      });
+    const fetchFiles = () => {
+      setLoadingFiles(true);
+      fetch(`/api/files?host=${selectedHost}`)
+        .then(async res => {
+          if (res.status === 403) {
+            const data = await res.json();
+            if (data.error === 'permission_denied') {
+              setLoadingFiles(false);
+              promptSudo(() => fetchFiles());
+              return;
+            }
+          }
+          return res.json();
+        })
+        .then(data => {
+          if (!data) return;
+          setFiles(data.files || []);
+          setLoadingFiles(false);
+          if (selectedFile && !(data.files || []).some((file: FileInfo) => file.name === selectedFile)) {
+            setSelectedFile(null);
+            setContent(null);
+          }
+        });
+    };
+    fetchFiles();
   }, [selectedHost]);
 
   // Fetch Content
@@ -231,8 +282,19 @@ export default function Dashboard() {
           cache: 'no-store',
           signal: controller.signal,
         })
-          .then(res => res.json())
+          .then(async res => {
+            if (res.status === 403) {
+              const data = await res.json();
+              if (data.error === 'permission_denied') {
+                if (showLoading) setLoadingContent(false);
+                promptSudo(() => fetchContent(showLoading));
+                return null;
+              }
+            }
+            return res.json();
+          })
           .then(data => {
+            if (!data) return;
             setContent(data.content || "");
             if (showLoading) setLoadingContent(false);
           })
@@ -411,6 +473,40 @@ export default function Dashboard() {
         liveButtonRef={liveButtonRef}
         analyzeButtonRef={analyzeButtonRef}
       />
+
+      {showSudoPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-white dark:bg-zinc-950/95 border border-indigo-300/60 dark:border-indigo-500/40 rounded-2xl shadow-[0_18px_50px_rgba(15,23,42,0.35)] backdrop-blur p-6 w-full max-w-sm">
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-1">Elevated Access Required</h2>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">This file requires sudo. Your password is stored in memory only for this session.</p>
+            <input
+              type="password"
+              value={sudoPassword}
+              onChange={e => setSudoPassword(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && sudoPassword) handleSudoSubmit(); }}
+              placeholder="Password"
+              autoFocus
+              className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 mb-3"
+            />
+            {sudoError && <p className="text-sm text-red-500 mb-3">{sudoError}</p>}
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => { setShowSudoPrompt(false); pendingRetry.current = null; }}
+                className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSudoSubmit}
+                disabled={!sudoPassword || sudoLoading}
+                className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors text-sm"
+              >
+                {sudoLoading ? 'Authenticating...' : 'Authenticate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showOnboarding && (
         <OnboardingOverlay

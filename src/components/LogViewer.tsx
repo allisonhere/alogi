@@ -49,7 +49,7 @@ export function LogViewer({
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [regexError, setRegexError] = useState<string | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isRegex, setIsRegex] = useState(false);
   const [showAllLines, setShowAllLines] = useState(false);
   const [wrapLines, setWrapLines] = useState(true);
@@ -69,6 +69,7 @@ export function LogViewer({
     setAnalysis(null);
     setIsAiPanelOpen(false);
     setSearchQuery('');
+    setDebouncedSearch('');
     setIsRegex(false);
     setShowAllLines(false);
     setBookmarks(new Set());
@@ -83,25 +84,38 @@ export function LogViewer({
 
   // Prepare lines data
   const lines = useMemo(() => content ? content.split('\n') : [], [content]);
-  
-  const filteredLines = useMemo(() => {
-    if (!searchQuery) { setRegexError(null); return lines.map((line, index) => ({ line, index })); }
+
+  // Debounce search input — only debounce on large logs
+  useEffect(() => {
+    if (!searchQuery) { setDebouncedSearch(''); return; }
+    if (lines.length < 5000) { setDebouncedSearch(searchQuery); return; }
+    const id = setTimeout(() => setDebouncedSearch(searchQuery), 100);
+    return () => clearTimeout(id);
+  }, [searchQuery, lines.length]);
+
+  // Precompute timestamps once per content change
+  const lineTimestamps = useMemo(() => lines.map(line => extractTimestamp(line)), [lines]);
+
+  const filterResult = useMemo(() => {
+    const allLines = lines.map((line, index) => ({ line, index }));
+    if (!debouncedSearch) return { lines: allLines, regexError: null };
 
     if (isRegex) {
         try {
-            const regex = new RegExp(searchQuery, 'i');
-            setRegexError(null);
-            return lines.map((line, index) => ({ line, index })).filter(item => regex.test(item.line));
+            const regex = new RegExp(debouncedSearch, 'i');
+            return { lines: allLines.filter(item => regex.test(item.line)), regexError: null };
         } catch (e) {
             const msg = e instanceof SyntaxError ? e.message.replace(/^Invalid regular expression: /, '') : 'Invalid regex';
-            setRegexError(msg);
-            return lines.map((line, index) => ({ line, index }));
+            return { lines: allLines, regexError: msg };
         }
     }
 
-    setRegexError(null);
-    return lines.map((line, index) => ({ line, index })).filter(item => item.line.toLowerCase().includes(searchQuery.toLowerCase()));
-  }, [lines, searchQuery, isRegex]);
+    const lower = debouncedSearch.toLowerCase();
+    return { lines: allLines.filter(item => item.line.toLowerCase().includes(lower)), regexError: null };
+  }, [lines, debouncedSearch, isRegex]);
+
+  const filteredLines = filterResult.lines;
+  const regexError = filterResult.regexError;
 
   const timeFilteredLines = useMemo(() => {
     if (!timeRange) return filteredLines;
@@ -110,22 +124,21 @@ export function LogViewer({
     const startMinutes = startH * 60 + startM;
     const endMinutes = endH * 60 + endM;
     return filteredLines.filter(item => {
-      const ts = extractTimestamp(item.line);
-      if (!ts) return true; // pass through lines without timestamps
+      const ts = lineTimestamps[item.index];
+      if (!ts) return true;
       const mins = ts.getHours() * 60 + ts.getMinutes();
       return startMinutes <= endMinutes
         ? mins >= startMinutes && mins <= endMinutes
-        : mins >= startMinutes || mins <= endMinutes; // wrap around midnight
+        : mins >= startMinutes || mins <= endMinutes;
     });
-  }, [filteredLines, timeRange]);
+  }, [filteredLines, timeRange, lineTimestamps]);
 
-  // Detect time range in log for hint display
+  // Detect time range in log — only computed when time filter dropdown is open
   const detectedTimeRange = useMemo(() => {
-    if (!lines.length) return null;
+    if (!showTimeFilter || !lineTimestamps.length) return null;
     let earliest: string | null = null;
     let latest: string | null = null;
-    for (const line of lines) {
-      const ts = extractTimestamp(line);
+    for (const ts of lineTimestamps) {
       if (ts) {
         const hm = `${String(ts.getHours()).padStart(2, '0')}:${String(ts.getMinutes()).padStart(2, '0')}`;
         if (!earliest) earliest = hm;
@@ -134,9 +147,9 @@ export function LogViewer({
     }
     if (!earliest || !latest) return null;
     return { earliest, latest };
-  }, [lines]);
+  }, [showTimeFilter, lineTimestamps]);
 
-  const shouldWindow = !searchQuery && !timeRange && timeFilteredLines.length > MAX_RENDER_LINES && !showAllLines;
+  const shouldWindow = !debouncedSearch && !timeRange && timeFilteredLines.length > MAX_RENDER_LINES && !showAllLines;
   const windowStart = shouldWindow ? timeFilteredLines.length - MAX_RENDER_LINES : 0;
   const windowedLines = shouldWindow ? timeFilteredLines.slice(windowStart) : timeFilteredLines;
   const shouldVirtualize = !wrapLines && windowedLines.length > MAX_RENDER_LINES;
@@ -169,7 +182,7 @@ export function LogViewer({
   // Update viewport when content changes
   useEffect(() => {
     scheduleViewportUpdate();
-  }, [content, searchQuery, showAllLines, isLive, scheduleViewportUpdate]);
+  }, [content, debouncedSearch, showAllLines, isLive, scheduleViewportUpdate]);
 
   useEffect(() => {
     try {
@@ -346,11 +359,14 @@ export function LogViewer({
     if (!content) return;
     setIsLive(false); // Pause live tailing
     setAnalyzing(true);
+    const analysisContent = (debouncedSearch || timeRange)
+      ? timeFilteredLines.map(item => item.line).join('\n')
+      : content;
     try {
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content: analysisContent }),
       });
       const data = await res.json();
       
@@ -381,7 +397,7 @@ export function LogViewer({
   const allWindowed = lines.length > MAX_RENDER_LINES && !showAllLines
     ? lines.map((line, index) => ({ line, index })).slice(lines.length - MAX_RENDER_LINES)
     : lines.map((line, index) => ({ line, index }));
-  const insightsLines = searchQuery ? windowedLines : allWindowed;
+  const insightsLines = debouncedSearch ? windowedLines : allWindowed;
 
   const insightsData = useMemo(() => {
     const errorMap = new Map<string, { count: number; index: number; sample: string }>();
@@ -845,7 +861,7 @@ export function LogViewer({
 
         </div>
 
-      {timeFilteredLines.length > MAX_RENDER_LINES && !searchQuery && !timeRange && (
+      {timeFilteredLines.length > MAX_RENDER_LINES && !debouncedSearch && !timeRange && (
         <div className="px-6 py-2 text-xs bg-amber-50 text-amber-900 border-b border-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:border-amber-500/20 flex items-center justify-between">
           <span className="flex flex-wrap items-center gap-2">
             Large log: {shouldWindow ? `showing last ${MAX_RENDER_LINES} of ${timeFilteredLines.length} lines` : `showing all ${timeFilteredLines.length} lines`}
@@ -919,7 +935,7 @@ export function LogViewer({
                           index={index}
                           wrapLines={wrapLines}
                           fontSizeClass={fontSizeClass}
-                          searchQuery={searchQuery}
+                          searchQuery={debouncedSearch}
                           isRegex={isRegex}
                           disablePrettyJson
                           isBookmarked={bookmarks.has(index)}

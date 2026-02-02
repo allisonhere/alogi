@@ -1,16 +1,21 @@
+const _tsCache = new Map<string, Date | null>();
+
 export function extractTimestamp(line: string): Date | null {
+  const cacheKey = line.slice(0, 50);
+  if (_tsCache.has(cacheKey)) return _tsCache.get(cacheKey)!;
+  if (_tsCache.size > 10000) _tsCache.clear();
   // ISO 8601: 2024-01-15T14:30:00.000Z or 2024-01-15 14:30:00
   const iso = line.match(/(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)/);
   if (iso) {
     const d = new Date(iso[1].replace(' ', 'T'));
-    if (!isNaN(d.getTime())) return d;
+    if (!isNaN(d.getTime())) { _tsCache.set(cacheKey, d); return d; }
   }
 
   // Common log format: 15/Jan/2024:14:30:00
   const clf = line.match(/(\d{2})\/([A-Z][a-z]{2})\/(\d{4}):(\d{2}:\d{2}:\d{2})/);
   if (clf) {
     const d = new Date(`${clf[2]} ${clf[1]}, ${clf[3]} ${clf[4]}`);
-    if (!isNaN(d.getTime())) return d;
+    if (!isNaN(d.getTime())) { _tsCache.set(cacheKey, d); return d; }
   }
 
   // Syslog: Jan 15 14:30:00
@@ -18,23 +23,24 @@ export function extractTimestamp(line: string): Date | null {
   if (syslog) {
     const now = new Date();
     const d = new Date(`${syslog[1]} ${syslog[2]}, ${now.getFullYear()} ${syslog[3]}`);
-    if (!isNaN(d.getTime())) return d;
+    if (!isNaN(d.getTime())) { _tsCache.set(cacheKey, d); return d; }
   }
 
   // Bracket-wrapped with date: [2024-01-15 14:30:00]
   const bracketFull = line.match(/\[(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?)\]/);
   if (bracketFull) {
     const d = new Date(bracketFull[1].replace(' ', 'T'));
-    if (!isNaN(d.getTime())) return d;
+    if (!isNaN(d.getTime())) { _tsCache.set(cacheKey, d); return d; }
   }
 
   // Bracket-wrapped time only: [14:30:00]
   const bracketTime = line.match(/\[(\d{2}:\d{2}:\d{2})\]/);
   if (bracketTime) {
     const d = new Date(`1970-01-01T${bracketTime[1]}`);
-    if (!isNaN(d.getTime())) return d;
+    if (!isNaN(d.getTime())) { _tsCache.set(cacheKey, d); return d; }
   }
 
+  _tsCache.set(cacheKey, null);
   return null;
 }
 

@@ -78,16 +78,15 @@ const attachExternalLinkHandlers = (win, appOrigin) => {
 };
 
 const createWindow = async () => {
-  Menu.setApplicationMenu(null);
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
     backgroundColor: '#09090b',
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs')
     }
   });
-  win.setMenuBarVisibility(false);
 
   if (isDev) {
     const appOrigin = new URL(process.env.ELECTRON_START_URL).origin;

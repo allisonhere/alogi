@@ -4,6 +4,35 @@ import path from 'path';
 import { execSync } from 'child_process';
 import { getConfig } from '@/lib/config';
 import { sshExec } from '@/lib/ssh';
+import { hasSudoPassword, sudoExec } from '@/lib/sudo';
+
+function isPermissionError(error: unknown): boolean {
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
+    return (error as NodeJS.ErrnoException).code === 'EACCES' ||
+      msg.includes('permission denied') ||
+      msg.includes('eacces');
+  }
+  return false;
+}
+
+function parseLsOutput(stdout: string) {
+  return stdout.split('\n')
+    .filter(line => line.trim())
+    .map(line => {
+      const parts = line.split(/\s+/);
+      // ls -la output: perms links owner group size month day time name
+      if (parts.length >= 9) {
+        const name = parts.slice(8).join(' ');
+        const size = parseInt(parts[4], 10) || 0;
+        // skip directories (perms start with 'd') and special entries
+        if (parts[0].startsWith('d') || name === '.' || name === '..') return null;
+        return { name, size, updated: new Date().toISOString() };
+      }
+      return null;
+    })
+    .filter(Boolean);
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -38,6 +67,7 @@ export async function GET(request: Request) {
                         updated: status.trim() // Display status (e.g. "Up 2 hours") instead of date
                     };
                 });
+              files.unshift({ name: 'ALL_CONTAINERS', size: 0, updated: 'All running containers' });
               return NextResponse.json({ files });
           } else {
               // Standard File List (ls)
@@ -60,25 +90,42 @@ export async function GET(request: Request) {
 
   // Handle System Journal - List Services
   if (host === '(system-journal)') {
+      const command = 'systemctl list-units --type=service --state=running --no-legend --plain';
       try {
-          const stdout = execSync('systemctl list-units --type=service --state=running --no-legend --plain', { encoding: 'utf-8' });
+          const stdout = execSync(command, { encoding: 'utf-8' });
           const files = stdout.split('\n')
               .filter(line => line.trim())
               .map(line => {
                   const parts = line.split(/\s+/);
                   return {
-                      name: parts[0], // service name (e.g., ssh.service)
-                      size: 0,        // Virtual
+                      name: parts[0],
+                      size: 0,
                       updated: new Date().toISOString()
                   };
               });
-          
-          // Add a "Complete System Log" option
-          files.unshift({ name: 'ALL_SYSTEM_LOGS', size: 0, updated: new Date().toISOString() });
 
+          files.unshift({ name: 'ALL_SYSTEM_LOGS', size: 0, updated: new Date().toISOString() });
           return NextResponse.json({ files });
-      } catch {
-          return NextResponse.json({ error: 'Failed to list services. Do you have permissions?' }, { status: 500 });
+      } catch (error) {
+          if (isPermissionError(error)) {
+              if (hasSudoPassword()) {
+                  try {
+                      const stdout = sudoExec(command, 'utf-8');
+                      const files = stdout.split('\n')
+                          .filter(line => line.trim())
+                          .map(line => {
+                              const parts = line.split(/\s+/);
+                              return { name: parts[0], size: 0, updated: new Date().toISOString() };
+                          });
+                      files.unshift({ name: 'ALL_SYSTEM_LOGS', size: 0, updated: new Date().toISOString() });
+                      return NextResponse.json({ files });
+                  } catch {
+                      // fall through
+                  }
+              }
+              return NextResponse.json({ error: 'permission_denied' }, { status: 403 });
+          }
+          return NextResponse.json({ error: 'Failed to list services.' }, { status: 500 });
       }
   }
 
@@ -90,7 +137,7 @@ export async function GET(request: Request) {
   const config = getConfig();
   const baseDir = config.general.logPath || path.join(process.cwd(), 'mock-logs');
   const hostDir = path.join(baseDir, host);
-  
+
   try {
     if (!fs.existsSync(hostDir)) {
       return NextResponse.json({ error: 'Host not found' }, { status: 404 });
@@ -106,7 +153,19 @@ export async function GET(request: Request) {
       }));
 
     return NextResponse.json({ files });
-  } catch {
+  } catch (error) {
+    if (isPermissionError(error)) {
+      if (hasSudoPassword()) {
+        try {
+          const stdout = sudoExec(`ls -la '${hostDir.replace(/'/g, "'\\''")}'`, 'utf-8');
+          const files = parseLsOutput(stdout);
+          return NextResponse.json({ files });
+        } catch {
+          // fall through
+        }
+      }
+      return NextResponse.json({ error: 'permission_denied' }, { status: 403 });
+    }
     return NextResponse.json({ error: 'Failed to read files' }, { status: 500 });
   }
 }

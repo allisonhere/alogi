@@ -67,6 +67,8 @@ export function sshExec(config: SSHHostConfig, command: string): Promise<string>
           if (code !== 0 && stderr.trim()) {
               const signalInfo = signal ? ` (signal: ${signal})` : '';
               console.warn(`SSH command stderr (exit ${code}${signalInfo}): ${stderr.trim()}`);
+              settle(reject, new Error(stderr.trim()));
+              return;
           }
           settle(resolve, stdout);
         }).on('data', (data: Buffer) => {

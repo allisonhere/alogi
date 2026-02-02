@@ -1,4 +1,4 @@
-import { FileText, Clock } from 'lucide-react';
+import { FileText, Clock, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface FileInfo {
@@ -44,7 +44,9 @@ export function FileList({ files, selectedFile, onSelectFile, loading }: FileLis
             )}
           >
             <div className="flex items-center gap-2 font-medium">
-              <FileText className="w-4 h-4" />
+              {file.name === 'ALL_CONTAINERS' || file.name === 'ALL_SYSTEM_LOGS'
+                ? <Layers className="w-4 h-4" />
+                : <FileText className="w-4 h-4" />}
               {file.name}
             </div>
             <div className="flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-600 mt-1 pl-6 group-hover:text-zinc-600 dark:group-hover:text-zinc-500">

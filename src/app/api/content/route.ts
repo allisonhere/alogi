@@ -5,8 +5,19 @@ import zlib from 'zlib';
 import { execSync } from 'child_process';
 import { getConfig } from '@/lib/config';
 import { sshExec } from '@/lib/ssh';
+import { hasSudoPassword, sudoReadFile, sudoExec } from '@/lib/sudo';
 
 export const dynamic = 'force-dynamic';
+
+function isPermissionError(error: unknown): boolean {
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
+    return (error as NodeJS.ErrnoException).code === 'EACCES' ||
+      msg.includes('permission denied') ||
+      msg.includes('eacces');
+  }
+  return false;
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -35,7 +46,10 @@ export async function GET(request: Request) {
           const safeFile = file.replace(/[^a-zA-Z0-9\.\-\_\@]/g, '');
 
           let command;
-          if (isDocker) {
+          if (isDocker && file === 'ALL_CONTAINERS') {
+              const perContainer = Math.min(500, Math.floor(tailLines / 5));
+              command = `for c in $(docker ps --format '{{.Names}}'); do docker logs --tail ${perContainer} "$c" 2>&1 | sed "s/^/[$c] /"; done`;
+          } else if (isDocker) {
               command = `docker logs --tail ${tailLines} ${safeFile} 2>&1`;
           } else {
               command = file.endsWith('.gz')
@@ -56,19 +70,30 @@ export async function GET(request: Request) {
 
   // Handle System Journal - Fetch Logs
   if (host === '(system-journal)') {
+      let command = `journalctl -n ${tailLines} --no-pager`;
+
+      if (file !== 'ALL_SYSTEM_LOGS') {
+          const service = file.replace(/[^a-zA-Z0-9\.\-\_\@]/g, '');
+          command += ` -u ${service}`;
+      }
+
       try {
-          let command = `journalctl -n ${tailLines} --no-pager`;
-
-          if (file !== 'ALL_SYSTEM_LOGS') {
-              const service = file.replace(/[^a-zA-Z0-9\.\-\_\@]/g, '');
-              command += ` -u ${service}`;
-          }
-
           const content = execSync(command, { encoding: 'utf-8' });
           return NextResponse.json({ content: content || "(No logs found for this period)" });
       } catch (error) {
+          if (isPermissionError(error)) {
+              if (hasSudoPassword()) {
+                  try {
+                      const content = sudoExec(command, 'utf-8');
+                      return NextResponse.json({ content: content || "(No logs found for this period)" });
+                  } catch {
+                      // fall through to 403
+                  }
+              }
+              return NextResponse.json({ error: 'permission_denied' }, { status: 403 });
+          }
           console.error(error);
-          return NextResponse.json({ error: 'Failed to read journal. Permissions?' }, { status: 500 });
+          return NextResponse.json({ error: 'Failed to read journal.' }, { status: 500 });
       }
   }
 
@@ -79,7 +104,7 @@ export async function GET(request: Request) {
 
   const baseDir = config.general.logPath || path.join(process.cwd(), 'mock-logs');
   const filePath = path.join(baseDir, host, file);
-  
+
   try {
     if (!fs.existsSync(filePath)) {
       return NextResponse.json({ error: 'File not found' }, { status: 404 });
@@ -95,6 +120,17 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ content });
   } catch (error) {
+    if (isPermissionError(error)) {
+      if (hasSudoPassword()) {
+        try {
+          const content = sudoReadFile(filePath);
+          return NextResponse.json({ content });
+        } catch {
+          // fall through to 403
+        }
+      }
+      return NextResponse.json({ error: 'permission_denied' }, { status: 403 });
+    }
     const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json({ error: 'Failed to read file: ' + message }, { status: 500 });
   }
