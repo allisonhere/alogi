@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.25] - 2026-02-02
+
+### Added
+- **Sudo Elevation:** In-app sudo password prompt when local files or journalctl fail with permission errors. Password cached in memory for the session only.
+- **Landing Page v2:** Redesigned project landing page with new layout, sticky nav, and full-width screenshot.
+
+### Fixed
+- SSH commands with non-zero exit codes no longer silently resolve — they properly reject with the stderr message.
+
 ## [0.1.24] - 2026-02-01
 
 ### Added
