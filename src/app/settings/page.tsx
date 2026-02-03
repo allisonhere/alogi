@@ -1,16 +1,52 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Save, ArrowLeft, Server, Cpu, Key, Trash2, Activity } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Save, ArrowLeft, Server, Cpu, Key, Trash2, Copy, X, ChevronDown, Settings } from 'lucide-react';
 import Link from 'next/link';
-import type { AlogiConfig } from '@/lib/config';
+import type { AlogiConfig, HostConfig } from '@/lib/config';
+import { ToastContainer, useToast } from '@/components/Toast';
 
 type MissingKey = { id?: string; alias?: string; keyPath?: string };
 type MissingPassword = { id?: string; alias?: string };
 type SaveErrorResponse = { error?: string; missingKeys?: MissingKey[]; missingPasswords?: MissingPassword[] };
 
+interface HostValidationErrors {
+  hostname?: string;
+  username?: string;
+  keyPath?: string;
+  password?: string;
+}
+
+function validateHost(host: HostConfig): HostValidationErrors {
+  const errors: HostValidationErrors = {};
+
+  if (!host.hostname?.trim()) {
+    errors.hostname = 'Hostname is required';
+  }
+
+  if (!host.username?.trim()) {
+    errors.username = 'Username is required';
+  }
+
+  const authMethod = host.authMethod ?? 'key';
+  if (authMethod === 'key' && !host.keyPath?.trim()) {
+    errors.keyPath = 'Key path is required';
+  }
+
+  if (authMethod === 'password' && !host.password?.trim()) {
+    errors.password = 'Password is required';
+  }
+
+  return errors;
+}
+
+function hasValidationErrors(errors: HostValidationErrors): boolean {
+  return Object.keys(errors).length > 0;
+}
+
 export default function SettingsPage() {
   const [config, setConfig] = useState<AlogiConfig | null>(null);
+  const [savedConfig, setSavedConfig] = useState<AlogiConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [resettingOnboarding, setResettingOnboarding] = useState(false);
@@ -20,6 +56,47 @@ export default function SettingsPage() {
   const [missingKeyById, setMissingKeyById] = useState<Record<string, string>>({});
   const [missingPasswordById, setMissingPasswordById] = useState<Record<string, true>>({});
   const [showPasswordById, setShowPasswordById] = useState<Record<string, boolean>>({});
+  const [touchedFields, setTouchedFields] = useState<Record<string, Set<string>>>({});
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [expandedHosts, setExpandedHosts] = useState<Set<string>>(new Set());
+
+  const { toasts, showToast, dismissToast } = useToast();
+
+  // Compute dirty state
+  const isDirty = useMemo(() => {
+    if (!config || !savedConfig) return false;
+    return JSON.stringify(config) !== JSON.stringify(savedConfig);
+  }, [config, savedConfig]);
+
+  // Compute validation errors for all hosts
+  const hostValidationErrors = useMemo(() => {
+    if (!config) return {};
+    const errors: Record<string, HostValidationErrors> = {};
+    config.hosts.forEach((host) => {
+      if (host.id) {
+        errors[host.id] = validateHost(host);
+      }
+    });
+    return errors;
+  }, [config]);
+
+  // Check if any host has validation errors
+  const hasAnyValidationErrors = useMemo(() => {
+    return Object.values(hostValidationErrors).some(hasValidationErrors);
+  }, [hostValidationErrors]);
+
+  // Warn before navigating away with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
 
   useEffect(() => {
     const loadConfig = async () => {
@@ -31,6 +108,7 @@ export default function SettingsPage() {
         }
         const data = await res.json();
         setConfig(data);
+        setSavedConfig(data);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to load settings';
         setError(message);
@@ -41,6 +119,20 @@ export default function SettingsPage() {
 
     loadConfig();
   }, []);
+
+  const markFieldTouched = useCallback((hostId: string, field: string) => {
+    setTouchedFields(prev => {
+      const hostFields = prev[hostId] ?? new Set();
+      if (hostFields.has(field)) return prev;
+      const newSet = new Set(hostFields);
+      newSet.add(field);
+      return { ...prev, [hostId]: newSet };
+    });
+  }, []);
+
+  const isFieldTouched = useCallback((hostId: string, field: string) => {
+    return touchedFields[hostId]?.has(field) ?? false;
+  }, [touchedFields]);
 
   const handleSave = async () => {
     if (!config) return;
@@ -102,14 +194,16 @@ export default function SettingsPage() {
         } catch {
           // ignore parse errors
         }
-        alert(message);
+        showToast('error', message);
         return;
       }
       setMissingKeyById({});
       setMissingPasswordById({});
-      alert("Settings saved!");
+      setSavedConfig(config);
+      setTouchedFields({});
+      showToast('success', 'Settings saved!');
     } catch {
-      alert("Failed to save settings");
+      showToast('error', 'Failed to save settings');
     } finally {
       setSaving(false);
     }
@@ -128,9 +222,9 @@ export default function SettingsPage() {
       }
       localStorage.removeItem('alogi.onboarded');
       localStorage.setItem('alogi.forceOnboarding', 'true');
-      alert('Onboarding reset. Reload the app to see it again.');
+      showToast('success', 'Onboarding reset. Reload the app to see it again.');
     } catch {
-      alert('Failed to reset onboarding');
+      showToast('error', 'Failed to reset onboarding');
     } finally {
       setResettingOnboarding(false);
     }
@@ -176,16 +270,130 @@ export default function SettingsPage() {
         body: JSON.stringify(host),
       });
       const data = await res.json();
-      
+
       if (!res.ok || !data.success) {
-         setHostTestStatus(prev => ({ ...prev, [host.id!]: { state: 'error', message: data.error || 'Connection failed' } }));
+        setHostTestStatus(prev => ({ ...prev, [host.id!]: { state: 'error', message: data.error || 'Connection failed' } }));
+        showToast('error', `Connection failed: ${data.error || 'Unknown error'}`);
       } else {
-         setHostTestStatus(prev => ({ ...prev, [host.id!]: { state: 'success', message: 'Connected!' } }));
+        setHostTestStatus(prev => ({ ...prev, [host.id!]: { state: 'success', message: 'Connected!' } }));
+        showToast('success', `Connected to ${host.alias}!`);
       }
     } catch {
-        setHostTestStatus(prev => ({ ...prev, [host.id!]: { state: 'error', message: 'Network error' } }));
+      setHostTestStatus(prev => ({ ...prev, [host.id!]: { state: 'error', message: 'Network error' } }));
+      showToast('error', 'Network error during connection test');
     }
   };
+
+  const handleDuplicateHost = (index: number) => {
+    if (!config) return;
+    const original = config.hosts[index];
+    const newId = Math.random().toString(36).substring(2, 9);
+    const newHost: HostConfig = {
+      ...original,
+      id: newId,
+      alias: `Copy of ${original.alias}`,
+    };
+    const newHosts = [...config.hosts];
+    newHosts.splice(index + 1, 0, newHost);
+    setConfig({ ...config, hosts: newHosts });
+    setExpandedHosts(prev => new Set(prev).add(newId));
+    showToast('info', `Duplicated "${original.alias}"`);
+  };
+
+  const handleRemoveHost = (index: number) => {
+    if (!config) return;
+    const host = config.hosts[index];
+    const ok = window.confirm(`Remove host "${host.alias}"?`);
+    if (!ok) return;
+
+    if (host.id) {
+      if (missingKeyById[host.id]) {
+        const next = { ...missingKeyById };
+        delete next[host.id];
+        setMissingKeyById(next);
+      }
+      if (missingPasswordById[host.id]) {
+        const next = { ...missingPasswordById };
+        delete next[host.id];
+        setMissingPasswordById(next);
+      }
+      if (showPasswordById[host.id]) {
+        const next = { ...showPasswordById };
+        delete next[host.id];
+        setShowPasswordById(next);
+      }
+      if (touchedFields[host.id]) {
+        const next = { ...touchedFields };
+        delete next[host.id];
+        setTouchedFields(next);
+      }
+      if (expandedHosts.has(host.id)) {
+        const next = new Set(expandedHosts);
+        next.delete(host.id);
+        setExpandedHosts(next);
+      }
+    }
+    const newHosts = [...config.hosts];
+    newHosts.splice(index, 1);
+    setConfig({ ...config, hosts: newHosts });
+  };
+
+  const toggleHostExpanded = (hostId: string) => {
+    setExpandedHosts(prev => {
+      const next = new Set(prev);
+      if (next.has(hostId)) {
+        next.delete(hostId);
+      } else {
+        next.add(hostId);
+      }
+      return next;
+    });
+  };
+
+  const getCurrentApiKey = useCallback(() => {
+    if (!config) return '';
+    const provider = config.ai.provider || 'gemini';
+    switch (provider) {
+      case 'openai': return config.ai.openaiApiKey || '';
+      case 'claude': return config.ai.claudeApiKey || '';
+      default: return config.ai.apiKey || '';
+    }
+  }, [config]);
+
+  const setCurrentApiKey = useCallback((value: string) => {
+    if (!config) return;
+    const provider = config.ai.provider || 'gemini';
+    switch (provider) {
+      case 'openai':
+        setConfig({ ...config, ai: { ...config.ai, openaiApiKey: value } });
+        break;
+      case 'claude':
+        setConfig({ ...config, ai: { ...config.ai, claudeApiKey: value } });
+        break;
+      default:
+        setConfig({ ...config, ai: { ...config.ai, apiKey: value } });
+    }
+  }, [config]);
+
+  const getApiKeyPlaceholder = useCallback(() => {
+    if (!config) return '';
+    const provider = config.ai.provider || 'gemini';
+    switch (provider) {
+      case 'openai': return 'sk-...';
+      case 'claude': return 'sk-ant-...';
+      default: return 'AIza...';
+    }
+  }, [config]);
+
+  const getApiKeyLabel = useCallback(() => {
+    if (!config) return 'API Key';
+    const provider = config.ai.provider || 'gemini';
+    switch (provider) {
+      case 'openai': return 'OpenAI API Key';
+      case 'claude': return 'Claude API Key';
+      default: return 'Gemini API Key';
+    }
+  }, [config]);
 
   useEffect(() => {
     setAiTestStatus({ state: 'idle' });
@@ -224,530 +432,588 @@ export default function SettingsPage() {
   }
   if (!config) return <div className="text-zinc-500 p-8">Loading settings...</div>;
 
+  const provider = config.ai.provider || 'gemini';
+
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 flex flex-col items-center py-10 transition-colors">
       <div className="w-full max-w-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden shadow-xl">
         {/* Header */}
         <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/50">
-           <div className="flex items-center gap-4">
-             <Link href="/" className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-full transition-colors text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
-                <ArrowLeft className="w-5 h-5" />
-             </Link>
-             <h1 className="text-xl font-bold">Settings</h1>
-           </div>
-           <button 
-             onClick={handleSave}
-             disabled={saving}
-             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50 shadow-sm"
-           >
-             <Save className="w-4 h-4" />
-             {saving ? "Saving..." : "Save Changes"}
-           </button>
+          <div className="flex items-center gap-4">
+            <Link href="/" className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-full transition-colors text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
+            <h1 className="text-xl font-bold">Settings</h1>
+            {isDirty && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30">
+                Unsaved changes
+              </span>
+            )}
+          </div>
+          <button
+            onClick={handleSave}
+            disabled={saving || hasAnyValidationErrors}
+            title={hasAnyValidationErrors ? 'Fix validation errors before saving' : undefined}
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50 shadow-sm"
+          >
+            <Save className="w-4 h-4" />
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
         </div>
 
         <div className="p-6 space-y-8">
-            
-            {/* General Section */}
-            <div>
-                <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <Server className="w-4 h-4" /> General
-                </h2>
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Local Log Directory</label>
-                        <input 
-                            type="text" 
-                            value={config.general.logPath}
-                            onChange={(e) => setConfig({...config, general: {...config.general, logPath: e.target.value}})
-                            }
-                            className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
-                        />
-                        <p className="text-xs text-zinc-500 mt-1">Path to the logs folder on this machine (e.g. /var/log).</p>
-                    </div>
+
+          {/* AI Section */}
+          <div>
+            <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Cpu className="w-4 h-4" /> AI Configuration
+            </h2>
+            <div className="space-y-4">
+              <div className="rounded-lg border border-indigo-200/70 dark:border-indigo-500/30 bg-indigo-50/50 dark:bg-indigo-500/5 p-4 text-sm text-zinc-700 dark:text-zinc-300">
+                <div className="font-semibold text-zinc-900 dark:text-zinc-100 mb-1">New to API keys?</div>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-3">
+                  An API key lets Alogi talk to your AI provider. Keys are stored locally on your machine.
+                  No key? You can still use logs without AI and add one later.
+                </p>
+                <ol className="text-xs text-zinc-600 dark:text-zinc-400 space-y-1 list-decimal list-inside">
+                  <li>Pick a provider below.</li>
+                  <li>Create a key in the provider dashboard.</li>
+                  <li>Paste it here and click Test key.</li>
+                </ol>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <a
+                    href="https://platform.openai.com/api-keys"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs px-3 py-1 rounded-full border border-indigo-200 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100/60 dark:hover:bg-indigo-500/10 transition-colors"
+                  >
+                    Get OpenAI API key
+                  </a>
+                  <a
+                    href="https://aistudio.google.com/app/apikey"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs px-3 py-1 rounded-full border border-indigo-200 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100/60 dark:hover:bg-indigo-500/10 transition-colors"
+                  >
+                    Get Gemini API key
+                  </a>
+                  <a
+                    href="https://console.anthropic.com/settings/keys"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs px-3 py-1 rounded-full border border-indigo-200 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100/60 dark:hover:bg-indigo-500/10 transition-colors"
+                  >
+                    Get Claude API key
+                  </a>
                 </div>
+              </div>
+
+              <div className="flex items-center justify-between rounded-md border border-zinc-200 dark:border-zinc-800 px-3 py-2">
+                <div>
+                  <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Enable AI features</p>
+                  <p className="text-xs text-zinc-500">Turn off to disable AI analyze and chat.</p>
+                </div>
+                <label className="inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={config.ai.enabled !== false}
+                    onChange={(e) => setConfig({ ...config, ai: { ...config.ai, enabled: e.target.checked } })}
+                  />
+                  <span className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${config.ai.enabled !== false ? 'bg-indigo-600' : 'bg-zinc-300 dark:bg-zinc-700'}`}>
+                    <span className={`bg-white w-4 h-4 rounded-full shadow transform transition-transform ${config.ai.enabled !== false ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </span>
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Provider</label>
+                <select
+                  value={provider}
+                  onChange={(e) => {
+                    const newProvider = e.target.value as 'gemini' | 'openai' | 'claude';
+                    const model = newProvider === 'openai' ? 'gpt-4o' : newProvider === 'claude' ? 'claude-sonnet-4-20250514' : 'gemini-flash-latest';
+                    setConfig({
+                      ...config,
+                      ai: {
+                        ...config.ai,
+                        provider: newProvider,
+                        model,
+                      }
+                    });
+                  }}
+                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
+                >
+                  <option value="gemini">Google Gemini</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="claude">Anthropic Claude</option>
+                </select>
+              </div>
+
+              {/* Unified API Key Input */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">{getApiKeyLabel()}</label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    value={getCurrentApiKey()}
+                    onChange={(e) => setCurrentApiKey(e.target.value)}
+                    placeholder={getApiKeyPlaceholder()}
+                    className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md px-3 py-2 pl-9 pr-9 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
+                  />
+                  <Key className="w-4 h-4 text-zinc-500 absolute left-3 top-2.5" />
+                  {getCurrentApiKey() && (
+                    <button
+                      type="button"
+                      onClick={() => setCurrentApiKey('')}
+                      className="absolute right-3 top-2.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+                      title="Clear API key"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 mt-2">
+                  <button
+                    type="button"
+                    onClick={handleTestKey}
+                    disabled={aiTestStatus.state === 'testing' || config.ai.enabled === false}
+                    className="text-xs px-3 py-1.5 rounded-md border border-indigo-200 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 disabled:opacity-50 transition-colors"
+                  >
+                    {aiTestStatus.state === 'testing' ? 'Testing...' : 'Test key'}
+                  </button>
+                  {aiTestStatus.state !== 'idle' && (
+                    <span className={`text-xs ${aiTestStatus.state === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {aiTestStatus.message}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Model Selection with optgroups */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Model</label>
+                <select
+                  value={config.ai.model}
+                  onChange={(e) => setConfig({...config, ai: {...config.ai, model: e.target.value}})}
+                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
+                >
+                  {provider === 'gemini' && (
+                    <>
+                      <optgroup label="Recommended">
+                        <option value="gemini-flash-latest">Gemini Flash (Fast & Capable)</option>
+                      </optgroup>
+                      <optgroup label="Premium">
+                        <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                        <option value="gemini-pro">Gemini Pro</option>
+                      </optgroup>
+                    </>
+                  )}
+                  {provider === 'openai' && (
+                    <>
+                      <optgroup label="Recommended">
+                        <option value="gpt-4o">GPT-4o (Smartest)</option>
+                        <option value="gpt-4o-mini">GPT-4o Mini (Fast)</option>
+                      </optgroup>
+                      <optgroup label="Legacy">
+                        <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                      </optgroup>
+                    </>
+                  )}
+                  {provider === 'claude' && (
+                    <>
+                      <optgroup label="Recommended">
+                        <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
+                      </optgroup>
+                      <optgroup label="Premium">
+                        <option value="claude-opus-4-20250514">Claude Opus 4</option>
+                      </optgroup>
+                      <optgroup label="Fast">
+                        <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
+                      </optgroup>
+                    </>
+                  )}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Onboarding Section */}
+          <div>
+            <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Key className="w-4 h-4" /> Onboarding
+            </h2>
+            <div className="space-y-3">
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                Replay the guided overlay the next time you open the app.
+              </p>
+              <button
+                onClick={handleResetOnboarding}
+                disabled={resettingOnboarding}
+                className="inline-flex items-center gap-2 rounded-md border border-indigo-200 dark:border-indigo-500/40 px-3 py-2 text-sm text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors disabled:opacity-50"
+              >
+                <Key className="w-4 h-4" />
+                {resettingOnboarding ? 'Resetting...' : 'Restart onboarding'}
+              </button>
+            </div>
+          </div>
+
+          {/* Remote Hosts Section */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                <Server className="w-4 h-4" /> Remote Hosts (SSH)
+              </h2>
+              <button
+                onClick={() => {
+                  const newId = Math.random().toString(36).substring(2, 9);
+                  setConfig({
+                    ...config,
+                    hosts: [...config.hosts, { id: newId, alias: 'New Server', hostname: '', username: 'root', port: 22, keyPath: '~/.ssh/id_rsa', password: '', authMethod: 'key' }]
+                  });
+                  setExpandedHosts(prev => new Set(prev).add(newId));
+                }}
+                className="text-xs bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 px-2 py-1 rounded text-zinc-700 dark:text-zinc-300 transition-colors border border-zinc-300 dark:border-zinc-700"
+              >
+                + Add Host
+              </button>
             </div>
 
-            {/* AI Section */}
-            <div>
-                <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <Cpu className="w-4 h-4" /> AI Configuration
-                </h2>
-                <div className="space-y-4">
-                    <div className="rounded-lg border border-indigo-200/70 dark:border-indigo-500/30 bg-indigo-50/50 dark:bg-indigo-500/5 p-4 text-sm text-zinc-700 dark:text-zinc-300">
-                        <div className="font-semibold text-zinc-900 dark:text-zinc-100 mb-1">New to API keys?</div>
-                        <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-3">
-                            An API key lets Alogi talk to your AI provider. Keys are stored locally on your machine.
-                            No key? You can still use logs without AI and add one later.
-                        </p>
-                        <ol className="text-xs text-zinc-600 dark:text-zinc-400 space-y-1 list-decimal list-inside">
-                            <li>Pick a provider below.</li>
-                            <li>Create a key in the provider dashboard.</li>
-                            <li>Paste it here and click Test key.</li>
-                        </ol>
-                        <div className="flex flex-wrap gap-2 mt-3">
-                            <a
-                                href="https://platform.openai.com/api-keys"
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-xs px-3 py-1 rounded-full border border-indigo-200 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100/60 dark:hover:bg-indigo-500/10 transition-colors"
-                            >
-                                Get OpenAI API key
-                            </a>
-                            <a
-                                href="https://aistudio.google.com/app/apikey"
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-xs px-3 py-1 rounded-full border border-indigo-200 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100/60 dark:hover:bg-indigo-500/10 transition-colors"
-                            >
-                                Get Gemini API key
-                            </a>
-                            <a
-                                href="https://console.anthropic.com/settings/keys"
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-xs px-3 py-1 rounded-full border border-indigo-200 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100/60 dark:hover:bg-indigo-500/10 transition-colors"
-                            >
-                                Get Claude API key
-                            </a>
-                        </div>
-                    </div>
+            <div className="space-y-4">
+              {config.hosts.length === 0 && (
+                <div className="text-zinc-500 text-sm italic text-center p-4 border border-dashed border-zinc-300 dark:border-zinc-800 rounded">
+                  No remote hosts configured.
+                </div>
+              )}
+              {config.hosts.map((host, index) => {
+                const hostId = host.id || '';
+                const errors = hostValidationErrors[hostId] || {};
+                const hasErrors = hasValidationErrors(errors);
+                const authMethod = host.authMethod ?? 'key';
+                const isExpanded = expandedHosts.has(hostId);
+                const testStatus = hostId ? hostTestStatus[hostId] : undefined;
 
-                    <div className="flex items-center justify-between rounded-md border border-zinc-200 dark:border-zinc-800 px-3 py-2">
-                        <div>
-                            <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Enable AI features</p>
-                            <p className="text-xs text-zinc-500">Turn off to disable AI analyze and chat.</p>
+                return (
+                  <div
+                    key={hostId}
+                    className={`bg-zinc-50/50 dark:bg-zinc-900/50 border rounded-md overflow-hidden ${hasErrors ? 'border-red-300 dark:border-red-500/50' : 'border-zinc-200 dark:border-zinc-800'}`}
+                  >
+                    {/* Collapsed header - always visible */}
+                    <button
+                      type="button"
+                      onClick={() => toggleHostExpanded(hostId)}
+                      className="w-full px-4 py-3 flex items-center justify-between hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`} />
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-medium text-sm text-zinc-900 dark:text-zinc-100 truncate">{host.alias || 'Unnamed'}</span>
+                          <span className="text-xs text-zinc-500 truncate">
+                            {host.hostname ? `${host.hostname}:${host.port ?? 22}` : 'Not configured'}
+                          </span>
                         </div>
-                        <label className="inline-flex items-center cursor-pointer">
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {hasErrors && (
+                          <span className="w-2 h-2 rounded-full bg-red-500" title="Has validation errors" />
+                        )}
+                        {testStatus?.state === 'success' && (
+                          <span className="w-2 h-2 rounded-full bg-emerald-500" title="Connected" />
+                        )}
+                        {testStatus?.state === 'error' && (
+                          <span className="w-2 h-2 rounded-full bg-red-500" title={testStatus.message} />
+                        )}
+                        {testStatus?.state === 'testing' && (
+                          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" title="Testing..." />
+                        )}
+                      </div>
+                    </button>
+
+                    {/* Expanded form */}
+                    {isExpanded && (
+                      <div className="px-4 pb-4 border-t border-zinc-200 dark:border-zinc-800">
+                        {/* Action buttons */}
+                        <div className="flex items-center justify-end gap-2 py-2 mb-2">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleDuplicateHost(index); }}
+                            className="text-zinc-400 hover:text-indigo-500 transition-colors flex items-center gap-1 text-xs"
+                            title="Duplicate host"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                            Duplicate
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleRemoveHost(index); }}
+                            className="text-zinc-400 hover:text-red-500 transition-colors flex items-center gap-1 text-xs"
+                            title="Remove host"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Remove
+                          </button>
+                        </div>
+
+                        {/* Connection section */}
+                        <div className="space-y-4">
+                          {/* Row 1: Alias */}
+                          <div>
+                            <label className="block text-xs text-zinc-500 mb-1">Alias</label>
                             <input
-                                type="checkbox"
-                                className="sr-only"
-                                checked={config.ai.enabled !== false}
-                                onChange={(e) => setConfig({ ...config, ai: { ...config.ai, enabled: e.target.checked } })}
+                              type="text"
+                              value={host.alias}
+                              onChange={(e) => {
+                                const newHosts = [...config.hosts];
+                                newHosts[index].alias = e.target.value;
+                                setConfig({...config, hosts: newHosts});
+                              }}
+                              className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded px-2 py-1 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 focus:ring-indigo-500 outline-none"
                             />
-                            <span className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${config.ai.enabled !== false ? 'bg-indigo-600' : 'bg-zinc-300 dark:bg-zinc-700'}`}>
-                                <span className={`bg-white w-4 h-4 rounded-full shadow transform transition-transform ${config.ai.enabled !== false ? 'translate-x-5' : 'translate-x-0'}`} />
-                            </span>
-                        </label>
-                    </div>
+                          </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Provider</label>
-                        <select 
-                            value={config.ai.provider || 'gemini'}
-                            onChange={(e) => {
-                                const provider = e.target.value as 'gemini' | 'openai' | 'claude';
-                                const model = provider === 'openai' ? 'gpt-4o' : provider === 'claude' ? 'claude-sonnet-4-20250514' : 'gemini-flash-latest';
-                                setConfig({
-                                    ...config,
-                                    ai: {
-                                        ...config.ai,
-                                        provider,
-                                        model,
-                                    }
-                                });
-                            }}
-                            className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
-                        >
-                            <option value="gemini">Google Gemini</option>
-                            <option value="openai">OpenAI</option>
-                            <option value="claude">Anthropic Claude</option>
-                        </select>
-                    </div>
-
-                    {config.ai.provider === 'claude' ? (
-                        <>
+                          {/* Row 2: Hostname + Port */}
+                          <div className="grid grid-cols-[1fr_80px] gap-3">
                             <div>
-                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Claude API Key</label>
-                                <div className="relative">
-                                    <input
-                                        type="password"
-                                        value={config.ai.claudeApiKey || ''}
-                                        onChange={(e) => setConfig({...config, ai: {...config.ai, claudeApiKey: e.target.value}})
-                                        }
-                                        placeholder="sk-ant-..."
-                                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md px-3 py-2 pl-9 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
-                                    />
-                                    <Key className="w-4 h-4 text-zinc-500 absolute left-3 top-2.5" />
-                                </div>
-                                <div className="flex items-center gap-3 mt-2">
-                                    <button
-                                        type="button"
-                                        onClick={handleTestKey}
-                                        disabled={aiTestStatus.state === 'testing' || config.ai.enabled === false}
-                                        className="text-xs px-3 py-1.5 rounded-md border border-indigo-200 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 disabled:opacity-50 transition-colors"
-                                    >
-                                        {aiTestStatus.state === 'testing' ? 'Testing...' : 'Test key'}
-                                    </button>
-                                    {aiTestStatus.state !== 'idle' && (
-                                        <span className={`text-xs ${aiTestStatus.state === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                                            {aiTestStatus.message}
-                                        </span>
-                                    )}
-                                </div>
+                              <label className="block text-xs text-zinc-500 mb-1">Hostname / IP</label>
+                              <input
+                                type="text"
+                                value={host.hostname}
+                                placeholder="192.168.1.1"
+                                onChange={(e) => {
+                                  const newHosts = [...config.hosts];
+                                  newHosts[index].hostname = e.target.value;
+                                  setConfig({...config, hosts: newHosts});
+                                }}
+                                onBlur={() => markFieldTouched(hostId, 'hostname')}
+                                className={`w-full bg-white dark:bg-zinc-950 border rounded px-2 py-1 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 outline-none ${
+                                  errors.hostname && isFieldTouched(hostId, 'hostname')
+                                    ? 'border-red-400 dark:border-red-500 focus:ring-red-500'
+                                    : 'border-zinc-300 dark:border-zinc-800 focus:ring-indigo-500'
+                                }`}
+                              />
+                              {errors.hostname && isFieldTouched(hostId, 'hostname') && (
+                                <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.hostname}</p>
+                              )}
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Model</label>
-                                <select
-                                    value={config.ai.model}
-                                    onChange={(e) => setConfig({...config, ai: {...config.ai, model: e.target.value}})
+                              <label className="block text-xs text-zinc-500 mb-1">Port</label>
+                              <input
+                                type="number"
+                                value={host.port ?? 22}
+                                min={1}
+                                max={65535}
+                                onChange={(e) => {
+                                  const newHosts = [...config.hosts];
+                                  newHosts[index].port = parseInt(e.target.value) || 22;
+                                  setConfig({...config, hosts: newHosts});
+                                }}
+                                className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded px-2 py-1 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 focus:ring-indigo-500 outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Row 3: Username */}
+                          <div>
+                            <label className="block text-xs text-zinc-500 mb-1">Username</label>
+                            <input
+                              type="text"
+                              value={host.username}
+                              onChange={(e) => {
+                                const newHosts = [...config.hosts];
+                                newHosts[index].username = e.target.value;
+                                setConfig({...config, hosts: newHosts});
+                              }}
+                              onBlur={() => markFieldTouched(hostId, 'username')}
+                              className={`w-full bg-white dark:bg-zinc-950 border rounded px-2 py-1 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 outline-none ${
+                                errors.username && isFieldTouched(hostId, 'username')
+                                  ? 'border-red-400 dark:border-red-500 focus:ring-red-500'
+                                  : 'border-zinc-300 dark:border-zinc-800 focus:ring-indigo-500'
+                              }`}
+                            />
+                            {errors.username && isFieldTouched(hostId, 'username') && (
+                              <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.username}</p>
+                            )}
+                          </div>
+
+                          {/* Auth section divider */}
+                          <div className="border-t border-zinc-200 dark:border-zinc-800 pt-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <label className="block text-xs text-zinc-500">Authentication</label>
+                              <div className="inline-flex rounded-md border border-zinc-300 dark:border-zinc-800 overflow-hidden">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newHosts = [...config.hosts];
+                                    newHosts[index].authMethod = 'key';
+                                    setConfig({...config, hosts: newHosts});
+                                    if (hostId && missingPasswordById[hostId]) {
+                                      const next = { ...missingPasswordById };
+                                      delete next[hostId];
+                                      setMissingPasswordById(next);
                                     }
-                                    className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
+                                  }}
+                                  className={`px-3 py-1 text-xs transition-colors ${authMethod === 'key' ? "bg-indigo-600 text-white" : "bg-white dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900"}`}
                                 >
-                                    <option value="claude-sonnet-4-20250514">Claude Sonnet 4 (Recommended)</option>
-                                    <option value="claude-opus-4-20250514">Claude Opus 4</option>
-                                    <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku (Fastest)</option>
-                                </select>
-                            </div>
-                        </>
-                    ) : config.ai.provider === 'openai' ? (
-                        <>
-                            <div>
-                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">OpenAI API Key</label>
-                                <div className="relative">
-                                    <input 
-                                        type="password" 
-                                        value={config.ai.openaiApiKey || ''}
-                                        onChange={(e) => setConfig({...config, ai: {...config.ai, openaiApiKey: e.target.value}})
-                                        }
-                                        placeholder="sk-..."
-                                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md px-3 py-2 pl-9 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
-                                    />
-                                    <Key className="w-4 h-4 text-zinc-500 absolute left-3 top-2.5" />
-                                </div>
-                                <div className="flex items-center gap-3 mt-2">
-                                    <button
-                                        type="button"
-                                        onClick={handleTestKey}
-                                        disabled={aiTestStatus.state === 'testing' || config.ai.enabled === false}
-                                        className="text-xs px-3 py-1.5 rounded-md border border-indigo-200 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 disabled:opacity-50 transition-colors"
-                                    >
-                                        {aiTestStatus.state === 'testing' ? 'Testing...' : 'Test key'}
-                                    </button>
-                                    {aiTestStatus.state !== 'idle' && (
-                                        <span className={`text-xs ${aiTestStatus.state === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                                            {aiTestStatus.message}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Model</label>
-                                <select 
-                                    value={config.ai.model}
-                                    onChange={(e) => setConfig({...config, ai: {...config.ai, model: e.target.value}})
+                                  SSH Key
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newHosts = [...config.hosts];
+                                    newHosts[index].authMethod = 'password';
+                                    setConfig({...config, hosts: newHosts});
+                                    if (hostId && missingKeyById[hostId]) {
+                                      const next = { ...missingKeyById };
+                                      delete next[hostId];
+                                      setMissingKeyById(next);
                                     }
-                                    className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
+                                  }}
+                                  className={`px-3 py-1 text-xs transition-colors ${authMethod === 'password' ? "bg-indigo-600 text-white" : "bg-white dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900"}`}
                                 >
-                                    <option value="gpt-4o">GPT-4o (Smartest)</option>
-                                    <option value="gpt-4o-mini">GPT-4o Mini (Fastest)</option>
-                                    <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                                </select>
+                                  Password
+                                </button>
+                              </div>
                             </div>
-                        </>
-                    ) : (
-                        <>
-                            <div>
-                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Gemini API Key</label>
-                                <div className="relative">
-                                    <input 
-                                        type="password" 
-                                        value={config.ai.apiKey}
-                                        onChange={(e) => setConfig({...config, ai: {...config.ai, apiKey: e.target.value}})
-                                        }
-                                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md px-3 py-2 pl-9 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
-                                    />
-                                    <Key className="w-4 h-4 text-zinc-500 absolute left-3 top-2.5" />
-                                </div>
-                                <div className="flex items-center gap-3 mt-2">
-                                    <button
-                                        type="button"
-                                        onClick={handleTestKey}
-                                        disabled={aiTestStatus.state === 'testing' || config.ai.enabled === false}
-                                        className="text-xs px-3 py-1.5 rounded-md border border-indigo-200 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 disabled:opacity-50 transition-colors"
-                                    >
-                                        {aiTestStatus.state === 'testing' ? 'Testing...' : 'Test key'}
-                                    </button>
-                                    {aiTestStatus.state !== 'idle' && (
-                                        <span className={`text-xs ${aiTestStatus.state === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                                            {aiTestStatus.message}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Model</label>
-                                <select 
-                                    value={config.ai.model}
-                                    onChange={(e) => setConfig({...config, ai: {...config.ai, model: e.target.value}})
+
+                            {/* Auth credential field */}
+                            {authMethod === 'key' ? (
+                              <div>
+                                <label className="block text-xs text-zinc-500 mb-1">Private Key Path</label>
+                                <input
+                                  type="text"
+                                  value={host.keyPath}
+                                  onChange={(e) => {
+                                    const newHosts = [...config.hosts];
+                                    newHosts[index].keyPath = e.target.value;
+                                    setConfig({...config, hosts: newHosts});
+                                    if (hostId && missingKeyById[hostId]) {
+                                      const next = { ...missingKeyById };
+                                      delete next[hostId];
+                                      setMissingKeyById(next);
                                     }
-                                    className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
-                                >
-                                    <option value="gemini-flash-latest">Gemini Flash (Recommended)</option>
-                                    <option value="gemini-pro">Gemini Pro</option>
-                                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                                </select>
-                            </div>
-                        </>
-                    )}
-                </div>
-            </div>
-
-            {/* Onboarding Section */}
-            <div>
-                <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <Key className="w-4 h-4" /> Onboarding
-                </h2>
-                <div className="space-y-3">
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                        Replay the guided overlay the next time you open the app.
-                    </p>
-                    <button
-                        onClick={handleResetOnboarding}
-                        disabled={resettingOnboarding}
-                        className="inline-flex items-center gap-2 rounded-md border border-indigo-200 dark:border-indigo-500/40 px-3 py-2 text-sm text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors disabled:opacity-50"
-                    >
-                        <Key className="w-4 h-4" />
-                        {resettingOnboarding ? 'Resetting...' : 'Restart onboarding'}
-                    </button>
-                </div>
-            </div>
-
-            {/* Remote Hosts Section */}
-            <div>
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-2">
-                        <Server className="w-4 h-4" /> Remote Hosts (SSH)
-                    </h2>
-                    <button
-                        onClick={() => setConfig({
-                            ...config, 
-                            hosts: [...config.hosts, { id: Math.random().toString(36).substring(2, 9), alias: 'New Server', hostname: '', username: 'root', keyPath: '~/.ssh/id_rsa', password: '', authMethod: 'key' }]
-                        })}
-                        className="text-xs bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 px-2 py-1 rounded text-zinc-700 dark:text-zinc-300 transition-colors border border-zinc-300 dark:border-zinc-700"
-                    >
-                        + Add Host
-                    </button>
-                </div>
-                
-                <div className="space-y-4">
-                    {config.hosts.length === 0 && (
-                        <div className="text-zinc-500 text-sm italic text-center p-4 border border-dashed border-zinc-300 dark:border-zinc-800 rounded">
-                            No remote hosts configured.
-                        </div>
-                    )}
-                    {config.hosts.map((host, index) => (
-                        <div key={host.id} className="bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-md p-4 relative group">
-                            <button 
-                                onClick={() => {
-                                    const ok = window.confirm(`Remove host "${host.alias}"?`);
-                                    if (!ok) return;
-                                    if (host.id) {
-                                      if (missingKeyById[host.id]) {
-                                        const next = { ...missingKeyById };
-                                        delete next[host.id];
-                                        setMissingKeyById(next);
-                                      }
-                                      if (missingPasswordById[host.id]) {
+                                  }}
+                                  onBlur={() => markFieldTouched(hostId, 'keyPath')}
+                                  className={`w-full bg-white dark:bg-zinc-950 border rounded px-2 py-1 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 outline-none ${
+                                    (hostId && missingKeyById[hostId]) || (errors.keyPath && isFieldTouched(hostId, 'keyPath'))
+                                      ? "border-red-400 dark:border-red-500 focus:ring-red-500"
+                                      : "border-zinc-300 dark:border-zinc-800 focus:ring-indigo-500"
+                                  }`}
+                                />
+                                {hostId && missingKeyById[hostId] && (
+                                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                                    Private key not found at {missingKeyById[hostId]}
+                                  </p>
+                                )}
+                                {errors.keyPath && isFieldTouched(hostId, 'keyPath') && !missingKeyById[hostId] && (
+                                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.keyPath}</p>
+                                )}
+                              </div>
+                            ) : (
+                              <div>
+                                <label className="block text-xs text-zinc-500 mb-1">Password</label>
+                                <div className="relative">
+                                  <input
+                                    type={hostId && showPasswordById[hostId] ? "text" : "password"}
+                                    value={host.password || ''}
+                                    onChange={(e) => {
+                                      const newHosts = [...config.hosts];
+                                      newHosts[index].password = e.target.value;
+                                      setConfig({...config, hosts: newHosts});
+                                      if (hostId && missingPasswordById[hostId]) {
                                         const next = { ...missingPasswordById };
-                                        delete next[host.id];
+                                        delete next[hostId];
                                         setMissingPasswordById(next);
                                       }
-                                      if (showPasswordById[host.id]) {
-                                        const next = { ...showPasswordById };
-                                        delete next[host.id];
-                                        setShowPasswordById(next);
-                                      }
-                                    }
-                                    const newHosts = [...config.hosts];
-                                    newHosts.splice(index, 1);
-                                    setConfig({...config, hosts: newHosts});
-                                }}
-                                className="absolute top-2 right-2 text-zinc-400 hover:text-red-500 transition-colors flex items-center gap-1 text-xs"
-                                title="Remove host"
-                            >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                Remove
-                            </button>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="col-span-2">
-                                    <label className="block text-xs text-zinc-500 mb-1">Host Type</label>
-                                    <select
-                                        value={host.type || 'ssh'}
-                                        onChange={(e) => {
-                                            const newHosts = [...config.hosts];
-                                            newHosts[index].type = e.target.value as 'ssh' | 'docker';
-                                            setConfig({...config, hosts: newHosts});
-                                        }}
-                                        className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded px-2 py-1 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 focus:ring-indigo-500 outline-none"
-                                    >
-                                        <option value="ssh">Standard File Viewer (SSH)</option>
-                                        <option value="docker">Docker Containers (SSH)</option>
-                                    </select>
-                                </div>
-                                <div className="col-span-2">
-                                    <label className="block text-xs text-zinc-500 mb-1">Auth Method</label>
-                                    <div className="inline-flex rounded-md border border-zinc-300 dark:border-zinc-800 overflow-hidden">
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                const newHosts = [...config.hosts];
-                                                newHosts[index].authMethod = 'key';
-                                                setConfig({...config, hosts: newHosts});
-                                                if (host.id && missingPasswordById[host.id]) {
-                                                    const next = { ...missingPasswordById };
-                                                    delete next[host.id];
-                                                    setMissingPasswordById(next);
-                                                }
-                                            }}
-                                            className={`px-3 py-1 text-xs transition-colors ${ (host.authMethod ?? 'key') === 'key' ? "bg-indigo-600 text-white" : "bg-white dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900"}`}
-                                        >
-                                            Key
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                const newHosts = [...config.hosts];
-                                                newHosts[index].authMethod = 'password';
-                                                setConfig({...config, hosts: newHosts});
-                                                if (host.id && missingKeyById[host.id]) {
-                                                    const next = { ...missingKeyById };
-                                                    delete next[host.id];
-                                                    setMissingKeyById(next);
-                                                }
-                                            }}
-                                            className={`px-3 py-1 text-xs transition-colors ${ (host.authMethod ?? 'key') === 'password' ? "bg-indigo-600 text-white" : "bg-white dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900"}`}
-                                        >
-                                            Password
-                                        </button>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-xs text-zinc-500 mb-1">Alias</label>
-                                    <input 
-                                        type="text" 
-                                        value={host.alias}
-                                        onChange={(e) => {
-                                            const newHosts = [...config.hosts];
-                                            newHosts[index].alias = e.target.value;
-                                            setConfig({...config, hosts: newHosts});
-                                        }}
-                                        className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded px-2 py-1 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 focus:ring-indigo-500 outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs text-zinc-500 mb-1">Hostname / IP</label>
-                                    <input 
-                                        type="text" 
-                                        value={host.hostname}
-                                        placeholder="192.168.1.1"
-                                        onChange={(e) => {
-                                            const newHosts = [...config.hosts];
-                                            newHosts[index].hostname = e.target.value;
-                                            setConfig({...config, hosts: newHosts});
-                                        }}
-                                        className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded px-2 py-1 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 focus:ring-indigo-500 outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs text-zinc-500 mb-1">Username</label>
-                                    <input 
-                                        type="text" 
-                                        value={host.username}
-                                        onChange={(e) => {
-                                            const newHosts = [...config.hosts];
-                                            newHosts[index].username = e.target.value;
-                                            setConfig({...config, hosts: newHosts});
-                                        }}
-                                        className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded px-2 py-1 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 focus:ring-indigo-500 outline-none"
-                                    />
-                                </div>
-                                {(host.authMethod ?? 'key') === 'key' ? (
-                                    <div>
-                                        <label className="block text-xs text-zinc-500 mb-1">Private Key Path</label>
-                                        <input 
-                                            type="text" 
-                                            value={host.keyPath}
-                                            onChange={(e) => {
-                                                const newHosts = [...config.hosts];
-                                                newHosts[index].keyPath = e.target.value;
-                                                setConfig({...config, hosts: newHosts});
-                                                if (host.id && missingKeyById[host.id]) {
-                                                    const next = { ...missingKeyById };
-                                                    delete next[host.id];
-                                                    setMissingKeyById(next);
-                                                }
-                                            }}
-                                            className={`w-full bg-white dark:bg-zinc-950 border rounded px-2 py-1 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 outline-none ${host.id && missingKeyById[host.id] ? "border-red-400 dark:border-red-500 focus:ring-red-500" : "border-zinc-300 dark:border-zinc-800 focus:ring-indigo-500"}`}
-                                        />
-                                        {host.id && missingKeyById[host.id] && (
-                                            <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                                                Private key not found at {missingKeyById[host.id]}
-                                            </p>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div>
-                                        <label className="block text-xs text-zinc-500 mb-1">Password</label>
-                                        <div className="relative">
-                                            <input 
-                                                type={host.id && showPasswordById[host.id] ? "text" : "password"}
-                                                value={host.password || ''}
-                                                onChange={(e) => {
-                                                    const newHosts = [...config.hosts];
-                                                    newHosts[index].password = e.target.value;
-                                                    setConfig({...config, hosts: newHosts});
-                                                    if (host.id && missingPasswordById[host.id]) {
-                                                        const next = { ...missingPasswordById };
-                                                        delete next[host.id];
-                                                        setMissingPasswordById(next);
-                                                    }
-                                                }}
-                                                className={`w-full bg-white dark:bg-zinc-950 border rounded px-2 py-1 pr-12 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 outline-none ${host.id && missingPasswordById[host.id] ? "border-red-400 dark:border-red-500 focus:ring-red-500" : "border-zinc-300 dark:border-zinc-800 focus:ring-indigo-500"}`}
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    if (!host.id) return;
-                                                    setShowPasswordById(prev => ({ ...prev, [host.id]: !prev[host.id] }));
-                                                }}
-                                                className="absolute right-2 top-1.5 text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
-                                            >
-                                                {host.id && showPasswordById[host.id] ? "Hide" : "Show"}
-                                            </button>
-                                        </div>
-                                        {host.id && missingPasswordById[host.id] && (
-                                            <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                                                Password is required for this host.
-                                            </p>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Test Connection Button */}
-                            <div className="col-span-2 flex items-center justify-end gap-3 mt-2 border-t border-zinc-200 dark:border-zinc-800 pt-3">
-                                {host.id && hostTestStatus[host.id]?.state !== 'idle' && (
-                                    <span className={`text-xs ${hostTestStatus[host.id]?.state === 'success' ? 'text-emerald-600 dark:text-emerald-400' : hostTestStatus[host.id]?.state === 'error' ? 'text-red-600 dark:text-red-400' : 'text-zinc-500'}`}>
-                                        {hostTestStatus[host.id]?.message || (hostTestStatus[host.id]?.state === 'testing' ? 'Connecting...' : '')}
-                                    </span>
-                                )}
-                                <button
+                                    }}
+                                    onBlur={() => markFieldTouched(hostId, 'password')}
+                                    className={`w-full bg-white dark:bg-zinc-950 border rounded px-2 py-1 pr-12 text-sm text-zinc-900 dark:text-zinc-200 focus:ring-1 outline-none ${
+                                      (hostId && missingPasswordById[hostId]) || (errors.password && isFieldTouched(hostId, 'password'))
+                                        ? "border-red-400 dark:border-red-500 focus:ring-red-500"
+                                        : "border-zinc-300 dark:border-zinc-800 focus:ring-indigo-500"
+                                    }`}
+                                  />
+                                  <button
                                     type="button"
-                                    onClick={() => handleTestConnection(index)}
-                                    disabled={host.id ? hostTestStatus[host.id]?.state === 'testing' : false}
-                                    className={`px-3 py-1.5 rounded text-xs font-medium transition-colors border ${host.id && hostTestStatus[host.id]?.state === 'success' ? "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20" : host.id && hostTestStatus[host.id]?.state === 'error' ? "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20" : "bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800"}`}
-                                >
-                                    {host.id && hostTestStatus[host.id]?.state === 'testing' ? 'Testing...' : 'Test Connection'}
-                                </button>
-                            </div>
+                                    onClick={() => {
+                                      if (!hostId) return;
+                                      setShowPasswordById(prev => ({ ...prev, [hostId]: !prev[hostId] }));
+                                    }}
+                                    className="absolute right-2 top-1.5 text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+                                  >
+                                    {hostId && showPasswordById[hostId] ? "Hide" : "Show"}
+                                  </button>
+                                </div>
+                                {hostId && missingPasswordById[hostId] && (
+                                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                                    Password is required for this host.
+                                  </p>
+                                )}
+                                {errors.password && isFieldTouched(hostId, 'password') && !missingPasswordById[hostId] && (
+                                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.password}</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                    ))}
-                </div>
+
+                        {/* Test Connection Button */}
+                        <div className="flex items-center justify-end gap-3 mt-4 border-t border-zinc-200 dark:border-zinc-800 pt-3">
+                          {testStatus?.state !== 'idle' && testStatus && (
+                            <span className={`text-xs ${testStatus.state === 'success' ? 'text-emerald-600 dark:text-emerald-400' : testStatus.state === 'error' ? 'text-red-600 dark:text-red-400' : 'text-zinc-500'}`}>
+                              {testStatus.message || (testStatus.state === 'testing' ? 'Connecting...' : '')}
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleTestConnection(index)}
+                            disabled={testStatus?.state === 'testing'}
+                            className={`px-3 py-1.5 rounded text-xs font-medium transition-colors border ${testStatus?.state === 'success' ? "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20" : testStatus?.state === 'error' ? "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20" : "bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800"}`}
+                          >
+                            {testStatus?.state === 'testing' ? 'Testing...' : 'Test Connection'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
+          </div>
+
+          {/* Advanced Section (Collapsible) */}
+          <div className="border-t border-zinc-200 dark:border-zinc-800 pt-6">
+            <button
+              type="button"
+              onClick={() => setAdvancedOpen(!advancedOpen)}
+              className="w-full flex items-center justify-between text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <Settings className="w-4 h-4" /> Advanced
+              </span>
+              <ChevronDown className={`w-4 h-4 transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {advancedOpen && (
+              <div className="mt-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Local Log Directory</label>
+                  <input
+                    type="text"
+                    value={config.general.logPath}
+                    onChange={(e) => setConfig({...config, general: {...config.general, logPath: e.target.value}})}
+                    className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
+                  />
+                  <p className="text-xs text-zinc-500 mt-1">Path to the logs folder on this machine. Default: /var/log</p>
+                </div>
+              </div>
+            )}
+          </div>
 
         </div>
       </div>
+
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

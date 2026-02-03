@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.26] - 2026-02-03
+
+### Added
+- **Toast Notifications:** Replaced all browser `alert()` dialogs with modern toast notifications for save, connection tests, and other feedback.
+- **Unsaved Changes Warning:** Settings page now tracks dirty state, shows an "Unsaved changes" badge, and warns before navigating away.
+- **Host Port Configuration:** Added port field to SSH host settings (no longer hardcoded to 22).
+- **Duplicate Host Button:** Quickly clone host configurations with one click.
+- **Inline Validation:** Real-time validation errors shown as you type, with visual indicators on invalid fields and host cards.
+- **Model Categories:** AI model dropdowns now use grouped options (Recommended/Premium/Fast) for easier selection.
+
+### Changed
+- **Host Accordion UI:** Configured hosts now collapse to a compact summary row (alias, hostname:port, status dot). Click to expand for editing. New hosts auto-expand.
+- **Cleaner AI Settings:** Unified API key input that adapts to selected provider, with clear key button.
+- **Advanced Section:** Moved Local Log Directory to a collapsible "Advanced" section at the bottom.
+
+### Removed
+- Removed unused "Host Type" dropdown from host configuration.
+
 ## [0.1.25] - 2026-02-02
 
 ### Added

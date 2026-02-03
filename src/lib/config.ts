@@ -5,6 +5,18 @@ import os from 'os';
 const CONFIG_DIR = path.join(os.homedir(), '.config', 'alogi');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 
+export interface HostConfig {
+  id?: string;
+  alias: string;
+  hostname: string;
+  username: string;
+  port?: number;
+  keyPath?: string;
+  password?: string;
+  authMethod?: 'key' | 'password';
+  type?: 'ssh' | 'docker';
+}
+
 export interface AlogiConfig {
   general: {
     logPath: string;
@@ -18,17 +30,7 @@ export interface AlogiConfig {
     claudeApiKey: string; // Claude
     model: string;
   };
-  hosts: Array<{
-    id: string;
-    alias: string;
-    hostname: string;
-    username: string;
-    port?: number;
-    keyPath?: string;
-    password?: string;
-    authMethod?: 'key' | 'password';
-    type?: 'ssh' | 'docker'; // New field
-  }>;
+  hosts: HostConfig[];
   ui?: {
     onboardingDismissed?: boolean;
   };
