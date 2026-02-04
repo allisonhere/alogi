@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { BarChart3, Bookmark, Clock, Sparkles, Terminal } from 'lucide-react';
+import { BarChart3, Bookmark, Clock, Sparkles, Terminal, PanelLeft, FolderOpen, Bot, WrapText, Minus, Plus, Type, Copy, Clipboard, Filter, Search } from 'lucide-react';
+import { useDialog } from './Dialog';
 import { cn } from '@/lib/utils';
 import { extractTimestamp } from '@/lib/logParser';
 import { VibeCheckBar } from './VibeCheckBar';
@@ -20,6 +21,8 @@ interface LogViewerProps {
   onToggleFiles: () => void;
   liveButtonRef?: React.RefObject<HTMLButtonElement | null>;
   analyzeButtonRef?: React.RefObject<HTMLButtonElement | null>;
+  fileSize?: number;
+  selectedHost?: string | null;
 }
 
 interface AIAnalysis {
@@ -41,6 +44,8 @@ export function LogViewer({
   onToggleFiles,
   liveButtonRef,
   analyzeButtonRef,
+  fileSize,
+  selectedHost,
 }: LogViewerProps) {
   const FONT_SIZES = [11, 12, 13, 14, 15, 16];
   const PREF_KEY = 'alogi.logViewerPrefs';
@@ -62,7 +67,14 @@ export function LogViewer({
   const [showTimeFilter, setShowTimeFilter] = useState(false);
   const [timeStart, setTimeStart] = useState('');
   const [timeEnd, setTimeEnd] = useState('');
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    lineIndex: number;
+    lineText: string;
+  } | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const { showDialog } = useDialog();
 
   // Reset analysis and search when file changes
   useEffect(() => {
@@ -226,6 +238,77 @@ export function LogViewer({
     });
   }, []);
 
+  // Context menu handlers
+  const handleContextMenu = useCallback((e: React.MouseEvent, index: number, line: string) => {
+    e.preventDefault();
+    const menuWidth = 180;
+    const menuHeight = 200;
+    const x = Math.min(e.clientX, window.innerWidth - menuWidth - 10);
+    const y = Math.min(e.clientY, window.innerHeight - menuHeight - 10);
+    setContextMenu({ x, y, lineIndex: index, lineText: line });
+  }, []);
+
+  const copyToClipboard = useCallback((text: string) => {
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text);
+    } else {
+      // Fallback for Electron/non-secure contexts
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+  }, []);
+
+  const handleCopy = useCallback(() => {
+    if (!contextMenu) return;
+    copyToClipboard(contextMenu.lineText);
+    setContextMenu(null);
+  }, [contextMenu, copyToClipboard]);
+
+  const handleCopyWithContext = useCallback(() => {
+    if (!contextMenu) return;
+    const start = Math.max(0, contextMenu.lineIndex - 5);
+    const end = Math.min(lines.length, contextMenu.lineIndex + 6);
+    const context = lines.slice(start, end).join('\n');
+    copyToClipboard(context);
+    setContextMenu(null);
+  }, [contextMenu, lines, copyToClipboard]);
+
+  const handleContextBookmark = useCallback(() => {
+    if (!contextMenu) return;
+    toggleBookmark(contextMenu.lineIndex);
+    setContextMenu(null);
+  }, [contextMenu, toggleBookmark]);
+
+  const handleFilterToThis = useCallback(() => {
+    if (!contextMenu) return;
+    // Extract key part (remove timestamp, keep message)
+    const filtered = contextMenu.lineText.replace(/^\[?[\d\-T:.Z]+\]?\s*/, '').trim();
+    setSearchQuery(filtered.slice(0, 60));
+    setContextMenu(null);
+  }, [contextMenu]);
+
+  const handleSearchSimilar = useCallback(() => {
+    if (!contextMenu) return;
+    // Extract key identifiers like error codes, function names
+    const match = contextMenu.lineText.match(/error|warn|exception|failed|Error: .+?(?=\s|$)/i);
+    setSearchQuery(match ? match[0] : contextMenu.lineText.slice(0, 40));
+    setContextMenu(null);
+  }, [contextMenu]);
+
+  // Close context menu on click outside
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handleClick = () => setContextMenu(null);
+    window.addEventListener('mousedown', handleClick);
+    return () => window.removeEventListener('mousedown', handleClick);
+  }, [contextMenu]);
+
   const jumpToLine = useCallback((index: number) => {
     const position = windowedLines.findIndex(item => item.index === index);
     if (position === -1) return;
@@ -375,11 +458,23 @@ export function LogViewer({
         console.error("Analysis Error:", data.error);
         const message = String(data.error);
         if (message.toLowerCase().includes('api key') && message.toLowerCase().includes('missing')) {
-          alert('No API key set. Open Settings → AI Configuration to add a key.');
+          showDialog({
+            title: 'API Key Required',
+            message: 'No API key is configured.\n\nGo to Settings → AI Configuration to add your API key.',
+            variant: 'warning',
+          });
         } else if (message.toLowerCase().includes('ai features are disabled')) {
-          alert('AI features are disabled. Enable them in Settings → AI Configuration.');
+          showDialog({
+            title: 'AI Disabled',
+            message: 'AI features are currently disabled.\n\nGo to Settings → AI Configuration to enable them.',
+            variant: 'info',
+          });
         } else {
-          alert(`Analysis failed: ${data.error}`);
+          showDialog({
+            title: 'Analysis Failed',
+            message: data.error,
+            variant: 'error',
+          });
         }
         return;
       }
@@ -388,7 +483,11 @@ export function LogViewer({
       setIsAiPanelOpen(true);
     } catch (err) {
       console.error(err);
-      alert("Failed to connect to analysis service.");
+      showDialog({
+        title: 'Connection Error',
+        message: 'Failed to connect to the analysis service.\n\nPlease check your internet connection and try again.',
+        variant: 'error',
+      });
     } finally {
       setAnalyzing(false);
     }
@@ -462,6 +561,22 @@ export function LogViewer({
     };
   }, [insightsLines]);
 
+  // Status bar helpers
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const getHostType = () => {
+    if (!selectedHost) return null;
+    if (selectedHost === '(system-journal)') return 'journal';
+    if (selectedHost.startsWith('remote:')) return 'ssh';
+    return 'local';
+  };
+
+  const hostType = getHostType();
+
   if (loading && !content) { // Only show full loading if no content yet
     return <div className="flex-1 flex items-center justify-center text-zinc-500">Loading content...</div>;
   }
@@ -472,7 +587,7 @@ export function LogViewer({
 
     return (
 
-      <div className="flex-1 flex flex-col bg-white dark:bg-[#09090b] h-screen min-h-0 overflow-hidden transition-colors">
+      <div className="flex-1 flex flex-col bg-white dark:bg-[#09090b] h-screen min-h-0 overflow-hidden transition-colors" onContextMenu={(e) => e.preventDefault()}>
 
         {/* Header */}
 
@@ -504,94 +619,97 @@ export function LogViewer({
 
               </div>
 
-              <div className="flex items-center gap-3 flex-wrap justify-end min-w-0">
+              <div className="flex items-center gap-2 flex-wrap justify-end min-w-0">
 
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Panel Toggles - Segmented Group */}
+                  <div className="inline-flex rounded-lg border border-zinc-200 dark:border-zinc-700 flex-shrink-0">
                       <button
                           onClick={onToggleHosts}
                           className={cn(
-                              "px-3 py-1.5 rounded-md text-xs font-medium transition-colors border",
+                              "px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 border-r border-zinc-200 dark:border-zinc-700 rounded-l-lg",
                               showHosts
-                                  ? "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
-                                  : "border-indigo-300 dark:border-indigo-500/60 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
+                                  ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+                                  : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
                           )}
+                          title={showHosts ? 'Hide hosts panel' : 'Show hosts panel'}
                       >
-                          {showHosts ? 'Hide Hosts' : 'Show Hosts'}
+                          <PanelLeft className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Hosts</span>
                       </button>
                       <button
                           onClick={onToggleFiles}
                           className={cn(
-                              "px-3 py-1.5 rounded-md text-xs font-medium transition-colors border",
+                              "px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5",
+                              analysis ? "border-r border-zinc-200 dark:border-zinc-700" : "rounded-r-lg",
                               showFiles
-                                  ? "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
-                                  : "border-emerald-300 dark:border-emerald-500/60 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
+                                  ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+                                  : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
                           )}
+                          title={showFiles ? 'Hide files panel' : 'Show files panel'}
                       >
-                          {showFiles ? 'Hide Files' : 'Show Files'}
+                          <FolderOpen className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Files</span>
                       </button>
+                      {analysis && (
+                          <button
+                              onClick={() => setIsAiPanelOpen(prev => !prev)}
+                              className={cn(
+                                  "px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 rounded-r-lg",
+                                  isAiPanelOpen
+                                      ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+                                      : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
+                              )}
+                              title={isAiPanelOpen ? 'Hide AI panel' : 'Show AI panel'}
+                          >
+                              <Bot className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">AI</span>
+                          </button>
+                      )}
                   </div>
 
+                  {/* Divider */}
+                  <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-700 hidden sm:block" />
+
+                  {/* Live Toggle */}
                   <button
                       ref={liveButtonRef}
-
                       onClick={() => setIsLive(!isLive)}
-
                       className={cn(
-
-                          "px-3 py-1.5 rounded-md text-xs font-medium transition-colors border whitespace-nowrap",
-
-                          isLive 
-
-                              ? "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20 hover:bg-emerald-200 dark:hover:bg-emerald-500/20" 
-
-                              : "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20 hover:bg-red-200 dark:hover:bg-red-500/20"
-
+                          "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-2 whitespace-nowrap",
+                          isLive
+                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-500/25"
+                              : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
                       )}
-
+                      title={isLive ? 'Disable live updates' : 'Enable live updates'}
                   >
-
-                      <span className="flex items-center gap-2">
-                          {isLive && (
-                              <span className="relative flex h-2 w-2">
-                                  <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping"></span>
-                                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
-                              </span>
-                          )}
-                          {isLive ? 'Live On' : 'Live Off'}
-                      </span>
-
+                      {isLive && (
+                          <span className="relative flex h-2 w-2">
+                              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping"></span>
+                              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                          </span>
+                      )}
+                      {isLive ? 'Live' : 'Paused'}
                   </button>
 
-                  {analysis && (
-                      <button
-                          onClick={() => setIsAiPanelOpen(prev => !prev)}
-                          className={cn(
-                              "px-3 py-1.5 rounded-md text-xs font-medium transition-colors border",
-                              isAiPanelOpen
-                                  ? "border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
-                                  : "border-indigo-300 dark:border-indigo-500/60 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
-                          )}
-                      >
-                          {isAiPanelOpen ? 'Hide AI' : 'Show AI'}
-                      </button>
-                  )}
+                  {/* Divider */}
+                  <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-700 hidden sm:block" />
 
-                  <div className="flex items-center gap-1 flex-shrink-0">
+                  {/* Filters Group */}
+                  <div className="inline-flex rounded-lg border border-zinc-200 dark:border-zinc-700 flex-shrink-0">
                       <div className="relative">
                         <button
                             onClick={() => setShowTimeFilter(prev => !prev)}
                             className={cn(
-                                "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors border flex items-center gap-1",
+                                "px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 border-r border-zinc-200 dark:border-zinc-700 rounded-l-lg",
                                 timeRange
-                                    ? "border-indigo-300 dark:border-indigo-500/60 text-indigo-600 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-500/10"
-                                    : "border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                                    ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+                                    : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
                             )}
                             title="Filter by time range"
                         >
-                            <Clock className="w-3 h-3" />
-                            Time
+                            <Clock className="w-3.5 h-3.5" />
                             {timeRange && (
-                              <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-indigo-500 text-white text-[9px] leading-none font-bold">
+                              <span className="px-1.5 py-0.5 rounded-full bg-indigo-500 text-white text-[9px] leading-none font-bold">
                                 {timeRange.start}-{timeRange.end}
                               </span>
                             )}
@@ -655,17 +773,16 @@ export function LogViewer({
                         <button
                             onClick={() => setShowBookmarks(prev => !prev)}
                             className={cn(
-                                "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors border flex items-center gap-1",
+                                "px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 border-r border-zinc-200 dark:border-zinc-700",
                                 showBookmarks
-                                    ? "border-indigo-300 dark:border-indigo-500/60 text-indigo-600 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-500/10"
-                                    : "border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                                    ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+                                    : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
                             )}
                             title="Toggle bookmarks (Ctrl/Cmd + B to bookmark a line)"
                         >
-                            <Bookmark className="w-3 h-3" />
-                            Bookmarks
+                            <Bookmark className="w-3.5 h-3.5" />
                             {bookmarks.size > 0 && (
-                              <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-indigo-500 text-white text-[9px] leading-none font-bold">
+                              <span className="px-1.5 py-0.5 rounded-full bg-indigo-500 text-white text-[9px] leading-none font-bold">
                                 {bookmarks.size}
                               </span>
                             )}
@@ -712,50 +829,56 @@ export function LogViewer({
                       <button
                           onClick={() => setInsightsOpen(prev => !prev)}
                           className={cn(
-                              "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors border flex items-center gap-1",
+                              "px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 rounded-r-lg",
                               insightsOpen
-                                  ? "border-indigo-300 dark:border-indigo-500/60 text-indigo-600 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-500/10"
-                                  : "border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                                  ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+                                  : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
                           )}
                           title="Toggle insights"
                       >
-                          <BarChart3 className="w-3 h-3" />
-                          Insights
+                          <BarChart3 className="w-3.5 h-3.5" />
                       </button>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-700 hidden sm:block" />
+
+                  {/* Display Options Group */}
+                  <div className="inline-flex rounded-lg border border-zinc-200 dark:border-zinc-700 flex-shrink-0">
                       <button
                           onClick={() => setWrapLines(prev => !prev)}
                           className={cn(
-                              "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors border",
+                              "px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 border-r border-zinc-200 dark:border-zinc-700 rounded-l-lg",
                               wrapLines
-                                  ? "border-indigo-300 dark:border-indigo-500/60 text-indigo-600 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-500/10"
-                                  : "border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                                  ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+                                  : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
                           )}
                           title="Toggle line wrap (W)"
                       >
-                          Wrap
+                          <WrapText className="w-3.5 h-3.5" />
                       </button>
                       <button
                           onClick={() => adjustFontSize(-1)}
                           disabled={fontSize <= FONT_SIZES[0]}
-                          className="px-2 py-1 rounded-md text-[11px] font-semibold transition-colors border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 disabled:opacity-40"
+                          className="px-2 py-1.5 text-xs font-medium transition-colors text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 disabled:opacity-40 disabled:cursor-not-allowed"
                           title="Decrease font size (Ctrl/Cmd -)"
                       >
-                          A-
+                          <Minus className="w-3.5 h-3.5" />
                       </button>
                       <button
                           onClick={() => setFontSize(13)}
-                          className="px-2 py-1 rounded-md text-[11px] font-semibold transition-colors border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                          className="px-2 py-1.5 text-xs font-medium transition-colors text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 border-x border-zinc-200 dark:border-zinc-700"
                           title="Reset font size (Ctrl/Cmd 0)"
                       >
-                          A
+                          <Type className="w-3.5 h-3.5" />
                       </button>
                       <button
                           onClick={() => adjustFontSize(1)}
                           disabled={fontSize >= FONT_SIZES[FONT_SIZES.length - 1]}
-                          className="px-2 py-1 rounded-md text-[11px] font-semibold transition-colors border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 disabled:opacity-40"
+                          className="px-2 py-1.5 text-xs font-medium transition-colors text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 disabled:opacity-40 disabled:cursor-not-allowed rounded-r-lg"
                           title="Increase font size (Ctrl/Cmd +)"
                       >
-                          A+
+                          <Plus className="w-3.5 h-3.5" />
                       </button>
                   </div>
 
@@ -940,6 +1063,7 @@ export function LogViewer({
                           disablePrettyJson
                           isBookmarked={bookmarks.has(index)}
                           onToggleBookmark={toggleBookmark}
+                          onContextMenu={handleContextMenu}
                         />
                       </div>
                     );
@@ -958,6 +1082,7 @@ export function LogViewer({
                     disablePrettyJson
                     isBookmarked={bookmarks.has(index)}
                     onToggleBookmark={toggleBookmark}
+                    onContextMenu={handleContextMenu}
                   />
                 ))
               )
@@ -998,6 +1123,102 @@ export function LogViewer({
             </div>
         )}
       </div>
+
+      {/* Status Bar */}
+      {content && (
+        <div className="flex-shrink-0 h-6 px-4 flex items-center gap-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-[11px] font-mono text-zinc-500 dark:text-zinc-500">
+          <span className="flex items-center gap-1.5">
+            <span className="text-zinc-400 dark:text-zinc-600">Lines:</span>
+            <span className="text-zinc-600 dark:text-zinc-400">{lines.length.toLocaleString()}</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="text-zinc-400 dark:text-zinc-600">Size:</span>
+            <span className="text-zinc-600 dark:text-zinc-400">{formatFileSize(fileSize ?? content.length)}</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="text-zinc-400 dark:text-zinc-600">Encoding:</span>
+            <span className="text-zinc-600 dark:text-zinc-400">UTF-8</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="text-zinc-400 dark:text-zinc-600">Position:</span>
+            <span className="text-zinc-600 dark:text-zinc-400">
+              {isLive ? 'Tail' : `${Math.min(viewportRange.end, windowedLines.length).toLocaleString()} / ${windowedLines.length.toLocaleString()}`}
+            </span>
+          </span>
+          {hostType === 'ssh' && (
+            <span className="flex items-center gap-1.5 ml-auto">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+              </span>
+              <span className="text-emerald-600 dark:text-emerald-400">SSH Connected</span>
+            </span>
+          )}
+          {hostType === 'journal' && (
+            <span className="flex items-center gap-1.5 ml-auto">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-indigo-500"></span>
+              </span>
+              <span className="text-indigo-600 dark:text-indigo-400">Journal</span>
+            </span>
+          )}
+          {hostType === 'local' && (
+            <span className="flex items-center gap-1.5 ml-auto">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-zinc-400"></span>
+              </span>
+              <span className="text-zinc-600 dark:text-zinc-400">Local</span>
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          className="fixed z-50 min-w-[180px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl py-1 text-sm"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          <button
+            onClick={handleCopy}
+            className="w-full text-left px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2"
+          >
+            <Copy className="w-3.5 h-3.5" />
+            Copy
+          </button>
+          <button
+            onClick={handleCopyWithContext}
+            className="w-full text-left px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2"
+          >
+            <Clipboard className="w-3.5 h-3.5" />
+            Copy with context
+          </button>
+          <div className="border-t border-zinc-200 dark:border-zinc-700 my-1" />
+          <button
+            onClick={handleContextBookmark}
+            className="w-full text-left px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2"
+          >
+            <Bookmark className="w-3.5 h-3.5" />
+            {bookmarks.has(contextMenu.lineIndex) ? 'Remove bookmark' : 'Bookmark'}
+          </button>
+          <div className="border-t border-zinc-200 dark:border-zinc-700 my-1" />
+          <button
+            onClick={handleFilterToThis}
+            className="w-full text-left px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2"
+          >
+            <Filter className="w-3.5 h-3.5" />
+            Filter to this
+          </button>
+          <button
+            onClick={handleSearchSimilar}
+            className="w-full text-left px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2"
+          >
+            <Search className="w-3.5 h-3.5" />
+            Search similar
+          </button>
+        </div>
+      )}
     </div>
   );
 }

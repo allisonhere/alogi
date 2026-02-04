@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.28] - 2026-02-04
+
+### Added
+- **Context Menus:** Custom right-click menus throughout the app, replacing browser defaults:
+  - **Log Lines:** Copy, Copy with context (±5 lines), Bookmark, Filter to this, Search similar
+  - **Hosts Panel:** Copy hostname, Refresh files, Test connection (SSH), Edit host, Remove host
+  - **Files Panel:** Copy filename, Copy full path, Refresh, Show info, Open in file manager (local), Copy SCP command (remote)
+- **Status Bar:** Bottom bar showing line count, file size, encoding, tail position, and connection status (SSH/Journal/Local).
+- **Custom Dialogs:** Styled modal dialogs with variants (success/error/warning/info) replacing all browser `alert()` and `confirm()` calls.
+- **.deb Wrapper Script:** Debian package now includes after-install script that creates a wrapper to launch detached from terminal (matching AUR behavior).
+
+### Changed
+- Improved clipboard handling with fallback for Electron/non-secure contexts.
+
 ## [0.1.27] - 2026-02-03
 
 ### Added

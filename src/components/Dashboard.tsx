@@ -5,6 +5,7 @@ import { HostList } from './HostList';
 import { FileList } from './FileList';
 import { LogViewer } from './LogViewer';
 import { OnboardingOverlay } from './OnboardingOverlay';
+import { useDialog } from './Dialog';
 
 interface FileInfo {
   name: string;
@@ -15,6 +16,7 @@ interface FileInfo {
 
 
 export default function Dashboard() {
+  const { showDialog } = useDialog();
   const HOST_MIN = 200;
   const HOST_MAX = 440;
   const FILE_MIN = 220;
@@ -445,14 +447,66 @@ export default function Dashboard() {
     setIsResizing(true);
   };
 
+  const handleRefreshFiles = () => {
+    if (!selectedHost) return;
+    setLoadingFiles(true);
+    fetch(`/api/files?host=${selectedHost}`)
+      .then(res => res.json())
+      .then(data => {
+        setFiles(data.files || []);
+        setLoadingFiles(false);
+      });
+  };
+
+  const handleRemoveHost = async (host: string) => {
+    const alias = host.replace('remote:', '');
+    try {
+      const res = await fetch('/api/settings');
+      const settings = await res.json();
+      const updatedHosts = (settings.hosts || []).filter((h: { alias: string }) => h.alias !== alias);
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hosts: updatedHosts }),
+      });
+      setHosts(prev => prev.filter(h => h !== host));
+      if (selectedHost === host) {
+        setSelectedHost(null);
+        setFiles([]);
+        setContent(null);
+      }
+    } catch (err) {
+      console.error('Failed to remove host:', err);
+      showDialog({
+        title: 'Error',
+        message: 'Failed to remove host. Please try again.',
+        variant: 'error',
+      });
+    }
+  };
+
+  const handleRefreshContent = () => {
+    if (!selectedHost || !selectedFile) return;
+    setLoadingContent(true);
+    const categoryParam = selectedCategory ? `&category=${selectedCategory}` : '';
+    fetch(`/api/content?host=${selectedHost}&file=${selectedFile}${categoryParam}&t=${Date.now()}`)
+      .then(res => res.json())
+      .then(data => {
+        setContent(data.content || "");
+        setLoadingContent(false);
+      });
+  };
+
   return (
-    <div className="flex h-screen w-full min-h-0 bg-white dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 overflow-hidden transition-colors">
+    <div className="flex h-screen w-full min-h-0 bg-white dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 overflow-hidden transition-colors" onContextMenu={(e) => e.preventDefault()}>
       {showHosts && (
         <div ref={hostPanelRef} style={{ width: hostWidth }} className="flex-shrink-0">
-          <HostList 
-            hosts={hosts} 
-            selectedHost={selectedHost} 
-            onSelectHost={handleSelectHost} 
+          <HostList
+            hosts={hosts}
+            selectedHost={selectedHost}
+            onSelectHost={handleSelectHost}
+            onRefreshFiles={handleRefreshFiles}
+            onRemoveHost={handleRemoveHost}
           />
         </div>
       )}
@@ -472,6 +526,8 @@ export default function Dashboard() {
             selectedCategory={selectedCategory}
             onSelectFile={handleSelectFile}
             loading={loadingFiles}
+            selectedHost={selectedHost}
+            onRefresh={handleRefreshContent}
           />
         </div>
       )}
@@ -483,9 +539,9 @@ export default function Dashboard() {
         />
       )}
 
-      <LogViewer 
-        content={content} 
-        loading={loadingContent} 
+      <LogViewer
+        content={content}
+        loading={loadingContent}
         filename={selectedFile}
         isLive={isLive}
         setIsLive={setIsLive}
@@ -495,6 +551,8 @@ export default function Dashboard() {
         onToggleFiles={() => setShowFiles(prev => !prev)}
         liveButtonRef={liveButtonRef}
         analyzeButtonRef={analyzeButtonRef}
+        fileSize={files.find(f => f.name === selectedFile && (f.category ?? null) === selectedCategory)?.size}
+        selectedHost={selectedHost}
       />
 
       {showSudoPrompt && (

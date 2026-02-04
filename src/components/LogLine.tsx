@@ -13,6 +13,7 @@ interface LogLineProps {
   disablePrettyJson?: boolean;
   isBookmarked?: boolean;
   onToggleBookmark?: (index: number) => void;
+  onContextMenu?: (e: React.MouseEvent, index: number, line: string) => void;
 }
 
 const LogLine = memo(function LogLine({
@@ -25,6 +26,7 @@ const LogLine = memo(function LogLine({
   disablePrettyJson = false,
   isBookmarked = false,
   onToggleBookmark,
+  onContextMenu,
 }: LogLineProps) {
   // Use the extracted parser
   const parsed = parseLogLine(line, searchQuery, isRegex, disablePrettyJson);
@@ -41,10 +43,13 @@ const LogLine = memo(function LogLine({
     // For now, we'll just keep the JSON stringify highlight logic or simple text.
     // To match original behavior:
     return (
-      <div className={cn(
-        "flex hover:bg-zinc-100 dark:hover:bg-zinc-800/30 -mx-4 px-4 py-1 transition-colors",
-        severityBg
-      )}>
+      <div
+        className={cn(
+          "flex hover:bg-zinc-100 dark:hover:bg-zinc-800/30 -mx-4 px-4 py-1 transition-colors",
+          severityBg
+        )}
+        onContextMenu={(e) => onContextMenu?.(e, index, line)}
+      >
         <button
           onClick={(e) => { e.stopPropagation(); onToggleBookmark?.(index); }}
           className={cn(
@@ -68,12 +73,15 @@ const LogLine = memo(function LogLine({
 
   // 2. Standard View
   return (
-    <div className={cn(
+    <div
+      className={cn(
         "flex hover:bg-zinc-100 dark:hover:bg-zinc-800/40 -mx-4 px-4 py-0.5 transition-colors group border-l-2",
-        severity === 'error' ? "bg-red-50 border-red-500/30 dark:bg-red-950/30 dark:border-red-500/50" : 
+        severity === 'error' ? "bg-red-50 border-red-500/30 dark:bg-red-950/30 dark:border-red-500/50" :
         severity === 'warn' ? "bg-orange-50 border-orange-500/30 dark:bg-orange-950/20 dark:border-orange-500/40" :
         "bg-transparent border-transparent"
-    )}>
+      )}
+      onContextMenu={(e) => onContextMenu?.(e, index, line)}
+    >
         <button
           onClick={(e) => { e.stopPropagation(); onToggleBookmark?.(index); }}
           className={cn(

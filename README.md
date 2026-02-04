@@ -24,6 +24,8 @@
 *   **🛰️ Remote Logs (SSH):** Browse remote hosts over SSH with unified access to /var/log files, systemd journal, and Docker containers - all in one collapsible tree view.
 *   **🕐 Time Navigation:** Filter log lines by time range (HH:MM start/end) with auto-detected log time range hints.
 *   **📊 Insights Sidebar:** Top errors/warnings, trend buckets, and spike detection with jump-to actions.
+*   **🖱️ Context Menus:** Right-click on log lines, hosts, or files for quick actions (copy, bookmark, filter, test connection, etc.).
+*   **📏 Status Bar:** Bottom bar showing line count, file size, encoding, scroll position, and connection status.
 *   **🧩 Resizable Panels:** Drag to resize host/file panels with size persistence.
 *   **✨ Onboarding Overlay:** First-run guidance for hosts, files, live, and AI actions.
 *   **⚙️ Configurable:** Manage log paths, AI providers, and hosts via Settings (persisted to `~/.config/alogi/config.json`).
@@ -102,6 +104,8 @@ You can also prefill values via environment variables:
 *   `Cmd/Ctrl + +` — Increase font size
 *   `Cmd/Ctrl + -` — Decrease font size
 *   `Cmd/Ctrl + 0` — Reset font size
+*   `Cmd/Ctrl + B` — Bookmark line at viewport center
+*   `Cmd/Ctrl + R` — Toggle regex search mode
 *   `J / K` — Next/previous file in the file list
 
 ## 🐳 Docker Notes

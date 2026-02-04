@@ -1,6 +1,6 @@
 {
   "name": "alogi",
-  "version": "0.1.27",
+  "version": "0.1.28",
   "description": "AI-powered log viewer for local and remote logs",
   "author": "allisonhere <allisonhere@users.noreply.github.com>",
   "homepage": "https://allisonhere.github.io/alogi/",
@@ -82,6 +82,9 @@
         "deb"
       ],
       "category": "Utility"
+    },
+    "deb": {
+      "afterInstall": "electron/scripts/after-install.sh"
     }
   }
 }

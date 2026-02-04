@@ -41,3 +41,9 @@ yarn-error.log*
 next-env.d.ts
 dist/
 dist-electron/
+
+# packaging artifacts
+packaging/arch/pkg/
+packaging/arch/src/
+packaging/arch/*.pkg.tar.zst
+packaging/arch/linux-unpacked.tar.gz
