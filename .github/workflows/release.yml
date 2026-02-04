@@ -71,7 +71,6 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            dist-electron/*.AppImage
             dist-electron/*.deb
             alogi-*-linux-unpacked.tar.gz
             alogi-arch.pkg.tar.zst
