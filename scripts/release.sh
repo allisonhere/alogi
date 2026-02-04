@@ -53,16 +53,15 @@ fi
 
 # Menu
 echo -e "${BLUE}What would you like to do?${NC}"
-echo "  1) Build all packages (AppImage + deb + Arch)"
-echo "  2) Build AppImage only"
-echo "  3) Build deb only"
-echo "  4) Build Arch package only"
-echo "  5) Clean old builds"
-echo "  6) Create GitHub release"
-echo "  7) Full release (build all + GitHub release)"
-echo "  8) Exit"
+echo "  1) Build all packages (deb + Arch)"
+echo "  2) Build deb only"
+echo "  3) Build Arch package only"
+echo "  4) Clean old builds"
+echo "  5) Create GitHub release"
+echo "  6) Full release (build all + GitHub release)"
+echo "  7) Exit"
 echo ""
-read -p "Choose [1-8]: " choice
+read -p "Choose [1-7]: " choice
 
 BUILD_NEXTJS_DONE=0
 
@@ -91,7 +90,6 @@ update_pkgbuild_version() {
 clean_builds() {
     echo -e "${YELLOW}Cleaning old builds...${NC}"
     rm -rf "$DIST_DIR/linux-unpacked"
-    rm -f "$DIST_DIR"/*.AppImage
     rm -f "$DIST_DIR"/*.deb
     rm -f "$DIST_DIR"/*.tar.gz
     rm -f "$DIST_DIR"/*.pkg.tar.zst
@@ -106,13 +104,6 @@ build_nextjs() {
     cd "$PROJECT_DIR"
     npm run build:desktop
     BUILD_NEXTJS_DONE=1
-}
-
-build_appimage() {
-    echo -e "${BLUE}Building AppImage...${NC}"
-    cd "$PROJECT_DIR"
-    run_electron_builder --linux AppImage --publish never
-    echo -e "${GREEN}AppImage built: $DIST_DIR/Alogi-x86_64.AppImage${NC}"
 }
 
 build_deb() {
@@ -223,7 +214,6 @@ create_github_release() {
 
     # Upload assets
     echo "Uploading assets..."
-    [ -f "$DIST_DIR/Alogi-x86_64.AppImage" ] && gh release upload "$TAG" "$DIST_DIR/Alogi-x86_64.AppImage" --repo allisonhere/alogi
     [ -f "$DIST_DIR/Alogi-amd64.deb" ] && gh release upload "$TAG" "$DIST_DIR/Alogi-amd64.deb" --repo allisonhere/alogi
 
     # Upload Arch package with standardized name
@@ -239,45 +229,38 @@ case $choice in
     1)
         clean_builds
         build_nextjs
-        build_appimage
         build_deb
         build_arch
         echo ""
         echo -e "${GREEN}All packages built!${NC}"
-        ls -lh "$DIST_DIR"/*.AppImage "$DIST_DIR"/*.deb "$DIST_DIR"/*.pkg.tar.zst 2>/dev/null
+        ls -lh "$DIST_DIR"/*.deb "$DIST_DIR"/*.pkg.tar.zst 2>/dev/null
         ;;
     2)
         clean_builds
         build_nextjs
-        build_appimage
-        ;;
-    3)
-        clean_builds
-        build_nextjs
         build_deb
         ;;
-    4)
+    3)
         build_arch
         ;;
-    5)
+    4)
         clean_builds
         ;;
-    6)
+    5)
         create_github_release
         ;;
-    7)
+    6)
         clean_builds
         build_nextjs
-        build_appimage
         build_deb
         build_arch
         echo ""
         echo -e "${GREEN}All packages built!${NC}"
-        ls -lh "$DIST_DIR"/*.AppImage "$DIST_DIR"/*.deb "$DIST_DIR"/*.pkg.tar.zst 2>/dev/null
+        ls -lh "$DIST_DIR"/*.deb "$DIST_DIR"/*.pkg.tar.zst 2>/dev/null
         echo ""
         create_github_release
         ;;
-    8)
+    7)
         echo "Bye!"
         exit 0
         ;;

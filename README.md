@@ -45,7 +45,6 @@
 - Install page: https://allisonhere.github.io/alogi/
 - Latest release assets: https://github.com/allisonhere/alogi/releases/latest
 - Direct downloads:
-  - AppImage: https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x86_64.AppImage
   - Ubuntu deb: https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb
   - Arch pkg: https://github.com/allisonhere/alogi/releases/latest/download/alogi-arch.pkg.tar.zst
 
@@ -117,9 +116,9 @@ You can also prefill values via environment variables:
 
 For releases, use the install page above. The steps below are for building artifacts locally.
 
-### AppImage + Debian (.deb)
+### Debian (.deb)
 
-Build Linux desktop artifacts (AppImage + .deb):
+Build Linux desktop artifacts (.deb):
 
 ```bash
 npm run dist:linux
@@ -159,7 +158,7 @@ Notes:
 
 ### GitHub Releases + AUR automation
 
-* Tag a release `vX.Y.Z` to publish AppImage + deb + linux-unpacked to GitHub Releases.
+* Tag a release `vX.Y.Z` to publish deb + linux-unpacked to GitHub Releases.
 * Optional AUR publishing is wired via `.github/workflows/aur.yml` and requires AUR secrets (see `packaging/arch/aur/README.md`).
 
 ## License

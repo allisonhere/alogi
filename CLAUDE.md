@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run lint` — ESLint
 - `npx vitest` — Run all tests
 - `npx vitest src/lib/__tests__/logParser.test.ts` — Run a single test file
-- `npm run dist:linux` — Build desktop packages (AppImage + .deb)
+- `npm run dist:linux` — Build desktop packages (.deb)
 
 ## Architecture
 
@@ -61,7 +61,7 @@ When bumping versions:
 1. Update `version` in `package.json`
 2. Add entry to `CHANGELOG.md`
 3. Grep for old version string to catch any remaining references
-4. Run `npm run dist:linux` to build AppImage, .deb, and pacman packages
+4. Run `npm run dist:linux` to build .deb and pacman packages
 5. Commit, push
 6. `gh release create v<version>` with release notes
-7. Attach built packages: `gh release upload v<version> dist/*.AppImage dist/*.deb dist/*.pkg.tar.zst`
+7. Attach built packages: `gh release upload v<version> dist/*.deb dist/*.pkg.tar.zst`

@@ -17,9 +17,9 @@
     "build:desktop": "next build",
     "start": "next start",
     "lint": "eslint",
-    "dist:linux": "npm run build:desktop && electron-builder --linux AppImage deb --publish never",
+    "dist:linux": "npm run build:desktop && electron-builder --linux deb --publish never",
     "dist:linux:dir": "npm run build:desktop && electron-builder --linux dir --publish never",
-    "dist:linux:all": "npm run build:desktop && electron-builder --linux AppImage deb dir --publish never"
+    "dist:linux:all": "npm run build:desktop && electron-builder --linux deb dir --publish never"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.1",
@@ -78,7 +78,6 @@
       "artifactName": "Alogi-${arch}.${ext}",
       "maintainer": "allisonhere <allisonhere@users.noreply.github.com>",
       "target": [
-        "AppImage",
         "deb"
       ],
       "category": "Utility"
