@@ -12,11 +12,10 @@ export async function GET() {
     // 1. System Journal
     hosts.push('(system-journal)');
 
-    // 2. Remote Hosts
+    // 2. Remote Hosts (unified - each host appears once as remote:alias)
     if (config.hosts && config.hosts.length > 0) {
         config.hosts.forEach(h => {
-            const prefix = h.type === 'docker' ? 'docker:' : 'remote:';
-            hosts.push(`${prefix}${h.alias}`);
+            hosts.push(`remote:${h.alias}`);
         });
     }
 

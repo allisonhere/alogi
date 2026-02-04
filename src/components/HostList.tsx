@@ -1,4 +1,4 @@
-import { ExternalLink, HardDrive, Settings, Moon, Sun } from 'lucide-react';
+import { ExternalLink, HardDrive, Settings, Moon, Sun, ScrollText, Server } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useTheme } from "next-themes";
@@ -8,6 +8,18 @@ interface HostListProps {
   hosts: string[];
   selectedHost: string | null;
   onSelectHost: (host: string) => void;
+}
+
+function getHostIcon(host: string) {
+  if (host === '(system-journal)') return ScrollText;
+  if (host.startsWith('remote:')) return Server;
+  return HardDrive;
+}
+
+function getHostDisplayName(host: string) {
+  if (host === '(system-journal)') return 'System Journal';
+  if (host.startsWith('remote:')) return host.replace('remote:', '');
+  return host;
 }
 
 export function HostList({ hosts, selectedHost, onSelectHost }: HostListProps) {
@@ -33,21 +45,25 @@ export function HostList({ hosts, selectedHost, onSelectHost }: HostListProps) {
       </div>
       
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
-        {hosts.map((host) => (
-          <button
-            key={host}
-            onClick={() => onSelectHost(host)}
-            className={cn(
-              "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center gap-2",
-              selectedHost === host
-                ? "bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20 border"
-                : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-200"
-            )}
-          >
-            <HardDrive className="w-4 h-4" />
-            {host}
-          </button>
-        ))}
+        {hosts.map((host) => {
+          const Icon = getHostIcon(host);
+          const displayName = getHostDisplayName(host);
+          return (
+            <button
+              key={host}
+              onClick={() => onSelectHost(host)}
+              className={cn(
+                "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center gap-2",
+                selectedHost === host
+                  ? "bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20 border"
+                  : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-200"
+              )}
+            >
+              <Icon className="w-4 h-4" />
+              {displayName}
+            </button>
+          );
+        })}
         {hosts.length === 0 && (
           <div className="text-zinc-500 text-sm p-4 text-center">
             No hosts found.

@@ -10,7 +10,9 @@ interface FileInfo {
   name: string;
   size: number;
   updated: string;
+  category?: 'journal' | 'files' | 'docker';
 }
+
 
 export default function Dashboard() {
   const HOST_MIN = 200;
@@ -32,6 +34,7 @@ export default function Dashboard() {
   
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [loadingFiles, setLoadingFiles] = useState(false);
 
   const [content, setContent] = useState<string | null>(null);
@@ -93,6 +96,7 @@ export default function Dashboard() {
       const storedSession = JSON.parse(localStorage.getItem(SESSION_KEY) ?? '{}') as {
         selectedHost?: string | null;
         selectedFile?: string | null;
+        selectedCategory?: string | null;
         isLive?: boolean;
         showHosts?: boolean;
         showFiles?: boolean;
@@ -100,10 +104,18 @@ export default function Dashboard() {
       if (typeof storedSession.showHosts === 'boolean') setShowHosts(storedSession.showHosts);
       if (typeof storedSession.showFiles === 'boolean') setShowFiles(storedSession.showFiles);
       if (typeof storedSession.selectedHost === 'string' || storedSession.selectedHost === null) {
-        setSelectedHost(storedSession.selectedHost ?? null);
+        // Handle legacy docker: prefix - convert to remote:
+        let host = storedSession.selectedHost ?? null;
+        if (host && host.startsWith('docker:')) {
+          host = `remote:${host.replace('docker:', '')}`;
+        }
+        setSelectedHost(host);
       }
       if (typeof storedSession.selectedFile === 'string' || storedSession.selectedFile === null) {
         setSelectedFile(storedSession.selectedFile ?? null);
+      }
+      if (typeof storedSession.selectedCategory === 'string' || storedSession.selectedCategory === null) {
+        setSelectedCategory(storedSession.selectedCategory ?? null);
       }
       if (typeof storedSession.isLive === 'boolean') {
         setIsLive(storedSession.isLive);
@@ -195,18 +207,25 @@ export default function Dashboard() {
       JSON.stringify({
         selectedHost,
         selectedFile,
+        selectedCategory,
         isLive,
         showHosts,
         showFiles,
       })
     );
-  }, [selectedHost, selectedFile, isLive, showHosts, showFiles, hasRestored]);
+  }, [selectedHost, selectedFile, selectedCategory, isLive, showHosts, showFiles, hasRestored]);
 
   const handleSelectHost = (host: string) => {
     setSelectedHost(host);
     setLoadingFiles(true);
     setSelectedFile(null);
+    setSelectedCategory(null);
     setContent(null);
+  };
+
+  const handleSelectFile = (file: string, category: string | null) => {
+    setSelectedFile(file);
+    setSelectedCategory(category);
   };
 
   const promptSudo = (retry: () => void) => {
@@ -263,6 +282,7 @@ export default function Dashboard() {
           setLoadingFiles(false);
           if (selectedFile && !(data.files || []).some((file: FileInfo) => file.name === selectedFile)) {
             setSelectedFile(null);
+            setSelectedCategory(null);
             setContent(null);
           }
         });
@@ -278,7 +298,9 @@ export default function Dashboard() {
 
     const fetchContent = (showLoading = true) => {
         if (showLoading) setLoadingContent(true);
-        fetch(`/api/content?host=${selectedHost}&file=${selectedFile}&t=${Date.now()}`, {
+        // Include category param for remote hosts
+        const categoryParam = selectedCategory ? `&category=${selectedCategory}` : '';
+        fetch(`/api/content?host=${selectedHost}&file=${selectedFile}${categoryParam}&t=${Date.now()}`, {
           cache: 'no-store',
           signal: controller.signal,
         })
@@ -316,7 +338,7 @@ export default function Dashboard() {
       controller.abort();
       clearInterval(interval);
     };
-  }, [selectedHost, selectedFile, isLive]);
+  }, [selectedHost, selectedFile, selectedCategory, isLive]);
 
   useEffect(() => {
     if (showHosts && selectedHost && !showFiles) {
@@ -350,7 +372,7 @@ export default function Dashboard() {
       if (key !== 'j' && key !== 'k') return;
       event.preventDefault();
 
-      const currentIndex = files.findIndex((file) => file.name === selectedFile);
+      const currentIndex = files.findIndex((file) => file.name === selectedFile && file.category === selectedCategory);
       let nextIndex = currentIndex;
       if (key === 'j') {
         nextIndex = currentIndex < 0 ? 0 : Math.min(files.length - 1, currentIndex + 1);
@@ -358,14 +380,14 @@ export default function Dashboard() {
         nextIndex = currentIndex < 0 ? files.length - 1 : Math.max(0, currentIndex - 1);
       }
       const nextFile = files[nextIndex];
-      if (nextFile && nextFile.name !== selectedFile) {
-        setSelectedFile(nextFile.name);
+      if (nextFile && (nextFile.name !== selectedFile || nextFile.category !== selectedCategory)) {
+        handleSelectFile(nextFile.name, nextFile.category || null);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [files, selectedFile, selectedHost, showFiles]);
+  }, [files, selectedFile, selectedCategory, selectedHost, showFiles]);
 
   useEffect(() => {
     if (!isResizing) return;
@@ -444,10 +466,11 @@ export default function Dashboard() {
       
       {showFiles && selectedHost && (
         <div ref={filePanelRef} style={{ width: fileWidth }} className="flex-shrink-0">
-          <FileList 
-            files={files} 
-            selectedFile={selectedFile} 
-            onSelectFile={setSelectedFile}
+          <FileList
+            files={files}
+            selectedFile={selectedFile}
+            selectedCategory={selectedCategory}
+            onSelectFile={handleSelectFile}
             loading={loadingFiles}
           />
         </div>

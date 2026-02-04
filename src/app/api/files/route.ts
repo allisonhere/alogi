@@ -3,8 +3,83 @@ import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 import { getConfig } from '@/lib/config';
-import { sshExec } from '@/lib/ssh';
+import { sshExec, SSHHostConfig } from '@/lib/ssh';
 import { hasSudoPassword, sudoExec } from '@/lib/sudo';
+
+interface CategorizedFile {
+  name: string;
+  size: number;
+  updated: string;
+  category: 'journal' | 'files' | 'docker';
+}
+
+interface Capabilities {
+  journal: boolean;
+  files: boolean;
+  docker: boolean;
+}
+
+async function probeJournal(config: SSHHostConfig): Promise<CategorizedFile[]> {
+  try {
+    const stdout = await sshExec(config, 'systemctl list-units --type=service --state=running --no-legend --plain 2>/dev/null');
+    const files: CategorizedFile[] = stdout.split('\n')
+      .filter(line => line.trim())
+      .map(line => {
+        const parts = line.split(/\s+/);
+        return {
+          name: parts[0],
+          size: 0,
+          updated: new Date().toISOString(),
+          category: 'journal' as const
+        };
+      });
+    if (files.length > 0) {
+      files.unshift({ name: 'ALL_SYSTEM_LOGS', size: 0, updated: 'All system logs', category: 'journal' });
+    }
+    return files;
+  } catch {
+    return [];
+  }
+}
+
+async function probeFiles(config: SSHHostConfig): Promise<CategorizedFile[]> {
+  try {
+    const stdout = await sshExec(config, 'ls -p /var/log 2>/dev/null');
+    return stdout.split('\n')
+      .filter(line => line.trim() && !line.endsWith('/'))
+      .map(line => ({
+        name: line.trim(),
+        size: 0,
+        updated: new Date().toISOString(),
+        category: 'files' as const
+      }));
+  } catch {
+    return [];
+  }
+}
+
+async function probeDocker(config: SSHHostConfig): Promise<CategorizedFile[]> {
+  try {
+    const stdout = await sshExec(config, 'docker ps --format "{{.Names}}\t{{.Status}}" 2>/dev/null');
+    const files: CategorizedFile[] = stdout.split('\n')
+      .filter(line => line.trim())
+      .map(line => {
+        const [name, status] = line.split('\t');
+        return {
+          name: name.trim(),
+          size: 0,
+          updated: status?.trim() || 'Running',
+          category: 'docker' as const
+        };
+      });
+    if (files.length > 0) {
+      files.unshift({ name: 'ALL_CONTAINERS', size: 0, updated: 'All running containers', category: 'docker' });
+    }
+    return files;
+  } catch {
+    return [];
+  }
+}
 
 function isPermissionError(error: unknown): boolean {
   if (error instanceof Error) {
@@ -42,9 +117,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Host parameter is required' }, { status: 400 });
   }
 
-  // Handle Remote Hosts (Files or Docker)
+  // Handle Remote Hosts - probe all sources in parallel (journal, files, docker)
   if (host.startsWith('remote:') || host.startsWith('docker:')) {
-      const isDocker = host.startsWith('docker:');
+      // Support legacy docker: prefix for backwards compatibility
       const alias = host.replace('remote:', '').replace('docker:', '');
       const config = getConfig();
       const hostConfig = config.hosts.find(h => h.alias === alias);
@@ -54,33 +129,23 @@ export async function GET(request: Request) {
       }
 
       try {
-          if (isDocker) {
-              // List running containers using docker ps
-              const stdout = await sshExec(hostConfig, 'docker ps --format "{{.Names}}\t{{.Status}}"');
-              const files = stdout.split('\n')
-                .filter(line => line.trim())
-                .map(line => {
-                    const [name, status] = line.split('\t');
-                    return {
-                        name: name.trim(),
-                        size: 0,
-                        updated: status.trim() // Display status (e.g. "Up 2 hours") instead of date
-                    };
-                });
-              files.unshift({ name: 'ALL_CONTAINERS', size: 0, updated: 'All running containers' });
-              return NextResponse.json({ files });
-          } else {
-              // Standard File List (ls)
-              const stdout = await sshExec(hostConfig, 'ls -p /var/log');
-              const files = stdout.split('\n')
-                .filter(line => line.trim() && !line.endsWith('/'))
-                .map(line => ({
-                    name: line.trim(),
-                    size: 0,
-                    updated: new Date().toISOString()
-                }));
-              return NextResponse.json({ files });
-          }
+          // Probe all three sources in parallel
+          const [journal, files, docker] = await Promise.all([
+              probeJournal(hostConfig),
+              probeFiles(hostConfig),
+              probeDocker(hostConfig),
+          ]);
+
+          const capabilities: Capabilities = {
+              journal: journal.length > 0,
+              files: files.length > 0,
+              docker: docker.length > 0,
+          };
+
+          // Combine all files with their categories
+          const allFiles = [...journal, ...files, ...docker];
+
+          return NextResponse.json({ files: allFiles, capabilities });
       } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           console.error(message);

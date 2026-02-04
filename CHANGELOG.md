@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.27] - 2026-02-03
+
+### Added
+- **Unified Remote Host View:** Remote SSH hosts now automatically probe all available log sources (Journal services, /var/log files, Docker containers) in parallel.
+- **Collapsible Log Categories:** File list shows categorized sections with collapsible headers - Journal Services (blue), /var/log Files (amber), Docker Containers (purple).
+- **Host Icons:** Different icons for local directories, system journal, and remote servers in the host list.
+- **Cleaner Host Names:** Remote hosts display without the `remote:` prefix for cleaner UI.
+
+### Changed
+- **PKGBUILD Wrapper:** AUR package now uses a wrapper script to launch detached from terminal (no more shell output clutter).
+
 ## [0.1.26] - 2026-02-03
 
 ### Added

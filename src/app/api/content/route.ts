@@ -23,6 +23,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const host = searchParams.get('host');
   const file = searchParams.get('file');
+  const category = searchParams.get('category'); // 'journal' | 'files' | 'docker'
 
   if (!host || !file) {
     return NextResponse.json({ error: 'Host and file parameters are required' }, { status: 400 });
@@ -31,9 +32,9 @@ export async function GET(request: Request) {
   const config = getConfig();
   const tailLines = config.general.tailLines || 2000;
 
-  // Handle Remote Hosts
+  // Handle Remote Hosts - route based on category
   if (host.startsWith('remote:') || host.startsWith('docker:')) {
-      const isDocker = host.startsWith('docker:');
+      // Support legacy docker: prefix for backwards compatibility
       const alias = host.replace('remote:', '').replace('docker:', '');
       const hostConfig = config.hosts.find(h => h.alias === alias);
 
@@ -46,12 +47,23 @@ export async function GET(request: Request) {
           const safeFile = file.replace(/[^a-zA-Z0-9\.\-\_\@]/g, '');
 
           let command;
-          if (isDocker && file === 'ALL_CONTAINERS') {
-              const perContainer = Math.min(500, Math.floor(tailLines / 5));
-              command = `for c in $(docker ps --format '{{.Names}}'); do docker logs --tail ${perContainer} "$c" 2>&1 | sed "s/^/[$c] /"; done`;
-          } else if (isDocker) {
-              command = `docker logs --tail ${tailLines} ${safeFile} 2>&1`;
+
+          // Route based on category
+          if (category === 'journal') {
+              if (file === 'ALL_SYSTEM_LOGS') {
+                  command = `journalctl -n ${tailLines} --no-pager 2>/dev/null`;
+              } else {
+                  command = `journalctl -n ${tailLines} --no-pager -u ${safeFile} 2>/dev/null`;
+              }
+          } else if (category === 'docker') {
+              if (file === 'ALL_CONTAINERS') {
+                  const perContainer = Math.min(500, Math.floor(tailLines / 5));
+                  command = `for c in $(docker ps --format '{{.Names}}'); do docker logs --tail ${perContainer} "$c" 2>&1 | sed "s/^/[$c] /"; done`;
+              } else {
+                  command = `docker logs --tail ${tailLines} ${safeFile} 2>&1`;
+              }
           } else {
+              // Default: files category (also handles legacy docker: prefix without category)
               command = file.endsWith('.gz')
                 ? `zcat /var/log/${safeFile} | tail -n ${tailLines}`
                 : `tail -n ${tailLines} /var/log/${safeFile}`;

@@ -47,7 +47,11 @@ package() {
   cp -a "${appdir}/"* "${pkgdir}/opt/alogi/"
 
   install -d "${pkgdir}/usr/bin"
-  ln -s "/opt/alogi/alogi" "${pkgdir}/usr/bin/alogi"
+  cat > "${pkgdir}/usr/bin/alogi" << 'EOF'
+#!/bin/bash
+/opt/alogi/alogi "$@" &>/dev/null & disown
+EOF
+  chmod 755 "${pkgdir}/usr/bin/alogi"
 
   install -Dm644 "${srcdir}/alogi.desktop" "${pkgdir}/usr/share/applications/alogi.desktop"
   install -Dm644 "${srcdir}/icon.png" "${pkgdir}/usr/share/pixmaps/alogi.png"
