@@ -70,8 +70,9 @@ jobs:
         run: |
           docker run --rm -v "$PWD/aur-repo:/pkg" archlinux:latest /bin/bash -c "\
             pacman -Sy --noconfirm base-devel && \
-            cd /pkg && \
-            makepkg --printsrcinfo > .SRCINFO"
+            useradd -m builder && \
+            chown -R builder:builder /pkg && \
+            su - builder -c 'cd /pkg && makepkg --printsrcinfo > .SRCINFO'"
 
       - name: Commit & push
         run: |
