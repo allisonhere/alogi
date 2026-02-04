@@ -17,51 +17,119 @@ echo -e "${BLUE}║       Alogi Release Builder            ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════╝${NC}"
 echo ""
 
-# Get version from package.json
-if [ ! -f "$PROJECT_DIR/package.json" ]; then
-    echo -e "${RED}Error: package.json not found${NC}"
-    exit 1
-fi
-if ! VERSION=$(node -p "require('$PROJECT_DIR/package.json').version" 2>/dev/null); then
-    echo -e "${RED}Error: Unable to read version from package.json${NC}"
-    exit 1
-fi
-if [ -z "$VERSION" ]; then
-    echo -e "${RED}Error: package.json version is empty${NC}"
-    exit 1
-fi
-echo -e "Current version: ${GREEN}v$VERSION${NC}"
-echo ""
+read_version() {
+    if [ ! -f "$PROJECT_DIR/package.json" ]; then
+        echo -e "${RED}Error: package.json not found${NC}"
+        exit 1
+    fi
+    if ! VERSION=$(node -p "require('$PROJECT_DIR/package.json').version" 2>/dev/null); then
+        echo -e "${RED}Error: Unable to read version from package.json${NC}"
+        exit 1
+    fi
+    if [ -z "$VERSION" ]; then
+        echo -e "${RED}Error: package.json version is empty${NC}"
+        exit 1
+    fi
+}
 
-# Check disk space
-AVAIL=$(df -BG "$PROJECT_DIR" | tail -1 | awk '{print $4}' | sed 's/G//')
-echo -e "Available disk space: ${AVAIL}GB"
-if [ "$AVAIL" -lt 5 ]; then
-    echo -e "${RED}WARNING: Less than 5GB free. Build may fail.${NC}"
-    read -p "Continue anyway? [y/N] " -n 1 -r
+suggest_next_patch() {
+    NEXT_VERSION=""
+    if [[ $VERSION =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+        NEXT_VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.$((BASH_REMATCH[3] + 1))"
+    fi
+}
+
+add_changelog_entry() {
+    local today entry tmp
+    if [ ! -f "$PROJECT_DIR/CHANGELOG.md" ]; then
+        echo -e "${YELLOW}WARNING: CHANGELOG.md not found; skipping entry creation.${NC}"
+        return 0
+    fi
+    if grep -q "^## \\[$VERSION\\]" "$PROJECT_DIR/CHANGELOG.md"; then
+        echo -e "${YELLOW}CHANGELOG already has an entry for $VERSION${NC}"
+        return 0
+    fi
+
+    today=$(date +%F)
+    entry="## [$VERSION] - $today\n\n### Added\n- TBD\n\n### Changed\n- TBD\n\n### Fixed\n- TBD\n"
+    tmp=$(mktemp)
+    awk -v entry="$entry" '
+        BEGIN { inserted=0 }
+        /^## \[/ && inserted==0 { print entry; inserted=1 }
+        { print }
+        END { if (inserted==0) print entry }
+    ' "$PROJECT_DIR/CHANGELOG.md" > "$tmp" && mv "$tmp" "$PROJECT_DIR/CHANGELOG.md"
+    echo -e "${GREEN}Added CHANGELOG entry for v$VERSION (please replace TBD).${NC}"
+}
+
+bump_version_advanced() {
+    if ! command -v npm &> /dev/null; then
+        echo -e "${RED}Error: npm not found${NC}"
+        exit 1
+    fi
+
+    echo -e "${BLUE}Select version bump:${NC}"
+    echo "  1) patch"
+    echo "  2) minor"
+    echo "  3) major"
+    echo "  4) custom"
+    echo "  5) cancel"
+    read -p "Choose [1-5]: " bump_choice
+
+    case $bump_choice in
+        1)
+            npm -C "$PROJECT_DIR" version patch --no-git-tag-version
+            ;;
+        2)
+            npm -C "$PROJECT_DIR" version minor --no-git-tag-version
+            ;;
+        3)
+            npm -C "$PROJECT_DIR" version major --no-git-tag-version
+            ;;
+        4)
+            read -p "Enter new version (e.g. 1.2.3): " custom_version
+            if [ -z "$custom_version" ]; then
+                echo -e "${RED}Error: version cannot be empty${NC}"
+                exit 1
+            fi
+            npm -C "$PROJECT_DIR" version "$custom_version" --no-git-tag-version
+            ;;
+        5)
+            return 0
+            ;;
+        *)
+            echo -e "${RED}Invalid choice${NC}"
+            exit 1
+            ;;
+    esac
+}
+
+bump_version() {
+    read_version
+    suggest_next_patch
+    echo -e "Current version: ${GREEN}v$VERSION${NC}"
+
+    if [ -n "$NEXT_VERSION" ]; then
+        read -p "Bump to v$NEXT_VERSION? [y/N] " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            npm -C "$PROJECT_DIR" version "$NEXT_VERSION" --no-git-tag-version
+        else
+            read -p "Pick a different version? [y/N] " -n 1 -r
+            echo
+            [[ ! $REPLY =~ ^[Yy]$ ]] && return 0
+            bump_version_advanced
+        fi
+    else
+        bump_version_advanced
+    fi
+
+    read_version
+    echo -e "New version: ${GREEN}v$VERSION${NC}"
+    read -p "Add CHANGELOG entry for v$VERSION? [y/N] " -n 1 -r
     echo
-    [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
-fi
-echo ""
-
-# Check for uncommitted changes
-if [ -n "$(git -C "$PROJECT_DIR" status --porcelain)" ]; then
-    echo -e "${YELLOW}WARNING: You have uncommitted changes${NC}"
-    git -C "$PROJECT_DIR" status --short
-    echo ""
-fi
-
-# Menu
-echo -e "${BLUE}What would you like to do?${NC}"
-echo "  1) Build all packages (deb + Arch)"
-echo "  2) Build deb only"
-echo "  3) Build Arch package only"
-echo "  4) Clean old builds"
-echo "  5) Create GitHub release"
-echo "  6) Full release (build all + GitHub release)"
-echo "  7) Exit"
-echo ""
-read -p "Choose [1-7]: " choice
+    [[ $REPLY =~ ^[Yy]$ ]] && add_changelog_entry
+}
 
 BUILD_NEXTJS_DONE=0
 
@@ -87,10 +155,33 @@ update_pkgbuild_version() {
     fi
 }
 
+commit_changes() {
+    if [ -z "$(git -C "$PROJECT_DIR" status --porcelain)" ]; then
+        echo -e "${YELLOW}No changes to commit.${NC}"
+        return 0
+    fi
+
+    local default_msg="chore: release v$VERSION"
+    local msg
+    read -p "Commit message [$default_msg]: " msg
+    if [ -z "$msg" ]; then
+        msg="$default_msg"
+    fi
+
+    git -C "$PROJECT_DIR" add -A
+    if git -C "$PROJECT_DIR" commit -m "$msg"; then
+        echo -e "${GREEN}Committed.${NC}"
+    else
+        echo -e "${RED}Commit failed.${NC}"
+        return 1
+    fi
+}
+
 clean_builds() {
     echo -e "${YELLOW}Cleaning old builds...${NC}"
     rm -rf "$DIST_DIR/linux-unpacked"
     rm -f "$DIST_DIR"/*.deb
+    rm -f "$DIST_DIR"/alogi-*-linux-unpacked.tar.gz
     rm -f "$DIST_DIR"/*.tar.gz
     rm -f "$DIST_DIR"/*.pkg.tar.zst
     rm -f "$ARCH_DIR"/*.pkg.tar.zst
@@ -102,6 +193,7 @@ clean_builds() {
 build_nextjs() {
     echo -e "${BLUE}Building Next.js...${NC}"
     cd "$PROJECT_DIR"
+    rm -rf "$PROJECT_DIR/.next/standalone" "$PROJECT_DIR/.next/trace"
     npm run build:desktop
     BUILD_NEXTJS_DONE=1
 }
@@ -127,6 +219,7 @@ build_arch() {
     # Create tarball
     echo "Creating tarball..."
     tar -C "$DIST_DIR" -czf "$ARCH_DIR/linux-unpacked.tar.gz" linux-unpacked
+    cp "$ARCH_DIR/linux-unpacked.tar.gz" "$DIST_DIR/alogi-$VERSION-linux-unpacked.tar.gz"
 
     # Update PKGBUILD version
     update_pkgbuild_version
@@ -215,6 +308,11 @@ create_github_release() {
     # Upload assets
     echo "Uploading assets..."
     [ -f "$DIST_DIR/Alogi-amd64.deb" ] && gh release upload "$TAG" "$DIST_DIR/Alogi-amd64.deb" --repo allisonhere/alogi
+    LINUX_TARBALL="$DIST_DIR/alogi-$VERSION-linux-unpacked.tar.gz"
+    if [ ! -f "$LINUX_TARBALL" ] && [ -f "$ARCH_DIR/linux-unpacked.tar.gz" ]; then
+        cp "$ARCH_DIR/linux-unpacked.tar.gz" "$LINUX_TARBALL"
+    fi
+    [ -f "$LINUX_TARBALL" ] && gh release upload "$TAG" "$LINUX_TARBALL" --repo allisonhere/alogi
 
     # Upload Arch package with standardized name
     ARCH_PKG=$(ls "$DIST_DIR"/alogi-*.pkg.tar.zst 2>/dev/null | head -1)
@@ -225,50 +323,100 @@ create_github_release() {
     echo -e "${GREEN}GitHub release created: https://github.com/allisonhere/alogi/releases/tag/$TAG${NC}"
 }
 
-case $choice in
-    1)
-        clean_builds
-        build_nextjs
-        build_deb
-        build_arch
-        echo ""
-        echo -e "${GREEN}All packages built!${NC}"
-        ls -lh "$DIST_DIR"/*.deb "$DIST_DIR"/*.pkg.tar.zst 2>/dev/null
-        ;;
-    2)
-        clean_builds
-        build_nextjs
-        build_deb
-        ;;
-    3)
-        build_arch
-        ;;
-    4)
-        clean_builds
-        ;;
-    5)
-        create_github_release
-        ;;
-    6)
-        clean_builds
-        build_nextjs
-        build_deb
-        build_arch
-        echo ""
-        echo -e "${GREEN}All packages built!${NC}"
-        ls -lh "$DIST_DIR"/*.deb "$DIST_DIR"/*.pkg.tar.zst 2>/dev/null
-        echo ""
-        create_github_release
-        ;;
-    7)
-        echo "Bye!"
-        exit 0
-        ;;
-    *)
-        echo -e "${RED}Invalid choice${NC}"
-        exit 1
-        ;;
-esac
+while true; do
+    read_version
+    suggest_next_patch
+    if [ -n "$NEXT_VERSION" ]; then
+        echo -e "Current version: ${GREEN}v$VERSION${NC} (next: v$NEXT_VERSION)"
+    else
+        echo -e "Current version: ${GREEN}v$VERSION${NC}"
+    fi
+    echo ""
 
-echo ""
-echo -e "${GREEN}Done!${NC}"
+    # Check disk space
+    AVAIL=$(df -BG "$PROJECT_DIR" | tail -1 | awk '{print $4}' | sed 's/G//')
+    echo -e "Available disk space: ${AVAIL}GB"
+    if [ "$AVAIL" -lt 5 ]; then
+        echo -e "${RED}WARNING: Less than 5GB free. Build may fail.${NC}"
+        read -p "Continue anyway? [y/N] " -n 1 -r
+        echo
+        [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
+    fi
+    echo ""
+
+    # Check for uncommitted changes
+    if [ -n "$(git -C "$PROJECT_DIR" status --porcelain)" ]; then
+        echo -e "${YELLOW}WARNING: You have uncommitted changes${NC}"
+        git -C "$PROJECT_DIR" status --short
+        echo ""
+    fi
+
+    # Menu
+    echo -e "${YELLOW}Recommended flow:${NC} 1) Bump version → 2) Commit changes → 8) Full release"
+    echo -e "${BLUE}What would you like to do?${NC}"
+    echo "  1) Bump version"
+    echo "  2) Commit changes"
+    echo "  3) Build all packages (deb + Arch)"
+    echo "  4) Build deb only"
+    echo "  5) Build Arch package only"
+    echo "  6) Clean old builds"
+    echo "  7) Create GitHub release"
+    echo "  8) Full release (build all + GitHub release)"
+    echo "  9) Exit"
+    echo ""
+    read -p "Choose [1-9]: " choice
+
+    case $choice in
+        1)
+            bump_version
+            ;;
+        2)
+            commit_changes
+            ;;
+        3)
+            clean_builds
+            build_nextjs
+            build_deb
+            build_arch
+            echo ""
+            echo -e "${GREEN}All packages built!${NC}"
+            ls -lh "$DIST_DIR"/*.deb "$DIST_DIR"/*.pkg.tar.zst 2>/dev/null
+            ;;
+        4)
+            clean_builds
+            build_nextjs
+            build_deb
+            ;;
+        5)
+            build_arch
+            ;;
+        6)
+            clean_builds
+            ;;
+        7)
+            create_github_release
+            ;;
+        8)
+            clean_builds
+            build_nextjs
+            build_deb
+            build_arch
+            echo ""
+            echo -e "${GREEN}All packages built!${NC}"
+            ls -lh "$DIST_DIR"/*.deb "$DIST_DIR"/*.pkg.tar.zst 2>/dev/null
+            echo ""
+            create_github_release
+            ;;
+        9)
+            echo "Bye!"
+            break
+            ;;
+        *)
+            echo -e "${RED}Invalid choice${NC}"
+            ;;
+    esac
+
+    echo ""
+    read -p "Press Enter to return to menu..." -r
+    echo ""
+done
