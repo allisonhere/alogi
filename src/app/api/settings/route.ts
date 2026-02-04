@@ -12,10 +12,16 @@ function resolveHome(filepath: string): string {
 }
 
 export async function GET() {
-  const config = getConfig();
-  // Mask API key for security if needed, but for local app it's often fine to show it
-  // or show it masked.
-  return NextResponse.json(config);
+  try {
+    const config = getConfig();
+    return NextResponse.json(config);
+  } catch (error) {
+    console.error('Failed to load settings:', error);
+    return NextResponse.json(
+      { error: 'Failed to load settings', details: String(error) },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(request: Request) {

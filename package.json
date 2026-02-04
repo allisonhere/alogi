@@ -13,8 +13,8 @@
   "scripts": {
     "dev": "next dev",
     "dev:desktop": "concurrently -k \"next dev\" \"wait-on http://127.0.0.1:3000 && ELECTRON_START_URL=http://127.0.0.1:3000 electron .\"",
-    "build": "next build",
-    "build:desktop": "next build",
+    "build": "next build && ./scripts/patch-standalone.sh",
+    "build:desktop": "next build && ./scripts/patch-standalone.sh",
     "start": "next start",
     "lint": "eslint",
     "dist:linux": "npm run build:desktop && electron-builder --linux deb --publish never",

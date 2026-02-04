@@ -62,7 +62,7 @@ export function getConfig(): AlogiConfig {
     const raw = fs.readFileSync(CONFIG_FILE, 'utf-8');
     return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
   } catch (error) {
-    console.warn("Failed to read config, using defaults", error);
+    console.warn('Failed to read config, using defaults:', error);
     return DEFAULT_CONFIG;
   }
 }
