@@ -21,8 +21,7 @@
     *   **Pills:** Visual badges for INFO, WARN, and ERROR levels.
     *   **Inline Search Highlighting:** Matches are highlighted directly in the log output.
 *   **📓 System Journal:** Integrated support for `journalctl` to browse system services and logs alongside files.
-*   **🛰️ Remote Logs (SSH):** Browse `/var/log` on remote hosts over SSH.
-*   **🐳 Docker Logs (SSH):** List running containers and view `docker logs` from remote hosts.
+*   **🛰️ Remote Logs (SSH):** Browse remote hosts over SSH with unified access to /var/log files, systemd journal, and Docker containers - all in one collapsible tree view.
 *   **🕐 Time Navigation:** Filter log lines by time range (HH:MM start/end) with auto-detected log time range hints.
 *   **📊 Insights Sidebar:** Top errors/warnings, trend buckets, and spike detection with jump-to actions.
 *   **🧩 Resizable Panels:** Drag to resize host/file panels with size persistence.
@@ -86,7 +85,7 @@ You can also prefill values via environment variables:
 
 ## 🖥️ Usage
 
-*   **Select a Host:** Click a folder on the left (or `(system-journal)`). Remote hosts appear as `remote:<alias>` or `docker:<alias>`.
+*   **Select a Host:** Click a host on the left. Remote SSH hosts show collapsible categories for Journal, Files, and Docker.
 *   **Select a File:** Click a log file to view it.
 *   **Analyze:** Click the **Sparkles** button to generate an AI summary and open the chat panel for follow-up questions.
 *   **Go Live:** Toggle "Go Live" to stream updates automatically.
@@ -107,7 +106,7 @@ You can also prefill values via environment variables:
 
 ## 🐳 Docker Notes
 
-*   Docker hosts use SSH and run `docker ps` + `docker logs` on the remote machine.
+*   Docker containers are auto-discovered on remote SSH hosts (no separate configuration needed).
 *   Ensure Docker is installed and the SSH user can run Docker commands (e.g. user in the `docker` group or using sudo).
 
 ## 📦 Desktop Packaging (Linux)

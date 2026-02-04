@@ -46,3 +46,22 @@ LogViewer uses `useLogScroller` hook for virtualized rendering with a 12-line ov
 ### AI providers
 
 Gemini (`@google/generative-ai`) and OpenAI are both supported. Provider is configured in settings; APIs are lazily initialized only when analyze/chat is triggered.
+
+### Sudo elevation (`src/lib/sudo.ts`)
+
+When local file reads or journalctl fail with EACCES, the API routes return 403 with `{ error: 'permission_denied' }`. Dashboard.tsx shows a password modal, POSTs to `/api/sudo` to validate and cache the password in server memory, then retries the failed request. Password is session-only (lost on server restart).
+
+### Landing page (`docs/`)
+
+GitHub Pages site served from `docs/` on `main`. `index.html` is the current live page (v2 design, self-contained with inline CSS). `v2.html` is a copy. `styles.css` is used by the old v1 design only.
+
+## Release process
+
+When bumping versions:
+1. Update `version` in `package.json`
+2. Add entry to `CHANGELOG.md`
+3. Grep for old version string to catch any remaining references
+4. Run `npm run dist:linux` to build AppImage, .deb, and pacman packages
+5. Commit, push
+6. `gh release create v<version>` with release notes
+7. Attach built packages: `gh release upload v<version> dist/*.AppImage dist/*.deb dist/*.pkg.tar.zst`
