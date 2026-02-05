@@ -6,6 +6,7 @@ import { execSync } from 'child_process';
 import { getConfig } from '@/lib/config';
 import { sshExec } from '@/lib/ssh';
 import { hasSudoPassword, sudoReadFile, sudoExec } from '@/lib/sudo';
+import { debug } from '@/lib/debug';
 
 export const dynamic = 'force-dynamic';
 
@@ -104,7 +105,7 @@ export async function GET(request: Request) {
               }
               return NextResponse.json({ error: 'permission_denied' }, { status: 403 });
           }
-          console.error(error);
+          debug.error(error);
           return NextResponse.json({ error: 'Failed to read journal.' }, { status: 500 });
       }
   }

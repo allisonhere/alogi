@@ -218,7 +218,7 @@ export function FileList({ files, selectedFile, selectedCategory, onSelectFile, 
 
   return (
     <div className="w-full border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 flex flex-col h-full min-h-0 transition-colors" onContextMenu={(e) => e.preventDefault()}>
-      <div className="px-4 py-3 h-[64px] border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
+      <div className="px-4 py-3 h-[64px] border-b border-zinc-200 dark:border-zinc-800 flex items-start gap-2">
         <FileText className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
         <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">Files</h2>
       </div>

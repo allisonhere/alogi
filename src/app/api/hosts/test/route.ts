@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sshExec, type SSHHostConfig } from '@/lib/ssh';
+import { debug } from '@/lib/debug';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -80,7 +81,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     const err = error instanceof Error ? error : new Error('Unknown connection error');
-    console.error('SSH Connection Test Error:', err);
+    debug.error('SSH Connection Test Error:', err);
     return NextResponse.json({
       success: false,
       error: diagnoseError(err, config),

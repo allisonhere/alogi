@@ -1,6 +1,16 @@
 const { app, BrowserWindow, Menu, shell } = require('electron');
 const path = require('path');
 const net = require('net');
+const { spawn } = require('child_process');
+
+// Use xdg-open directly on Linux to avoid KDE portal issues
+const openExternal = (url) => {
+  if (process.platform === 'linux') {
+    spawn('xdg-open', [url], { detached: true, stdio: 'ignore' }).unref();
+  } else {
+    openExternal(url);
+  }
+};
 
 const isDev = !app.isPackaged && Boolean(process.env.ELECTRON_START_URL);
 
@@ -63,7 +73,7 @@ const attachExternalLinkHandlers = (win, appOrigin) => {
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (isExternalUrl(url)) {
-      shell.openExternal(url);
+      openExternal(url);
       return { action: 'deny' };
     }
     return { action: 'allow' };
@@ -72,7 +82,7 @@ const attachExternalLinkHandlers = (win, appOrigin) => {
   win.webContents.on('will-navigate', (event, url) => {
     if (isExternalUrl(url)) {
       event.preventDefault();
-      shell.openExternal(url);
+      openExternal(url);
     }
   });
 };

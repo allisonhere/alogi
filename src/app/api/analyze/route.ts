@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { getConfig } from '@/lib/config';
+import { debug } from '@/lib/debug';
 
 // Smart truncation to prioritize errors and recent logs
 function smartTruncate(content: string, limit: number = 25000): string {
@@ -57,7 +58,6 @@ function smartTruncate(content: string, limit: number = 25000): string {
 
   // 5. Construct Result
   let result = '';
-  let currentLength = 0;
   
   // Iterate backwards to prioritize Errors and recent logs if we still hit limit?
   // Actually, we construct forward, but strict check length.
@@ -198,7 +198,7 @@ export async function POST(request: Request) {
             messages: [{ role: "user", content: processedContent }],
         });
 
-        const text = message.content[0].type === 'text' ? message.content[0].text : '';
+        const text = message.content?.[0]?.type === 'text' ? message.content[0].text : '{}';
         const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
         try {
           return NextResponse.json(JSON.parse(jsonStr));
@@ -216,7 +216,7 @@ export async function POST(request: Request) {
 
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error("AI Analysis failed:", message);
+    debug.error("AI Analysis failed:", message);
     return NextResponse.json({ error: 'Analysis failed: ' + message }, { status: 500 });
   }
 }

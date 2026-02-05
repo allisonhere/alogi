@@ -7,7 +7,7 @@ interface LogLineProps {
   line: string;
   index: number;
   wrapLines: boolean;
-  fontSizeClass: string;
+  fontSize: number;
   searchQuery: string;
   isRegex?: boolean;
   disablePrettyJson?: boolean;
@@ -20,7 +20,7 @@ const LogLine = memo(function LogLine({
   line,
   index,
   wrapLines,
-  fontSizeClass,
+  fontSize,
   searchQuery,
   isRegex = false,
   disablePrettyJson = false,
@@ -61,10 +61,10 @@ const LogLine = memo(function LogLine({
           <Bookmark className="w-3 h-3" fill={isBookmarked ? "currentColor" : "none"} />
         </button>
         <span className="w-10 text-zinc-400 dark:text-zinc-600 select-none text-right mr-4 flex-shrink-0 text-xs mt-0.5 font-mono">{index + 1}</span>
-        <pre className={cn(
-          "font-mono text-emerald-600 dark:text-emerald-400 bg-zinc-50 dark:bg-zinc-900/50 p-2 rounded w-full overflow-x-auto border border-zinc-200 dark:border-zinc-800",
-          fontSizeClass
-        )}>
+        <pre
+          className="font-mono text-emerald-600 dark:text-emerald-400 bg-zinc-50 dark:bg-zinc-900/50 p-2 rounded w-full overflow-x-auto border border-zinc-200 dark:border-zinc-800"
+          style={{ fontSize }}
+        >
           {JSON.stringify(jsonContent, null, 2)}
         </pre>
       </div>
@@ -93,11 +93,13 @@ const LogLine = memo(function LogLine({
           <Bookmark className="w-3 h-3" fill={isBookmarked ? "currentColor" : "none"} />
         </button>
         <span className="w-10 text-zinc-400 dark:text-zinc-700 select-none text-right mr-4 flex-shrink-0 text-xs mt-[3px] font-mono group-hover:text-zinc-500">{index + 1}</span>
-        <span className={cn(
-          "text-zinc-700 dark:text-zinc-300 break-all flex-1 font-mono leading-tight tracking-tight",
-          wrapLines ? "whitespace-pre-wrap" : "whitespace-pre",
-          fontSizeClass
-        )}>
+        <span
+          className={cn(
+            "text-zinc-700 dark:text-zinc-300 break-all flex-1 font-mono leading-tight tracking-tight",
+            wrapLines ? "whitespace-pre-wrap" : "whitespace-pre"
+          )}
+          style={{ fontSize }}
+        >
             {tokens.map((token, i) => (
                 <Token key={i} token={token} />
             ))}
@@ -119,7 +121,7 @@ function Token({ token }: { token: LogToken }) {
     }
 
     if (token.type === 'timestamp') {
-        return <span className="text-zinc-400 dark:text-zinc-500">{token.text}</span>;
+        return <span className="text-zinc-400 dark:text-slate-400">{token.text}</span>;
     }
 
     if (token.type === 'keyword-info') {

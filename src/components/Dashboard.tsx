@@ -6,6 +6,7 @@ import { FileList } from './FileList';
 import { LogViewer } from './LogViewer';
 import { OnboardingOverlay } from './OnboardingOverlay';
 import { useDialog } from './Dialog';
+import { debug } from '@/lib/debug';
 
 interface FileInfo {
   name: string;
@@ -324,7 +325,7 @@ export default function Dashboard() {
           })
           .catch(err => {
             if (err instanceof DOMException && err.name === 'AbortError') return;
-            console.error('Failed to fetch content:', err);
+            debug.error('Failed to fetch content:', err);
           });
     };
 
@@ -476,7 +477,7 @@ export default function Dashboard() {
         setContent(null);
       }
     } catch (err) {
-      console.error('Failed to remove host:', err);
+      debug.error('Failed to remove host:', err);
       showDialog({
         title: 'Error',
         message: 'Failed to remove host. Please try again.',

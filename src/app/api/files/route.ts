@@ -5,6 +5,7 @@ import { execSync } from 'child_process';
 import { getConfig } from '@/lib/config';
 import { sshExec, SSHHostConfig } from '@/lib/ssh';
 import { hasSudoPassword, sudoExec } from '@/lib/sudo';
+import { debug } from '@/lib/debug';
 
 interface CategorizedFile {
   name: string;
@@ -148,7 +149,7 @@ export async function GET(request: Request) {
           return NextResponse.json({ files: allFiles, capabilities });
       } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
-          console.error(message);
+          debug.error(message);
           return NextResponse.json({ error: `SSH Connection Failed: ${message}` }, { status: 500 });
       }
   }

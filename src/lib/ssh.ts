@@ -2,6 +2,7 @@ import { Client } from 'ssh2';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { debug } from './debug';
 
 export interface SSHHostConfig {
   hostname: string;
@@ -66,7 +67,7 @@ export function sshExec(config: SSHHostConfig, command: string): Promise<string>
         stream.on('close', (code: number | null, signal: string | null) => {
           if (code !== 0 && stderr.trim()) {
               const signalInfo = signal ? ` (signal: ${signal})` : '';
-              console.warn(`SSH command stderr (exit ${code}${signalInfo}): ${stderr.trim()}`);
+              debug.warn(`SSH command stderr (exit ${code}${signalInfo}): ${stderr.trim()}`);
               settle(reject, new Error(stderr.trim()));
               return;
           }

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, User, Sparkles, Bot, AlertCircle, CheckCircle, ChevronDown, Copy } from 'lucide-react';
+import { Send, User, Sparkles, Bot, AlertCircle, CheckCircle, ChevronDown, ChevronRight, X, Copy, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Message {
@@ -15,9 +15,13 @@ interface ChatPanelProps {
     severity: 'low' | 'medium' | 'high';
   };
   logContext: string;
+  onCollapse?: () => void;
+  onClose?: () => void;
+  onReanalyze?: () => void;
+  isReanalyzing?: boolean;
 }
 
-export function ChatPanel({ initialSummary, logContext }: ChatPanelProps) {
+export function ChatPanel({ initialSummary, logContext, onCollapse, onClose, onReanalyze, isReanalyzing }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -131,12 +135,52 @@ export function ChatPanel({ initialSummary, logContext }: ChatPanelProps) {
   return (
     <div className="flex flex-col h-full bg-zinc-50 dark:bg-zinc-900/30 border-l border-zinc-200 dark:border-zinc-800 w-96 transition-colors">
       {/* Header */}
-      <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-2 bg-white dark:bg-zinc-950">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-purple-500 dark:text-purple-400" />
-          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm">AI Investigator</h3>
+      <div className="border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+        {/* Title row */}
+        <div className="px-3 pt-3 pb-2 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            {onCollapse && (
+              <button
+                onClick={onCollapse}
+                className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+                title="Collapse panel"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            )}
+            <Sparkles className="w-4 h-4 text-purple-500 dark:text-purple-400" />
+            <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm">AI Investigator</h3>
+          </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-500/20 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+              title="Close panel"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
-        <div className="relative" ref={exportRef}>
+        {/* Actions row */}
+        <div className="px-3 pb-2 flex items-center gap-1.5">
+          {onReanalyze && (
+            <button
+              type="button"
+              onClick={onReanalyze}
+              disabled={isReanalyzing}
+              className={cn(
+                "inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-colors",
+                isReanalyzing
+                  ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed"
+                  : "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-500/30"
+              )}
+              title="Re-analyze with fresh data"
+            >
+              <RefreshCw className={cn("w-3.5 h-3.5", isReanalyzing && "animate-spin")} />
+              {isReanalyzing ? 'Analyzing...' : 'Re-Analyze'}
+            </button>
+          )}
+          <div className="relative" ref={exportRef}>
           <button
             type="button"
             onClick={() => setExportOpen((prev) => !prev)}
@@ -182,6 +226,7 @@ export function ChatPanel({ initialSummary, logContext }: ChatPanelProps) {
               )}
             </div>
           )}
+          </div>
         </div>
       </div>
 

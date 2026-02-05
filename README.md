@@ -11,8 +11,8 @@
 ## 🚀 Features
 
 *   **⚡️ Live Tailing:** Watch logs stream in real-time (like `tail -f`) with auto-scrolling.
-*   **🧠 AI Analysis:** Click "Analyze" to scan your logs for errors, root causes, and actionable recommendations (Gemini or OpenAI). Uses **Smart Context** to capture errors and recent logs even in massive files.
-*   **💬 AI Chat:** Ask questions about the current log context with a conversational panel (Gemini or OpenAI).
+*   **🧠 AI Analysis:** Click "Analyze" to scan your logs for errors, root causes, and actionable recommendations (Claude, Gemini, or OpenAI). Uses **Smart Context** to capture errors and recent logs even in massive files.
+*   **💬 AI Chat:** Ask questions about the current log context with a conversational panel (Claude, Gemini, or OpenAI).
 *   **🔍 Regex Search:** Filter logs using regular expressions (toggle with `.*` or `Ctrl+R`).
 *   **🎨 Smart Highlighting:**
     *   **Vibe Check Bar:** A visual heatmap at the top of the screen showing where errors (Red) and warnings (Orange) are buried.
@@ -35,7 +35,7 @@
 *   **Framework:** Next.js 16 (App Router)
 *   **Styling:** Tailwind CSS v4 (Cyberpunk/Terminal aesthetic)
 *   **Icons:** Lucide React
-*   **AI:** Google Generative AI SDK (Gemini) + OpenAI SDK
+*   **AI:** Anthropic SDK (Claude) + Google Generative AI SDK (Gemini) + OpenAI SDK
 *   **Backend:** Node.js (Local FS & Child Process)
 
 ## 📦 Installation
@@ -81,6 +81,7 @@ You can configure Alogi via the **Settings** page (Gear icon in bottom left). Se
 You can also prefill values via environment variables:
 
 *   `LOG_ROOT_DIR` for local logs root
+*   `ANTHROPIC_API_KEY` for Claude
 *   `GEMINI_API_KEY` for Gemini
 *   `OPENAI_API_KEY` for OpenAI
 

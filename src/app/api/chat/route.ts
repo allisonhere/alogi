@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { getConfig } from '@/lib/config';
+import { debug } from '@/lib/debug';
 
 type ChatMessage = {
   role: 'user' | 'assistant';
@@ -102,7 +103,7 @@ Answer the user's questions based strictly on these logs. Be technical, precise,
             model: config.ai.model || "gpt-4o",
         });
 
-        return NextResponse.json({ role: 'assistant', content: completion.choices[0].message.content });
+        return NextResponse.json({ role: 'assistant', content: completion.choices[0]?.message?.content || 'No response' });
     }
 
     // --- CLAUDE HANDLER ---
@@ -118,7 +119,7 @@ Answer the user's questions based strictly on these logs. Be technical, precise,
             messages: messages.map(msg => ({ role: msg.role, content: msg.content })),
         });
 
-        const text = result.content[0].type === 'text' ? result.content[0].text : '';
+        const text = result.content?.[0]?.type === 'text' ? result.content[0].text : 'No response';
         return NextResponse.json({ role: 'assistant', content: text });
     }
 
@@ -126,7 +127,7 @@ Answer the user's questions based strictly on these logs. Be technical, precise,
 
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error("Chat Failed:", message);
+    debug.error("Chat Failed:", message);
     return NextResponse.json({ error: 'Chat failed: ' + message }, { status: 500 });
   }
 }

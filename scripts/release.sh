@@ -498,27 +498,30 @@ update_aur() {
 
 full_release() {
     TOTAL_START=$(date +%s)
-    local total_steps=7
+    local total_steps=8
 
-    print_step 1 $total_steps "Cleaning old builds"
+    print_step 1 $total_steps "Version bump"
+    bump_version
+
+    print_step 2 $total_steps "Cleaning old builds"
     clean_builds
 
-    print_step 2 $total_steps "Building Next.js"
+    print_step 3 $total_steps "Building Next.js"
     build_nextjs
 
-    print_step 3 $total_steps "Building .deb package"
+    print_step 4 $total_steps "Building .deb package"
     build_deb
 
-    print_step 4 $total_steps "Building Arch package"
+    print_step 5 $total_steps "Building Arch package"
     build_arch
 
-    print_step 5 $total_steps "Committing & pushing"
+    print_step 6 $total_steps "Committing & pushing"
     auto_commit_and_push
 
-    print_step 6 $total_steps "Creating GitHub release"
+    print_step 7 $total_steps "Creating GitHub release"
     create_github_release
 
-    print_step 7 $total_steps "Updating AUR"
+    print_step 8 $total_steps "Updating AUR"
     update_aur
 
     # Summary

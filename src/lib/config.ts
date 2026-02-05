@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { debug } from './debug';
 
 const CONFIG_DIR = path.join(os.homedir(), '.config', 'alogi');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
@@ -62,7 +63,7 @@ export function getConfig(): AlogiConfig {
     const raw = fs.readFileSync(CONFIG_FILE, 'utf-8');
     return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
   } catch (error) {
-    console.warn('Failed to read config, using defaults:', error);
+    debug.warn('Failed to read config, using defaults:', error);
     return DEFAULT_CONFIG;
   }
 }
@@ -86,7 +87,7 @@ export function saveConfig(config: Partial<AlogiConfig>): void {
     
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(newConfig, null, 2), 'utf-8');
   } catch (error) {
-    console.error("Failed to save config", error);
+    debug.error("Failed to save config", error);
     throw error;
   }
 }

@@ -3,6 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { getConfig, saveConfig, type AlogiConfig } from '@/lib/config';
+import { debug } from '@/lib/debug';
 
 function resolveHome(filepath: string): string {
   if (filepath.startsWith('~')) {
@@ -16,7 +17,7 @@ export async function GET() {
     const config = getConfig();
     return NextResponse.json(config);
   } catch (error) {
-    console.error('Failed to load settings:', error);
+    debug.error('Failed to load settings:', error);
     return NextResponse.json(
       { error: 'Failed to load settings', details: String(error) },
       { status: 500 }

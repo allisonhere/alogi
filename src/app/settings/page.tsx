@@ -6,6 +6,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { AlogiConfig, HostConfig } from '@/lib/config';
 import { ToastContainer, useToast } from '@/components/Toast';
+import { useDialog } from '@/components/Dialog';
+import packageJson from '../../../package.json';
 
 type MissingKey = { id?: string; alias?: string; keyPath?: string };
 type MissingPassword = { id?: string; alias?: string };
@@ -62,6 +64,7 @@ export default function SettingsPage() {
   const [expandedHosts, setExpandedHosts] = useState<Set<string>>(new Set());
 
   const { toasts, showToast, dismissToast } = useToast();
+  const { showConfirm } = useDialog();
 
   // Compute dirty state
   const isDirty = useMemo(() => {
@@ -301,10 +304,15 @@ export default function SettingsPage() {
     showToast('info', `Duplicated "${original.alias}"`);
   };
 
-  const handleRemoveHost = (index: number) => {
+  const handleRemoveHost = async (index: number) => {
     if (!config) return;
     const host = config.hosts[index];
-    const ok = window.confirm(`Remove host "${host.alias}"?`);
+    const ok = await showConfirm({
+      title: 'Remove host?',
+      message: `Are you sure you want to remove "${host.alias}"?`,
+      confirmLabel: 'Remove',
+      cancelLabel: 'Cancel',
+    });
     if (!ok) return;
 
     if (host.id) {
@@ -1036,7 +1044,7 @@ export default function SettingsPage() {
                     <div className="flex items-center gap-3 mb-1">
                       <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Alogi</h3>
                       <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
-                        v0.1.31
+                        v{packageJson.version}
                       </span>
                     </div>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
@@ -1071,7 +1079,7 @@ export default function SettingsPage() {
                 <div className="mt-6 pt-4 border-t border-zinc-200/50 dark:border-zinc-700/50 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-500">
                   <a href="https://github.com/allisonhere/alogi/blob/main/LICENSE" target="_blank" rel="noreferrer" className="hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">MIT License</a>
                   <span className="flex items-center gap-1">
-                    Made with <Heart className="w-3 h-3 text-pink-500 fill-pink-500" /> by allisonhere
+                    Made with <Heart className="w-3 h-3 text-pink-500 fill-pink-500" /> by <a href="http://alliehere.com/blog/" target="_blank" rel="noreferrer" className="hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">Allie</a>
                   </span>
                 </div>
               </div>

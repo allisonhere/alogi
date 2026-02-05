@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { BarChart3, Bookmark, Clock, Sparkles, Terminal, PanelLeft, FolderOpen, Bot, WrapText, Minus, Plus, Type, Copy, Clipboard, Filter, Search } from 'lucide-react';
+import { BarChart3, Bookmark, Clock, Sparkles, Terminal, PanelLeft, FolderOpen, WrapText, Minus, Plus, Type, Copy, Clipboard, Filter, Search } from 'lucide-react';
 import { useDialog } from './Dialog';
 import { cn } from '@/lib/utils';
 import { extractTimestamp } from '@/lib/logParser';
@@ -8,6 +8,7 @@ import { ChatPanel } from './ChatPanel';
 import { InsightsPanel } from './InsightsPanel';
 import LogLine from '@/components/LogLine';
 import { useLogScroller } from '@/hooks/useLogScroller';
+import { debug } from '@/lib/debug';
 
 interface LogViewerProps {
   content: string | null;
@@ -92,7 +93,7 @@ export function LogViewer({
     setTimeEnd('');
   }, [filename]);
 
-  const fontSizeClass = `text-[${fontSize}px]`;
+  // Pass fontSize directly for inline styles (dynamic Tailwind classes don't work)
 
   // Prepare lines data
   const lines = useMemo(() => content ? content.split('\n') : [], [content]);
@@ -455,7 +456,7 @@ export function LogViewer({
       
       if (data.error) {
         // Handle API errors (e.g. rate limits)
-        console.error("Analysis Error:", data.error);
+        debug.error("Analysis Error:", data.error);
         const message = String(data.error);
         if (message.toLowerCase().includes('api key') && message.toLowerCase().includes('missing')) {
           showDialog({
@@ -482,7 +483,7 @@ export function LogViewer({
       setAnalysis(data);
       setIsAiPanelOpen(true);
     } catch (err) {
-      console.error(err);
+      debug.error(err);
       showDialog({
         title: 'Connection Error',
         message: 'Failed to connect to the analysis service.\n\nPlease check your internet connection and try again.',
@@ -639,8 +640,7 @@ export function LogViewer({
                       <button
                           onClick={onToggleFiles}
                           className={cn(
-                              "px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5",
-                              analysis ? "border-r border-zinc-200 dark:border-zinc-700" : "rounded-r-lg",
+                              "px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 rounded-r-lg",
                               showFiles
                                   ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
                                   : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
@@ -650,21 +650,6 @@ export function LogViewer({
                           <FolderOpen className="w-3.5 h-3.5" />
                           <span className="hidden sm:inline">Files</span>
                       </button>
-                      {analysis && (
-                          <button
-                              onClick={() => setIsAiPanelOpen(prev => !prev)}
-                              className={cn(
-                                  "px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 rounded-r-lg",
-                                  isAiPanelOpen
-                                      ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
-                                      : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
-                              )}
-                              title={isAiPanelOpen ? 'Hide AI panel' : 'Show AI panel'}
-                          >
-                              <Bot className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline">AI</span>
-                          </button>
-                      )}
                   </div>
 
                   {/* Divider */}
@@ -954,29 +939,23 @@ export function LogViewer({
                 <div className="ml-auto flex-shrink-0">
                     <button
                         ref={analyzeButtonRef}
-
-                        onClick={handleAnalyze}
-
+                        onClick={() => {
+                            if (analysis) {
+                                setIsAiPanelOpen(prev => !prev);
+                            } else {
+                                handleAnalyze();
+                            }
+                        }}
                         disabled={analyzing}
-
                         className={cn(
-
                             "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all flex-shrink-0",
-
                             analyzing
-
-                                ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed" 
-
+                                ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed"
                                 : "bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-500 dark:to-purple-500 hover:from-indigo-500 hover:to-purple-500 dark:hover:from-indigo-400 dark:hover:to-purple-400 text-white shadow-lg shadow-indigo-500/20 cursor-pointer"
-
                         )}
-
                     >
-
                         <Sparkles className="w-3 h-3" />
-
-                        {analyzing ? 'Analyzing...' : analysis ? 'Re-Analyze' : 'AI Analyze'}
-
+                        {analyzing ? 'Analyzing...' : analysis ? (isAiPanelOpen ? 'Hide AI' : 'Show AI') : 'AI Analyze'}
                     </button>
                 </div>
             </div>
@@ -1057,7 +1036,7 @@ export function LogViewer({
                           line={line}
                           index={index}
                           wrapLines={wrapLines}
-                          fontSizeClass={fontSizeClass}
+                          fontSize={fontSize}
                           searchQuery={debouncedSearch}
                           isRegex={isRegex}
                           disablePrettyJson
@@ -1076,7 +1055,7 @@ export function LogViewer({
                     line={line}
                     index={index}
                     wrapLines={wrapLines}
-                    fontSizeClass={fontSizeClass}
+                    fontSize={fontSize}
                     searchQuery={searchQuery}
                     isRegex={isRegex}
                     disablePrettyJson
@@ -1119,7 +1098,14 @@ export function LogViewer({
         {/* AI Panel (Slide in) */}
         {analysis && content && isAiPanelOpen && (
             <div className="animate-in slide-in-from-right duration-300 h-full border-l border-zinc-800">
-                <ChatPanel initialSummary={analysis} logContext={content} />
+                <ChatPanel
+                  initialSummary={analysis}
+                  logContext={content}
+                  onCollapse={() => setIsAiPanelOpen(false)}
+                  onClose={() => setIsAiPanelOpen(false)}
+                  onReanalyze={handleAnalyze}
+                  isReanalyzing={analyzing}
+                />
             </div>
         )}
       </div>

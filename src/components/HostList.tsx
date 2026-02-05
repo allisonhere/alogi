@@ -21,6 +21,12 @@ function getHostIcon(host: string) {
   return HardDrive;
 }
 
+function getHostIconColor(host: string) {
+  if (host === '(system-journal)') return 'text-blue-500 dark:text-blue-400';
+  if (host.startsWith('remote:')) return 'text-emerald-500 dark:text-emerald-400';
+  return 'text-amber-500 dark:text-amber-400';
+}
+
 function getHostDisplayName(host: string) {
   if (host === '(system-journal)') return 'System Journal';
   if (host.startsWith('remote:')) return host.replace('remote:', '');
@@ -171,7 +177,7 @@ export function HostList({ hosts, selectedHost, onSelectHost, onRefreshFiles, on
 
   return (
     <div className="w-full border-r border-zinc-800 bg-zinc-50 dark:bg-zinc-950 flex flex-col h-full min-h-0 transition-colors" onContextMenu={(e) => e.preventDefault()}>
-      <div className="px-4 py-3 h-[64px] border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-3">
+      <div className="px-4 py-3 h-[64px] border-b border-zinc-200 dark:border-zinc-800 flex items-start gap-3">
         <img
           src="/logo.svg"
           alt="Alogi logo"
@@ -186,6 +192,7 @@ export function HostList({ hosts, selectedHost, onSelectHost, onRefreshFiles, on
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
         {hosts.map((host) => {
           const Icon = getHostIcon(host);
+          const iconColor = getHostIconColor(host);
           const displayName = getHostDisplayName(host);
           return (
             <button
@@ -199,7 +206,7 @@ export function HostList({ hosts, selectedHost, onSelectHost, onRefreshFiles, on
                   : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-200"
               )}
             >
-              <Icon className="w-4 h-4" />
+              <Icon className={cn("w-4 h-4", iconColor)} />
               {displayName}
             </button>
           );
