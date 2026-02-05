@@ -347,6 +347,28 @@ push_changes() {
     wait $pid && print_success "Pushed to origin"
 }
 
+auto_commit_and_push() {
+    local changes=$(git -C "$PROJECT_DIR" status --porcelain | wc -l)
+
+    if [ "$changes" -gt 0 ]; then
+        print_substep "Staging $changes changed file(s)..."
+        git -C "$PROJECT_DIR" add -A
+        print_success "Files staged"
+
+        print_substep "Committing..."
+        git -C "$PROJECT_DIR" commit -m "chore: release v$VERSION" > /dev/null
+        print_success "Committed: release v$VERSION"
+    else
+        print_info "No changes to commit"
+    fi
+
+    print_substep "Pushing to origin..."
+    git -C "$PROJECT_DIR" push origin main > /dev/null 2>&1 &
+    local pid=$!
+    spinner $pid "Pushing..."
+    wait $pid && print_success "Pushed to origin"
+}
+
 create_github_release() {
     # Verify gh CLI
     if ! command -v gh &> /dev/null; then
@@ -359,19 +381,6 @@ create_github_release() {
     fi
 
     local TAG="v$VERSION"
-
-    # Check for uncommitted changes
-    if [ -n "$(git -C "$PROJECT_DIR" status --porcelain)" ]; then
-        print_warning "Uncommitted changes detected"
-        read -p "  Continue anyway? [y/N] " -n 1 -r
-        echo
-        [[ ! $REPLY =~ ^[Yy]$ ]] && return 1
-    fi
-
-    # Push commits first
-    print_substep "Pushing commits..."
-    git -C "$PROJECT_DIR" push origin main > /dev/null 2>&1 || true
-    print_success "Commits pushed"
 
     # Handle existing tag
     if git -C "$PROJECT_DIR" rev-parse "$TAG" &> /dev/null; then
@@ -489,7 +498,7 @@ update_aur() {
 
 full_release() {
     TOTAL_START=$(date +%s)
-    local total_steps=6
+    local total_steps=7
 
     print_step 1 $total_steps "Cleaning old builds"
     clean_builds
@@ -503,10 +512,13 @@ full_release() {
     print_step 4 $total_steps "Building Arch package"
     build_arch
 
-    print_step 5 $total_steps "Creating GitHub release"
+    print_step 5 $total_steps "Committing & pushing"
+    auto_commit_and_push
+
+    print_step 6 $total_steps "Creating GitHub release"
     create_github_release
 
-    print_step 6 $total_steps "Updating AUR"
+    print_step 7 $total_steps "Updating AUR"
     update_aur
 
     # Summary
