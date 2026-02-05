@@ -9,6 +9,7 @@
     "url": "https://github.com/allisonhere/alogi.git"
   },
   "private": true,
+  "license": "MIT",
   "main": "electron/main.cjs",
   "scripts": {
     "dev": "next dev",
