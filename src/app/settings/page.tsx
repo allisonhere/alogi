@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Save, ArrowLeft, Server, Cpu, Key, Trash2, Copy, X, ChevronDown, Settings } from 'lucide-react';
+import { Save, ArrowLeft, Server, Cpu, Key, Trash2, Copy, X, ChevronDown, Settings, Github, ExternalLink, Heart, Info } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import type { AlogiConfig, HostConfig } from '@/lib/config';
 import { ToastContainer, useToast } from '@/components/Toast';
@@ -1008,6 +1009,73 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* About Section */}
+          <div className="border-t border-zinc-200 dark:border-zinc-800 pt-6">
+            <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Info className="w-4 h-4" /> About
+            </h2>
+
+            <div className="relative overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-gradient-to-br from-indigo-500/5 via-purple-500/5 to-pink-500/5 dark:from-indigo-500/10 dark:via-purple-500/10 dark:to-pink-500/10">
+              {/* Decorative gradient orbs */}
+              <div className="absolute -top-24 -right-24 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl" />
+              <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-purple-500/20 rounded-full blur-3xl" />
+
+              <div className="relative p-6">
+                <div className="flex items-start gap-5">
+                  {/* Logo */}
+                  <div className="flex-shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 p-0.5 shadow-lg shadow-indigo-500/25">
+                    <div className="w-full h-full rounded-2xl bg-white dark:bg-zinc-900 flex items-center justify-center overflow-hidden">
+                      <Image src="/logo.svg" alt="Alogi" width={40} height={40} />
+                    </div>
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-1">
+                      <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Alogi</h3>
+                      <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
+                        v0.1.31
+                      </span>
+                    </div>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
+                      AI-powered log viewer for developers and DevOps engineers. Analyze local files, remote servers, systemd journals, and Docker containers.
+                    </p>
+
+                    {/* Links */}
+                    <div className="flex flex-wrap gap-2">
+                      <a
+                        href="https://github.com/allisonhere/alogi"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                      >
+                        <Github className="w-3.5 h-3.5" />
+                        GitHub
+                      </a>
+                      <a
+                        href="https://allisonhere.github.io/alogi/"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Website
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="mt-6 pt-4 border-t border-zinc-200/50 dark:border-zinc-700/50 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-500">
+                  <span>MIT License</span>
+                  <span className="flex items-center gap-1">
+                    Made with <Heart className="w-3 h-3 text-pink-500 fill-pink-500" /> by allisonhere
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
         </div>
