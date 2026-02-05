@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.31] - 2026-02-04
 
 ### Fixed
-- **Critical Build Fix:** Production builds now use `--no-turbopack` flag to prevent Turbopack runtime errors that caused 500 errors on API routes (including settings page failing to load).
+- **Critical Build Fix:** Production builds now include missing Turbopack runtime files that caused 500 errors on API routes (including settings page failing to load).
+- **Deb Package Fix:** chrome-sandbox now gets correct permissions (root:root, 4755) automatically during install.
 - Improved error handling in settings API route.
 
 ## [0.1.30] - 2026-02-04

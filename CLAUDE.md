@@ -57,11 +57,13 @@ GitHub Pages site served from `docs/` on `main`. `index.html` is the current liv
 
 ## Release process
 
-When bumping versions:
+Use `./scripts/release.sh` for an interactive release workflow, or manually:
+
 1. Update `version` in `package.json`
 2. Add entry to `CHANGELOG.md`
-3. Grep for old version string to catch any remaining references
-4. Run `npm run dist:linux` to build .deb and pacman packages
-5. Commit, push
-6. `gh release create v<version>` with release notes
-7. Attach built packages: `gh release upload v<version> dist/*.deb dist/*.pkg.tar.zst`
+3. Run `npm run build` (includes `patch-standalone.sh` to fix Turbopack runtime)
+4. Run `npm run dist:linux` to build .deb
+5. Build Arch: `tar -C dist-electron -czf packaging/arch/linux-unpacked.tar.gz linux-unpacked && cd packaging/arch && makepkg -f`
+6. Commit, push, tag: `git tag v<version> && git push origin v<version>`
+7. `gh release create v<version>` and upload assets
+8. Update AUR: `cd ~/aur-alogi`, update sha256sums in PKGBUILD, `makepkg --printsrcinfo > .SRCINFO`, commit, push
