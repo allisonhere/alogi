@@ -6,28 +6,137 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
+BOLD='\033[1m'
+DIM='\033[2m'
+NC='\033[0m'
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DIST_DIR="$PROJECT_DIR/dist-electron"
 ARCH_DIR="$PROJECT_DIR/packaging/arch"
+AUR_DIR="$HOME/aur-alogi"
 
-echo -e "${BLUE}╔════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║       Alogi Release Builder            ║${NC}"
-echo -e "${BLUE}╚════════════════════════════════════════╝${NC}"
-echo ""
+# Timing
+STEP_START=0
+TOTAL_START=0
+
+# ============================================================================
+# UTILITIES
+# ============================================================================
+
+print_header() {
+    clear
+    echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║${NC}             ${BOLD}${CYAN}Alogi Release Builder${NC}                        ${BLUE}║${NC}"
+    echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+}
+
+print_step() {
+    local step=$1
+    local total=$2
+    local msg=$3
+    STEP_START=$(date +%s)
+    echo ""
+    echo -e "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}${CYAN}[$step/$total]${NC} ${BOLD}$msg${NC}"
+    echo -e "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+}
+
+print_substep() {
+    echo -e "  ${DIM}→${NC} $1"
+}
+
+print_success() {
+    local elapsed=$(($(date +%s) - STEP_START))
+    echo -e "  ${GREEN}✓${NC} $1 ${DIM}(${elapsed}s)${NC}"
+}
+
+print_error() {
+    echo -e "  ${RED}✗${NC} $1"
+}
+
+print_warning() {
+    echo -e "  ${YELLOW}⚠${NC} $1"
+}
+
+print_info() {
+    echo -e "  ${BLUE}ℹ${NC} $1"
+}
+
+print_file_size() {
+    local file=$1
+    if [ -f "$file" ]; then
+        local size=$(du -h "$file" | cut -f1)
+        local name=$(basename "$file")
+        echo -e "  ${GREEN}✓${NC} ${name} ${DIM}(${size})${NC}"
+    fi
+}
+
+format_time() {
+    local seconds=$1
+    if [ "$seconds" -ge 60 ]; then
+        local mins=$((seconds / 60))
+        local secs=$((seconds % 60))
+        echo "${mins}m ${secs}s"
+    else
+        echo "${seconds}s"
+    fi
+}
+
+spinner() {
+    local pid=$1
+    local msg=$2
+    local spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    local i=0
+
+    tput civis  # Hide cursor
+    while kill -0 "$pid" 2>/dev/null; do
+        i=$(( (i + 1) % 10 ))
+        printf "\r  ${CYAN}${spin:$i:1}${NC} %s" "$msg"
+        sleep 0.1
+    done
+    tput cnorm  # Show cursor
+    printf "\r"
+}
+
+run_with_spinner() {
+    local msg=$1
+    shift
+
+    "$@" > /tmp/release_cmd_output.log 2>&1 &
+    local pid=$!
+    spinner $pid "$msg"
+    wait $pid
+    local exit_code=$?
+
+    if [ $exit_code -eq 0 ]; then
+        print_success "$msg"
+    else
+        print_error "$msg"
+        echo -e "${DIM}"
+        tail -20 /tmp/release_cmd_output.log
+        echo -e "${NC}"
+        return $exit_code
+    fi
+}
+
+# ============================================================================
+# VERSION MANAGEMENT
+# ============================================================================
 
 read_version() {
     if [ ! -f "$PROJECT_DIR/package.json" ]; then
-        echo -e "${RED}Error: package.json not found${NC}"
+        print_error "package.json not found"
         exit 1
     fi
-    if ! VERSION=$(node -p "require('$PROJECT_DIR/package.json').version" 2>/dev/null); then
-        echo -e "${RED}Error: Unable to read version from package.json${NC}"
+    VERSION=$(node -p "require('$PROJECT_DIR/package.json').version" 2>/dev/null) || {
+        print_error "Unable to read version from package.json"
         exit 1
-    fi
+    }
     if [ -z "$VERSION" ]; then
-        echo -e "${RED}Error: package.json version is empty${NC}"
+        print_error "package.json version is empty"
         exit 1
     fi
 }
@@ -40,84 +149,43 @@ suggest_next_patch() {
 }
 
 add_changelog_entry() {
-    local today entry tmp
     if [ ! -f "$PROJECT_DIR/CHANGELOG.md" ]; then
-        echo -e "${YELLOW}WARNING: CHANGELOG.md not found; skipping entry creation.${NC}"
+        print_warning "CHANGELOG.md not found; skipping"
         return 0
     fi
     if grep -q "^## \\[$VERSION\\]" "$PROJECT_DIR/CHANGELOG.md"; then
-        echo -e "${YELLOW}CHANGELOG already has an entry for $VERSION${NC}"
+        print_info "CHANGELOG already has entry for $VERSION"
         return 0
     fi
 
-    today=$(date +%F)
-    entry="## [$VERSION] - $today\n\n### Added\n- TBD\n\n### Changed\n- TBD\n\n### Fixed\n- TBD\n"
-    tmp=$(mktemp)
+    local today=$(date +%F)
+    local entry="## [$VERSION] - $today\n\n### Added\n- TBD\n\n### Changed\n- TBD\n\n### Fixed\n- TBD\n"
+    local tmp=$(mktemp)
     awk -v entry="$entry" '
         BEGIN { inserted=0 }
         /^## \[/ && inserted==0 { print entry; inserted=1 }
         { print }
         END { if (inserted==0) print entry }
     ' "$PROJECT_DIR/CHANGELOG.md" > "$tmp" && mv "$tmp" "$PROJECT_DIR/CHANGELOG.md"
-    echo -e "${GREEN}Added CHANGELOG entry for v$VERSION (please replace TBD).${NC}"
-}
-
-bump_version_advanced() {
-    if ! command -v npm &> /dev/null; then
-        echo -e "${RED}Error: npm not found${NC}"
-        exit 1
-    fi
-
-    echo -e "${BLUE}Select version bump:${NC}"
-    echo "  1) patch"
-    echo "  2) minor"
-    echo "  3) major"
-    echo "  4) custom"
-    echo "  5) cancel"
-    read -p "Choose [1-5]: " bump_choice
-
-    case $bump_choice in
-        1)
-            npm -C "$PROJECT_DIR" version patch --no-git-tag-version
-            ;;
-        2)
-            npm -C "$PROJECT_DIR" version minor --no-git-tag-version
-            ;;
-        3)
-            npm -C "$PROJECT_DIR" version major --no-git-tag-version
-            ;;
-        4)
-            read -p "Enter new version (e.g. 1.2.3): " custom_version
-            if [ -z "$custom_version" ]; then
-                echo -e "${RED}Error: version cannot be empty${NC}"
-                exit 1
-            fi
-            npm -C "$PROJECT_DIR" version "$custom_version" --no-git-tag-version
-            ;;
-        5)
-            return 0
-            ;;
-        *)
-            echo -e "${RED}Invalid choice${NC}"
-            exit 1
-            ;;
-    esac
+    print_success "Added CHANGELOG entry for v$VERSION"
+    print_warning "Remember to replace TBD entries!"
 }
 
 bump_version() {
     read_version
     suggest_next_patch
-    echo -e "Current version: ${GREEN}v$VERSION${NC}"
+
+    echo -e "\n  Current version: ${GREEN}v$VERSION${NC}"
 
     if [ -n "$NEXT_VERSION" ]; then
-        read -p "Bump to v$NEXT_VERSION? [y/N] " -n 1 -r
+        echo -e "  Suggested next:  ${CYAN}v$NEXT_VERSION${NC}\n"
+        read -p "  Bump to v$NEXT_VERSION? [Y/n] " -n 1 -r
         echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            npm -C "$PROJECT_DIR" version "$NEXT_VERSION" --no-git-tag-version
+        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+            npm -C "$PROJECT_DIR" version "$NEXT_VERSION" --no-git-tag-version > /dev/null
+            read_version
+            print_success "Version bumped to v$VERSION"
         else
-            read -p "Pick a different version? [y/N] " -n 1 -r
-            echo
-            [[ ! $REPLY =~ ^[Yy]$ ]] && return 0
             bump_version_advanced
         fi
     else
@@ -125,60 +193,43 @@ bump_version() {
     fi
 
     read_version
-    echo -e "New version: ${GREEN}v$VERSION${NC}"
-    read -p "Add CHANGELOG entry for v$VERSION? [y/N] " -n 1 -r
+    echo ""
+    read -p "  Add CHANGELOG entry? [Y/n] " -n 1 -r
     echo
-    [[ $REPLY =~ ^[Yy]$ ]] && add_changelog_entry
+    [[ ! $REPLY =~ ^[Nn]$ ]] && add_changelog_entry
 }
 
-BUILD_NEXTJS_DONE=0
+bump_version_advanced() {
+    echo -e "\n  ${BOLD}Select version bump:${NC}"
+    echo "    1) patch  (x.x.X)"
+    echo "    2) minor  (x.X.0)"
+    echo "    3) major  (X.0.0)"
+    echo "    4) custom"
+    echo "    5) cancel"
+    read -p "  Choose [1-5]: " bump_choice
 
-run_electron_builder() {
-    local eb_cmd=""
-    if [ -x "$PROJECT_DIR/node_modules/.bin/electron-builder" ]; then
-        eb_cmd="$PROJECT_DIR/node_modules/.bin/electron-builder"
-    elif command -v electron-builder &> /dev/null; then
-        eb_cmd="electron-builder"
-    else
-        echo -e "${RED}Error: electron-builder not found. Run npm install first.${NC}"
-        return 1
-    fi
-
-    "$eb_cmd" "$@"
+    case $bump_choice in
+        1) npm -C "$PROJECT_DIR" version patch --no-git-tag-version > /dev/null ;;
+        2) npm -C "$PROJECT_DIR" version minor --no-git-tag-version > /dev/null ;;
+        3) npm -C "$PROJECT_DIR" version major --no-git-tag-version > /dev/null ;;
+        4)
+            read -p "  Enter version (e.g. 1.2.3): " custom_version
+            [ -z "$custom_version" ] && { print_error "Version cannot be empty"; return 1; }
+            npm -C "$PROJECT_DIR" version "$custom_version" --no-git-tag-version > /dev/null
+            ;;
+        5) return 0 ;;
+        *) print_error "Invalid choice"; return 1 ;;
+    esac
+    read_version
+    print_success "Version set to v$VERSION"
 }
 
-update_pkgbuild_version() {
-    if sed --version &> /dev/null; then
-        sed -i "s/^pkgver=.*/pkgver=$VERSION/" "$ARCH_DIR/PKGBUILD"
-    else
-        sed -i '' "s/^pkgver=.*/pkgver=$VERSION/" "$ARCH_DIR/PKGBUILD"
-    fi
-}
-
-commit_changes() {
-    if [ -z "$(git -C "$PROJECT_DIR" status --porcelain)" ]; then
-        echo -e "${YELLOW}No changes to commit.${NC}"
-        return 0
-    fi
-
-    local default_msg="chore: release v$VERSION"
-    local msg
-    read -p "Commit message [$default_msg]: " msg
-    if [ -z "$msg" ]; then
-        msg="$default_msg"
-    fi
-
-    git -C "$PROJECT_DIR" add -A
-    if git -C "$PROJECT_DIR" commit -m "$msg"; then
-        echo -e "${GREEN}Committed.${NC}"
-    else
-        echo -e "${RED}Commit failed.${NC}"
-        return 1
-    fi
-}
+# ============================================================================
+# BUILD FUNCTIONS
+# ============================================================================
 
 clean_builds() {
-    echo -e "${YELLOW}Cleaning old builds...${NC}"
+    print_substep "Removing old build artifacts..."
     rm -rf "$DIST_DIR/linux-unpacked"
     rm -f "$DIST_DIR"/*.deb
     rm -f "$DIST_DIR"/alogi-*-linux-unpacked.tar.gz
@@ -187,236 +238,375 @@ clean_builds() {
     rm -f "$ARCH_DIR"/*.pkg.tar.zst
     rm -f "$ARCH_DIR/linux-unpacked.tar.gz"
     rm -rf "$ARCH_DIR/pkg" "$ARCH_DIR/src"
-    echo -e "${GREEN}Cleaned!${NC}"
+    rm -rf "$PROJECT_DIR/.next/standalone" "$PROJECT_DIR/.next/trace"
+    print_success "Cleaned old builds"
 }
 
 build_nextjs() {
-    echo -e "${BLUE}Building Next.js...${NC}"
+    print_substep "Running Next.js build..."
     cd "$PROJECT_DIR"
-    rm -rf "$PROJECT_DIR/.next/standalone" "$PROJECT_DIR/.next/trace"
-    npm run build:desktop
-    BUILD_NEXTJS_DONE=1
+
+    npm run build > /tmp/nextjs_build.log 2>&1 &
+    local pid=$!
+    spinner $pid "Building Next.js + patching Turbopack..."
+    wait $pid || {
+        print_error "Next.js build failed"
+        tail -30 /tmp/nextjs_build.log
+        return 1
+    }
+    print_success "Next.js build complete"
 }
 
 build_deb() {
-    echo -e "${BLUE}Building .deb package...${NC}"
+    print_substep "Building .deb package..."
     cd "$PROJECT_DIR"
-    run_electron_builder --linux deb --publish never
-    echo -e "${GREEN}Deb built: $DIST_DIR/Alogi-amd64.deb${NC}"
+
+    local eb_cmd="$PROJECT_DIR/node_modules/.bin/electron-builder"
+    [ ! -x "$eb_cmd" ] && { print_error "electron-builder not found"; return 1; }
+
+    "$eb_cmd" --linux deb --publish never > /tmp/deb_build.log 2>&1 &
+    local pid=$!
+    spinner $pid "Packaging .deb..."
+    wait $pid || {
+        print_error "Deb build failed"
+        tail -20 /tmp/deb_build.log
+        return 1
+    }
+
+    print_file_size "$DIST_DIR/Alogi-amd64.deb"
 }
 
 build_arch() {
-    echo -e "${BLUE}Building Arch package...${NC}"
-
-    if [ "$BUILD_NEXTJS_DONE" -eq 0 ]; then
-        build_nextjs
-    fi
-
-    echo "Building linux-unpacked..."
+    print_substep "Building linux-unpacked directory..."
     cd "$PROJECT_DIR"
-    run_electron_builder --linux dir --publish never
 
-    # Create tarball
-    echo "Creating tarball..."
+    local eb_cmd="$PROJECT_DIR/node_modules/.bin/electron-builder"
+    "$eb_cmd" --linux dir --publish never > /tmp/arch_build.log 2>&1 &
+    local pid=$!
+    spinner $pid "Packaging linux-unpacked..."
+    wait $pid || {
+        print_error "Linux dir build failed"
+        tail -20 /tmp/arch_build.log
+        return 1
+    }
+    print_success "linux-unpacked built"
+
+    print_substep "Creating tarball..."
     tar -C "$DIST_DIR" -czf "$ARCH_DIR/linux-unpacked.tar.gz" linux-unpacked
     cp "$ARCH_DIR/linux-unpacked.tar.gz" "$DIST_DIR/alogi-$VERSION-linux-unpacked.tar.gz"
+    print_file_size "$DIST_DIR/alogi-$VERSION-linux-unpacked.tar.gz"
 
-    # Update PKGBUILD version
-    update_pkgbuild_version
+    print_substep "Updating PKGBUILD version..."
+    sed -i "s/^pkgver=.*/pkgver=$VERSION/" "$ARCH_DIR/PKGBUILD"
+    print_success "PKGBUILD updated to v$VERSION"
 
-    # Clean previous build artifacts
+    print_substep "Running makepkg..."
     rm -rf "$ARCH_DIR/pkg" "$ARCH_DIR/src"
-
-    # Build package
     cd "$ARCH_DIR"
-    makepkg -f
 
-    # Copy to dist-electron
+    makepkg -f > /tmp/makepkg.log 2>&1 &
+    local pid=$!
+    spinner $pid "Building Arch package..."
+    wait $pid || {
+        print_error "makepkg failed"
+        tail -20 /tmp/makepkg.log
+        return 1
+    }
+
     cp "$ARCH_DIR"/alogi-*.pkg.tar.zst "$DIST_DIR/" 2>/dev/null || true
+    print_file_size "$DIST_DIR"/alogi-*.pkg.tar.zst
+}
 
-    echo -e "${GREEN}Arch package built!${NC}"
+# ============================================================================
+# GIT & RELEASE FUNCTIONS
+# ============================================================================
+
+commit_changes() {
+    if [ -z "$(git -C "$PROJECT_DIR" status --porcelain)" ]; then
+        print_info "No changes to commit"
+        return 0
+    fi
+
+    echo ""
+    git -C "$PROJECT_DIR" status --short
+    echo ""
+
+    local default_msg="chore: release v$VERSION"
+    read -p "  Commit message [$default_msg]: " msg
+    msg=${msg:-$default_msg}
+
+    git -C "$PROJECT_DIR" add -A
+    git -C "$PROJECT_DIR" commit -m "$msg" > /dev/null && print_success "Changes committed"
+}
+
+push_changes() {
+    print_substep "Pushing to origin..."
+    git -C "$PROJECT_DIR" push origin main > /dev/null 2>&1 &
+    local pid=$!
+    spinner $pid "Pushing commits..."
+    wait $pid && print_success "Pushed to origin"
 }
 
 create_github_release() {
-    echo -e "${BLUE}Creating GitHub release...${NC}"
-
-    # Check if gh is installed
+    # Verify gh CLI
     if ! command -v gh &> /dev/null; then
-        echo -e "${RED}Error: GitHub CLI (gh) not installed${NC}"
+        print_error "GitHub CLI (gh) not installed"
+        return 1
+    fi
+    if ! gh auth status &> /dev/null 2>&1; then
+        print_error "Not logged into GitHub CLI. Run 'gh auth login'"
         return 1
     fi
 
-    # Check if logged in
-    if ! gh auth status &> /dev/null; then
-        echo -e "${RED}Error: Not logged into GitHub CLI. Run 'gh auth login'${NC}"
-        return 1
-    fi
+    local TAG="v$VERSION"
 
-    TAG="v$VERSION"
-
-    # Require a clean working tree before tagging
+    # Check for uncommitted changes
     if [ -n "$(git -C "$PROJECT_DIR" status --porcelain)" ]; then
-        echo -e "${YELLOW}WARNING: Working tree has uncommitted changes.${NC}"
-        echo -e "${YELLOW}Tagging will not include those changes.${NC}"
-        read -p "Continue anyway? [y/N] " -n 1 -r
+        print_warning "Uncommitted changes detected"
+        read -p "  Continue anyway? [y/N] " -n 1 -r
         echo
         [[ ! $REPLY =~ ^[Yy]$ ]] && return 1
     fi
 
-    # Check if tag exists
+    # Push commits first
+    print_substep "Pushing commits..."
+    git -C "$PROJECT_DIR" push origin main > /dev/null 2>&1 || true
+    print_success "Commits pushed"
+
+    # Handle existing tag
     if git -C "$PROJECT_DIR" rev-parse "$TAG" &> /dev/null; then
-        echo -e "${YELLOW}Tag $TAG already exists${NC}"
-        read -p "Delete and recreate? [y/N] " -n 1 -r
+        print_warning "Tag $TAG already exists"
+        read -p "  Delete and recreate? [y/N] " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
-            git -C "$PROJECT_DIR" tag -d "$TAG"
+            git -C "$PROJECT_DIR" tag -d "$TAG" > /dev/null
             git -C "$PROJECT_DIR" push origin --delete "$TAG" 2>/dev/null || true
+            print_success "Old tag deleted"
         else
             return 1
         fi
     fi
 
-    # Create tag
+    # Create and push tag
+    print_substep "Creating tag $TAG..."
     git -C "$PROJECT_DIR" tag -a "$TAG" -m "Release $TAG"
-    git -C "$PROJECT_DIR" push origin "$TAG"
+    git -C "$PROJECT_DIR" push origin "$TAG" > /dev/null 2>&1
+    print_success "Tag $TAG pushed"
 
-    # Get changelog entry for this version
-    if [ ! -f "$PROJECT_DIR/CHANGELOG.md" ]; then
-        echo -e "${RED}Error: CHANGELOG.md not found${NC}"
-        return 1
+    # Get changelog notes
+    local NOTES=""
+    if [ -f "$PROJECT_DIR/CHANGELOG.md" ]; then
+        NOTES=$(awk -v ver="$VERSION" '
+            $0 ~ "^## \\["ver"\\]" {found=1; next}
+            found && $0 ~ "^## \\[" {exit}
+            found {print}
+        ' "$PROJECT_DIR/CHANGELOG.md")
     fi
-    NOTES=$(awk -v ver="$VERSION" '
-        $0 ~ "^## \\["ver"\\]" {found=1; next}
-        found && $0 ~ "^## \\[" {exit}
-        found {print}
-    ' "$PROJECT_DIR/CHANGELOG.md")
-    if [ -z "$NOTES" ]; then
-        echo -e "${YELLOW}WARNING: No changelog entry found for version $VERSION${NC}"
-        read -p "Continue without changelog notes? [y/N] " -n 1 -r
-        echo
-        [[ ! $REPLY =~ ^[Yy]$ ]] && return 1
-        NOTES="Release $TAG"
-    fi
+    [ -z "$NOTES" ] && NOTES="Release $TAG"
 
     # Create release
-    echo "Creating release $TAG..."
+    print_substep "Creating GitHub release..."
     gh release create "$TAG" \
         --title "Alogi $TAG" \
         --notes "$NOTES" \
-        --repo allisonhere/alogi
+        --repo allisonhere/alogi > /dev/null 2>&1
+    print_success "Release created"
 
     # Upload assets
-    echo "Uploading assets..."
-    [ -f "$DIST_DIR/Alogi-amd64.deb" ] && gh release upload "$TAG" "$DIST_DIR/Alogi-amd64.deb" --repo allisonhere/alogi
-    LINUX_TARBALL="$DIST_DIR/alogi-$VERSION-linux-unpacked.tar.gz"
-    if [ ! -f "$LINUX_TARBALL" ] && [ -f "$ARCH_DIR/linux-unpacked.tar.gz" ]; then
-        cp "$ARCH_DIR/linux-unpacked.tar.gz" "$LINUX_TARBALL"
-    fi
-    [ -f "$LINUX_TARBALL" ] && gh release upload "$TAG" "$LINUX_TARBALL" --repo allisonhere/alogi
+    print_substep "Uploading assets..."
 
-    # Upload Arch package with standardized name
-    ARCH_PKG=$(ls "$DIST_DIR"/alogi-*.pkg.tar.zst 2>/dev/null | head -1)
-    if [ -n "$ARCH_PKG" ]; then
-        gh release upload "$TAG" "$ARCH_PKG#alogi-arch.pkg.tar.zst" --repo allisonhere/alogi
+    local uploaded=0
+    if [ -f "$DIST_DIR/Alogi-amd64.deb" ]; then
+        gh release upload "$TAG" "$DIST_DIR/Alogi-amd64.deb" --repo allisonhere/alogi > /dev/null 2>&1
+        print_file_size "$DIST_DIR/Alogi-amd64.deb"
+        ((uploaded++))
     fi
 
-    echo -e "${GREEN}GitHub release created: https://github.com/allisonhere/alogi/releases/tag/$TAG${NC}"
+    local TARBALL="$DIST_DIR/alogi-$VERSION-linux-unpacked.tar.gz"
+    if [ -f "$TARBALL" ]; then
+        gh release upload "$TAG" "$TARBALL" --repo allisonhere/alogi > /dev/null 2>&1
+        print_file_size "$TARBALL"
+        ((uploaded++))
+    fi
+
+    local ARCH_PKG=$(ls "$DIST_DIR"/alogi-*.pkg.tar.zst 2>/dev/null | head -1)
+    if [ -n "$ARCH_PKG" ] && [ -f "$ARCH_PKG" ]; then
+        gh release upload "$TAG" "$ARCH_PKG#alogi-arch.pkg.tar.zst" --repo allisonhere/alogi > /dev/null 2>&1
+        print_file_size "$ARCH_PKG"
+        ((uploaded++))
+    fi
+
+    print_success "Uploaded $uploaded assets"
+    echo ""
+    echo -e "  ${GREEN}→${NC} https://github.com/allisonhere/alogi/releases/tag/$TAG"
 }
 
-while true; do
+update_aur() {
+    if [ ! -d "$AUR_DIR" ]; then
+        print_error "AUR directory not found at $AUR_DIR"
+        print_info "Clone it first: git clone ssh://aur@aur.archlinux.org/alogi.git ~/aur-alogi"
+        return 1
+    fi
+
+    local TARBALL="$DIST_DIR/alogi-$VERSION-linux-unpacked.tar.gz"
+    if [ ! -f "$TARBALL" ]; then
+        print_error "Tarball not found: $TARBALL"
+        print_info "Run a full build first"
+        return 1
+    fi
+
+    print_substep "Calculating SHA256..."
+    local SHA256=$(sha256sum "$TARBALL" | awk '{print $1}')
+    print_success "SHA256: ${SHA256:0:16}..."
+
+    print_substep "Pulling latest from AUR..."
+    cd "$AUR_DIR"
+    git pull > /dev/null 2>&1
+    print_success "AUR repo updated"
+
+    print_substep "Updating PKGBUILD..."
+    sed -i "s/^pkgver=.*/pkgver=$VERSION/" PKGBUILD
+    sed -i "s/sha256sums=(\"[^\"]*\"/sha256sums=(\"$SHA256\"/" PKGBUILD
+    print_success "PKGBUILD updated"
+
+    print_substep "Generating .SRCINFO..."
+    makepkg --printsrcinfo > .SRCINFO
+    print_success ".SRCINFO generated"
+
+    print_substep "Committing and pushing..."
+    git add PKGBUILD .SRCINFO
+    git commit -m "Update to $VERSION" > /dev/null 2>&1
+    git push > /dev/null 2>&1
+    print_success "Pushed to AUR"
+
+    echo ""
+    echo -e "  ${GREEN}→${NC} https://aur.archlinux.org/packages/alogi"
+}
+
+# ============================================================================
+# FULL RELEASE WORKFLOW
+# ============================================================================
+
+full_release() {
+    TOTAL_START=$(date +%s)
+    local total_steps=6
+
+    print_step 1 $total_steps "Cleaning old builds"
+    clean_builds
+
+    print_step 2 $total_steps "Building Next.js"
+    build_nextjs
+
+    print_step 3 $total_steps "Building .deb package"
+    build_deb
+
+    print_step 4 $total_steps "Building Arch package"
+    build_arch
+
+    print_step 5 $total_steps "Creating GitHub release"
+    create_github_release
+
+    print_step 6 $total_steps "Updating AUR"
+    update_aur
+
+    # Summary
+    local total_time=$(($(date +%s) - TOTAL_START))
+    echo ""
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}${GREEN}  ✓ Release v$VERSION complete!${NC} ${DIM}($(format_time $total_time))${NC}"
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "  ${BOLD}Artifacts:${NC}"
+    print_file_size "$DIST_DIR/Alogi-amd64.deb"
+    print_file_size "$DIST_DIR/alogi-$VERSION-linux-unpacked.tar.gz"
+    ls "$DIST_DIR"/alogi-*.pkg.tar.zst 2>/dev/null | while read f; do print_file_size "$f"; done
+    echo ""
+    echo -e "  ${BOLD}Links:${NC}"
+    echo -e "  ${CYAN}→${NC} GitHub: https://github.com/allisonhere/alogi/releases/tag/v$VERSION"
+    echo -e "  ${CYAN}→${NC} AUR:    https://aur.archlinux.org/packages/alogi"
+    echo ""
+}
+
+# ============================================================================
+# MAIN MENU
+# ============================================================================
+
+show_status() {
     read_version
     suggest_next_patch
-    if [ -n "$NEXT_VERSION" ]; then
-        echo -e "Current version: ${GREEN}v$VERSION${NC} (next: v$NEXT_VERSION)"
+
+    echo -e "  ${BOLD}Version:${NC}  ${GREEN}v$VERSION${NC}"
+    [ -n "$NEXT_VERSION" ] && echo -e "  ${BOLD}Next:${NC}     ${DIM}v$NEXT_VERSION${NC}"
+
+    # Disk space
+    local avail=$(df -BG "$PROJECT_DIR" | tail -1 | awk '{print $4}' | sed 's/G//')
+    local disk_color=$GREEN
+    [ "$avail" -lt 10 ] && disk_color=$YELLOW
+    [ "$avail" -lt 5 ] && disk_color=$RED
+    echo -e "  ${BOLD}Disk:${NC}     ${disk_color}${avail}GB free${NC}"
+
+    # Git status
+    local changes=$(git -C "$PROJECT_DIR" status --porcelain | wc -l)
+    if [ "$changes" -gt 0 ]; then
+        echo -e "  ${BOLD}Git:${NC}      ${YELLOW}$changes uncommitted change(s)${NC}"
     else
-        echo -e "Current version: ${GREEN}v$VERSION${NC}"
+        echo -e "  ${BOLD}Git:${NC}      ${GREEN}clean${NC}"
     fi
     echo ""
+}
 
-    # Check disk space
-    AVAIL=$(df -BG "$PROJECT_DIR" | tail -1 | awk '{print $4}' | sed 's/G//')
-    echo -e "Available disk space: ${AVAIL}GB"
-    if [ "$AVAIL" -lt 5 ]; then
-        echo -e "${RED}WARNING: Less than 5GB free. Build may fail.${NC}"
-        read -p "Continue anyway? [y/N] " -n 1 -r
-        echo
-        [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
-    fi
-    echo ""
+main_menu() {
+    while true; do
+        print_header
+        show_status
 
-    # Check for uncommitted changes
-    if [ -n "$(git -C "$PROJECT_DIR" status --porcelain)" ]; then
-        echo -e "${YELLOW}WARNING: You have uncommitted changes${NC}"
-        git -C "$PROJECT_DIR" status --short
+        echo -e "  ${BOLD}${CYAN}Actions${NC}"
+        echo -e "  ${DIM}─────────────────────────────${NC}"
+        echo "   1) Bump version"
+        echo "   2) Commit changes"
+        echo "   3) Build all (deb + Arch)"
+        echo "   4) Build deb only"
+        echo "   5) Build Arch only"
+        echo "   6) Clean builds"
         echo ""
-    fi
+        echo -e "  ${BOLD}${CYAN}Release${NC}"
+        echo -e "  ${DIM}─────────────────────────────${NC}"
+        echo "   7) GitHub release only"
+        echo "   8) AUR update only"
+        echo -e "   9) ${GREEN}Full release (recommended)${NC}"
+        echo ""
+        echo "   0) Exit"
+        echo ""
 
-    # Menu
-    echo -e "${YELLOW}Recommended flow:${NC} 1) Bump version → 2) Commit changes → 8) Full release"
-    echo -e "${BLUE}What would you like to do?${NC}"
-    echo "  1) Bump version"
-    echo "  2) Commit changes"
-    echo "  3) Build all packages (deb + Arch)"
-    echo "  4) Build deb only"
-    echo "  5) Build Arch package only"
-    echo "  6) Clean old builds"
-    echo "  7) Create GitHub release"
-    echo "  8) Full release (build all + GitHub release)"
-    echo "  9) Exit"
-    echo ""
-    read -p "Choose [1-9]: " choice
+        read -p "  Choose [0-9]: " choice
 
-    case $choice in
-        1)
-            bump_version
-            ;;
-        2)
-            commit_changes
-            ;;
-        3)
-            clean_builds
-            build_nextjs
-            build_deb
-            build_arch
-            echo ""
-            echo -e "${GREEN}All packages built!${NC}"
-            ls -lh "$DIST_DIR"/*.deb "$DIST_DIR"/*.pkg.tar.zst 2>/dev/null
-            ;;
-        4)
-            clean_builds
-            build_nextjs
-            build_deb
-            ;;
-        5)
-            build_arch
-            ;;
-        6)
-            clean_builds
-            ;;
-        7)
-            create_github_release
-            ;;
-        8)
-            clean_builds
-            build_nextjs
-            build_deb
-            build_arch
-            echo ""
-            echo -e "${GREEN}All packages built!${NC}"
-            ls -lh "$DIST_DIR"/*.deb "$DIST_DIR"/*.pkg.tar.zst 2>/dev/null
-            echo ""
-            create_github_release
-            ;;
-        9)
-            echo "Bye!"
-            break
-            ;;
-        *)
-            echo -e "${RED}Invalid choice${NC}"
-            ;;
-    esac
+        case $choice in
+            1) bump_version ;;
+            2) commit_changes ;;
+            3)
+                print_step 1 3 "Cleaning"; clean_builds
+                print_step 2 3 "Building Next.js"; build_nextjs
+                print_step 3 3 "Building packages"; build_deb; build_arch
+                ;;
+            4)
+                print_step 1 2 "Cleaning"; clean_builds
+                print_step 2 2 "Building"; build_nextjs; build_deb
+                ;;
+            5)
+                print_step 1 1 "Building Arch"; build_arch
+                ;;
+            6) clean_builds ;;
+            7) create_github_release ;;
+            8) update_aur ;;
+            9) full_release ;;
+            0) echo -e "\n  ${DIM}Bye!${NC}\n"; exit 0 ;;
+            *) print_error "Invalid choice" ;;
+        esac
 
-    echo ""
-    read -p "Press Enter to return to menu..." -r
-    echo ""
-done
+        echo ""
+        read -p "  Press Enter to continue..." -r
+    done
+}
+
+# Run
+main_menu
