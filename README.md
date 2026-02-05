@@ -163,4 +163,4 @@ Notes:
 
 ## License
 
-MIT
+[MIT](LICENSE)

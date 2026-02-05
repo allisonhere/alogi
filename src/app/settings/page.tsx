@@ -1069,7 +1069,7 @@ export default function SettingsPage() {
 
                 {/* Footer */}
                 <div className="mt-6 pt-4 border-t border-zinc-200/50 dark:border-zinc-700/50 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-500">
-                  <span>MIT License</span>
+                  <a href="https://github.com/allisonhere/alogi/blob/main/LICENSE" target="_blank" rel="noreferrer" className="hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">MIT License</a>
                   <span className="flex items-center gap-1">
                     Made with <Heart className="w-3 h-3 text-pink-500 fill-pink-500" /> by allisonhere
                   </span>
