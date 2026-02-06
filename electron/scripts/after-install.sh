@@ -21,8 +21,13 @@ if [ -L "$BIN_LINK" ]; then
 fi
 
 # Create wrapper script
-cat > "$BIN_LINK" << EOF
+cat > "$BIN_LINK" << 'EOF'
 #!/bin/bash
+INSTALL_DIR="/opt/alogi"
+if [ ! -d "$INSTALL_DIR" ] && [ -d "/opt/Alogi" ]; then
+  INSTALL_DIR="/opt/Alogi"
+fi
+
 BIN="$INSTALL_DIR/alogi"
 if [ ! -x "$BIN" ] && [ -x "/opt/Alogi/alogi" ]; then
   BIN="/opt/Alogi/alogi"
@@ -30,16 +35,20 @@ fi
 if [ ! -x "$BIN" ] && [ -x "/opt/alogi/alogi" ]; then
   BIN="/opt/alogi/alogi"
 fi
+if [ ! -x "$BIN" ]; then
+  echo "Alogi binary not found under /opt." >&2
+  exit 1
+fi
 
-for arg in "\$@"; do
-  case "\$arg" in
+for arg in "$@"; do
+  case "$arg" in
     --web|--desktop|--help|-h)
-      exec "\$BIN" "\$@"
+      exec "$BIN" "$@"
       ;;
   esac
 done
 
-"\$BIN" "\$@" &>/dev/null & disown
+"$BIN" "$@" &>/dev/null & disown
 EOF
 
 chmod 755 "$BIN_LINK"
