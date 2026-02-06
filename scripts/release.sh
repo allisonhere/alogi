@@ -428,21 +428,21 @@ create_github_release() {
     if [ -f "$DIST_DIR/Alogi-amd64.deb" ]; then
         gh release upload "$TAG" "$DIST_DIR/Alogi-amd64.deb" --repo allisonhere/alogi > /dev/null 2>&1
         print_file_size "$DIST_DIR/Alogi-amd64.deb"
-        ((uploaded++))
+        ((uploaded++)) || true
     fi
 
     local TARBALL="$DIST_DIR/alogi-$VERSION-linux-unpacked.tar.gz"
     if [ -f "$TARBALL" ]; then
         gh release upload "$TAG" "$TARBALL" --repo allisonhere/alogi > /dev/null 2>&1
         print_file_size "$TARBALL"
-        ((uploaded++))
+        ((uploaded++)) || true
     fi
 
     local ARCH_PKG=$(ls "$DIST_DIR"/alogi-*.pkg.tar.zst 2>/dev/null | head -1)
     if [ -n "$ARCH_PKG" ] && [ -f "$ARCH_PKG" ]; then
         gh release upload "$TAG" "$ARCH_PKG#alogi-arch.pkg.tar.zst" --repo allisonhere/alogi > /dev/null 2>&1
         print_file_size "$ARCH_PKG"
-        ((uploaded++))
+        ((uploaded++)) || true
     fi
 
     print_success "Uploaded $uploaded assets"
@@ -457,15 +457,16 @@ update_aur() {
         return 1
     fi
 
-    local TARBALL="$DIST_DIR/alogi-$VERSION-linux-unpacked.tar.gz"
-    if [ ! -f "$TARBALL" ]; then
-        print_error "Tarball not found: $TARBALL"
-        print_info "Run a full build first"
+    # Always fetch SHA from GitHub to ensure consistency (handles CI-built tarballs)
+    local GITHUB_TARBALL="https://github.com/allisonhere/alogi/releases/download/v${VERSION}/alogi-${VERSION}-linux-unpacked.tar.gz"
+
+    print_substep "Fetching SHA256 from GitHub release..."
+    local SHA256=$(curl -sL "$GITHUB_TARBALL" | sha256sum | awk '{print $1}')
+    if [ -z "$SHA256" ] || [ "$SHA256" = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" ]; then
+        print_error "Failed to fetch tarball from GitHub (empty or not found)"
+        print_info "Make sure the release exists: $GITHUB_TARBALL"
         return 1
     fi
-
-    print_substep "Calculating SHA256..."
-    local SHA256=$(sha256sum "$TARBALL" | awk '{print $1}')
     print_success "SHA256: ${SHA256:0:16}..."
 
     print_substep "Pulling latest from AUR..."
