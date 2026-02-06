@@ -43,7 +43,8 @@ const loadUrlWithRetry = async (win, url, retries = 20) => {
 };
 
 const parseArgs = (argv) => {
-  const args = argv.slice(2);
+  const startIndex = process.defaultApp ? 2 : 1;
+  const args = argv.slice(startIndex);
   const result = {
     web: false,
     desktop: false,
