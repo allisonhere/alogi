@@ -242,6 +242,12 @@ clean_builds() {
     print_success "Cleaned old builds"
 }
 
+clear_yay_cache() {
+    print_substep "Clearing yay cache for alogi..."
+    rm -rf "$HOME/.cache/yay/alogi"
+    print_success "Yay cache cleared"
+}
+
 build_nextjs() {
     print_substep "Running Next.js build..."
     cd "$PROJECT_DIR"
@@ -626,6 +632,7 @@ main_menu() {
         echo "   4) Build deb only"
         echo "   5) Build Arch only"
         echo "   6) Clean builds"
+        echo "  10) Clear yay cache (alogi)"
         echo ""
         echo -e "  ${BOLD}${CYAN}Release${NC}"
         echo -e "  ${DIM}─────────────────────────────${NC}"
@@ -636,7 +643,7 @@ main_menu() {
         echo "   0) Exit"
         echo ""
 
-        read -p "  Choose [0-9]: " choice
+        read -p "  Choose [0-10]: " choice
 
         case $choice in
             1) bump_version ;;
@@ -654,6 +661,7 @@ main_menu() {
                 print_step 1 1 "Building Arch"; build_arch
                 ;;
             6) clean_builds ;;
+            10) clear_yay_cache ;;
             7) create_github_release ;;
             8) update_aur ;;
             9) full_release ;;
