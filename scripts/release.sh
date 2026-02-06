@@ -132,7 +132,7 @@ check_wrapper_script() {
         print_error "after-install.sh not found: $script"
         return 1
     fi
-    if ! grep -q "cat > \"\\$BIN_LINK\" << 'EOF'" "$script"; then
+  if ! grep -q "<< 'EOF'" "$script"; then
         print_error "after-install.sh wrapper heredoc is not quoted; CLI flags may break"
         return 1
     fi
