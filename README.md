@@ -74,6 +74,17 @@
 5.  **Open in Browser:**
     Go to `http://localhost:3000`
 
+### Web Server Mode
+
+Run the packaged app in browser-only mode:
+
+```bash
+alogi --web --open
+```
+
+Defaults to `127.0.0.1:3000`. Use `--host` and `--port` to override.
+Desktop mode is the default. You can force it with `--desktop`.
+
 ## 🔑 Configuration
 
 You can configure Alogi via the **Settings** page (Gear icon in bottom left). Settings are stored at `~/.config/alogi/config.json`.

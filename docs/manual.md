@@ -4,15 +4,16 @@
 
 1. [Introduction](#introduction)
 2. [Installation](#installation)
-3. [Getting Started](#getting-started)
-4. [Interface Overview](#interface-overview)
-5. [Viewing Logs](#viewing-logs)
-6. [Connecting to Remote Hosts](#connecting-to-remote-hosts)
-7. [AI Features](#ai-features)
-8. [Search and Filtering](#search-and-filtering)
-9. [Keyboard Shortcuts](#keyboard-shortcuts)
-10. [Settings](#settings)
-11. [Troubleshooting](#troubleshooting)
+3. [Web Server Mode](#web-server-mode)
+4. [Getting Started](#getting-started)
+5. [Interface Overview](#interface-overview)
+6. [Viewing Logs](#viewing-logs)
+7. [Connecting to Remote Hosts](#connecting-to-remote-hosts)
+8. [AI Features](#ai-features)
+9. [Search and Filtering](#search-and-filtering)
+10. [Keyboard Shortcuts](#keyboard-shortcuts)
+11. [Settings](#settings)
+12. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -58,6 +59,17 @@ npm run dev
 ```
 
 Open `http://localhost:3000` in your browser, or run `npm run dev:desktop` for the Electron app.
+
+### Web Server Mode
+
+If you have the packaged app installed, you can run it in browser-only mode:
+
+```bash
+alogi --web --open
+```
+
+Defaults to `127.0.0.1:3000`. Use `--host` and `--port` to override.
+Desktop mode is the default. You can force it with `--desktop`.
 
 ---
 
