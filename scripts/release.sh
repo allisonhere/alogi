@@ -471,6 +471,10 @@ update_aur() {
 
     print_substep "Pulling latest from AUR..."
     cd "$AUR_DIR"
+    if [ -n "$(git status --porcelain)" ]; then
+        print_warning "AUR repo has local changes, stashing before pull"
+        git stash -u -m "alogi-release-auto-stash" > /dev/null 2>&1
+    fi
     git pull > /dev/null 2>&1
     print_success "AUR repo updated"
 
@@ -518,7 +522,11 @@ PY
     print_success ".SRCINFO generated"
 
     print_substep "Committing and pushing..."
-    git add PKGBUILD .SRCINFO
+    add_files=(PKGBUILD .SRCINFO)
+    [ -f alogi.desktop ] && add_files+=(alogi.desktop)
+    [ -f icon.png ] && add_files+=(icon.png)
+    [ -f README.md ] && add_files+=(README.md)
+    git add "${add_files[@]}"
     git commit -m "Update to $VERSION" > /dev/null 2>&1
     git push > /dev/null 2>&1
     print_success "Pushed to AUR"
