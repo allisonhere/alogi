@@ -34,25 +34,9 @@ source=(
   "https://github.com/allisonhere/alogi/releases/download/v${pkgver}/alogi-${pkgver}-linux-unpacked.tar.gz"
   "alogi.desktop"
   "icon.png"
-  "icons/hicolor/16x16/apps/alogi.png"
-  "icons/hicolor/24x24/apps/alogi.png"
-  "icons/hicolor/32x32/apps/alogi.png"
-  "icons/hicolor/48x48/apps/alogi.png"
-  "icons/hicolor/64x64/apps/alogi.png"
-  "icons/hicolor/128x128/apps/alogi.png"
-  "icons/hicolor/256x256/apps/alogi.png"
-  "icons/hicolor/512x512/apps/alogi.png"
 )
 sha256sums=(
   "__SHA256__"
-  "SKIP"
-  "SKIP"
-  "SKIP"
-  "SKIP"
-  "SKIP"
-  "SKIP"
-  "SKIP"
-  "SKIP"
   "SKIP"
   "SKIP"
 )
@@ -72,7 +56,7 @@ EOF
   install -Dm644 "${srcdir}/alogi.desktop" "${pkgdir}/usr/share/applications/alogi.desktop"
   install -Dm644 "${srcdir}/icon.png" "${pkgdir}/usr/share/pixmaps/alogi.png"
   for size in 16 24 32 48 64 128 256 512; do
-    install -Dm644 "${srcdir}/icons/hicolor/${size}x${size}/apps/alogi.png" \
+    install -Dm644 "${srcdir}/icon.png" \
       "${pkgdir}/usr/share/icons/hicolor/${size}x${size}/apps/alogi.png"
   done
 }

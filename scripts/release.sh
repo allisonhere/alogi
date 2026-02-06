@@ -304,21 +304,6 @@ build_arch() {
     rm -rf "$ARCH_DIR/pkg" "$ARCH_DIR/src"
     cd "$ARCH_DIR"
 
-    print_substep "Ensuring hicolor icons are present..."
-    local base_icon="$ARCH_DIR/icon.png"
-    if [ -f "$base_icon" ]; then
-        for size in 16 24 32 48 64 128 256 512; do
-            local target="$ARCH_DIR/icons/hicolor/${size}x${size}/apps/alogi.png"
-            if [ ! -f "$target" ]; then
-                mkdir -p "$(dirname "$target")"
-                cp -f "$base_icon" "$target"
-            fi
-        done
-        print_success "Hicolor icon files ready"
-    else
-        print_warning "Base icon not found at $base_icon"
-    fi
-
     makepkg -f > /tmp/makepkg.log 2>&1 &
     local pid=$!
     spinner $pid "Building Arch package..."
@@ -504,10 +489,6 @@ update_aur() {
     fi
     if [ -f "$AUR_SRC/icon.png" ]; then
         cp -f "$AUR_SRC/icon.png" "$AUR_DIR/icon.png"
-    fi
-    if [ -d "$AUR_SRC/icons" ]; then
-        rm -rf "$AUR_DIR/icons"
-        cp -a "$AUR_SRC/icons" "$AUR_DIR/icons"
     fi
     print_success "AUR packaging files synced"
 
