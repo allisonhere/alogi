@@ -494,7 +494,23 @@ update_aur() {
 
     print_substep "Updating PKGBUILD..."
     sed -i "s/^pkgver=.*/pkgver=$VERSION/" PKGBUILD
-    sed -i "s/sha256sums=(\"[^\"]*\"/sha256sums=(\"$SHA256\"/" PKGBUILD
+    SHA256="$SHA256" python3 - <<'PY'
+import os
+import re
+from pathlib import Path
+
+path = Path("PKGBUILD")
+text = path.read_text()
+sha = os.environ["SHA256"]
+
+def replace_first_sha(match: re.Match) -> str:
+    return f'{match.group(1)}  "{sha}"'
+
+new_text = re.sub(r'(sha256sums=\(\s*)\"[^\"]*\"', replace_first_sha, text, count=1)
+if new_text == text:
+    raise SystemExit("Failed to update sha256sums in PKGBUILD")
+path.write_text(new_text)
+PY
     print_success "PKGBUILD updated"
 
     print_substep "Generating .SRCINFO..."
