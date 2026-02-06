@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, User, Sparkles, Bot, AlertCircle, CheckCircle, ChevronDown, ChevronRight, X, Copy, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { normalizeAiError, type AiErrorState } from '@/lib/aiErrors';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -8,12 +9,13 @@ interface Message {
 }
 
 interface ChatPanelProps {
-  initialSummary: {
+  initialSummary?: {
     summary: string;
     key_findings: string[];
     recommendation: string;
     severity: 'low' | 'medium' | 'high';
-  };
+  } | null;
+  errorState?: AiErrorState | null;
   logContext: string;
   onCollapse?: () => void;
   onClose?: () => void;
@@ -21,12 +23,14 @@ interface ChatPanelProps {
   isReanalyzing?: boolean;
 }
 
-export function ChatPanel({ initialSummary, logContext, onCollapse, onClose, onReanalyze, isReanalyzing }: ChatPanelProps) {
+export function ChatPanel({ initialSummary, errorState, logContext, onCollapse, onClose, onReanalyze, isReanalyzing }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [copyNotice, setCopyNotice] = useState<string | null>(null);
+  const [chatError, setChatError] = useState<AiErrorState | null>(null);
+  const [lastUserMessage, setLastUserMessage] = useState<Message | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const exportRef = useRef<HTMLDivElement>(null);
 
@@ -68,21 +72,23 @@ export function ChatPanel({ initialSummary, logContext, onCollapse, onClose, onR
     }
   };
 
-  const summaryPlain = initialSummary.summary || '';
+  const summaryData = initialSummary ?? { summary: '', key_findings: [], recommendation: '', severity: 'low' as const };
+  const hasSummary = Boolean(initialSummary && (initialSummary.summary || initialSummary.key_findings?.length || initialSummary.recommendation));
+  const summaryPlain = summaryData.summary || '';
   const summaryMarkdown = [
     `# Summary`,
-    `${initialSummary.summary || ''}`,
+    `${summaryData.summary || ''}`,
     ``,
     `## Key findings`,
-    ...(initialSummary.key_findings || []).map((finding) => `- ${finding}`),
+    ...(summaryData.key_findings || []).map((finding) => `- ${finding}`),
     ``,
     `## Recommendation`,
-    `${initialSummary.recommendation || ''}`,
+    `${summaryData.recommendation || ''}`,
     ``,
-    `**Severity:** ${initialSummary.severity || 'low'}`,
+    `**Severity:** ${summaryData.severity || 'low'}`,
   ].join('\n');
 
-  const summaryJson = JSON.stringify(initialSummary, null, 2);
+  const summaryJson = JSON.stringify(initialSummary ?? {}, null, 2);
 
   const cliPrompt = [
     `You are an expert DevOps engineer. Analyze the following log data (truncated).`,
@@ -100,36 +106,55 @@ export function ChatPanel({ initialSummary, logContext, onCollapse, onClose, onR
     logContext.slice(-15000),
   ].join('\n');
 
-  const handleSend = async () => {
-    if (!input.trim() || loading) return;
+  const sendMessage = async (userMsg: Message, opts?: { appendUser?: boolean }) => {
+    const appendUser = opts?.appendUser ?? true;
+    const nextMessages = appendUser ? [...messages, userMsg] : messages;
 
-    const userMsg = { role: 'user' as const, content: input };
-    setMessages(prev => [...prev, userMsg]);
+    if (appendUser) {
+      setMessages(prev => [...prev, userMsg]);
+    }
+
+    setLastUserMessage(userMsg);
     setInput('');
     setLoading(true);
+    setChatError(null);
 
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            messages: [...messages, userMsg],
-            context: logContext 
+        body: JSON.stringify({
+          messages: nextMessages,
+          context: logContext,
         }),
       });
-      
+
       const data = await res.json();
-      
+
       if (data.error) {
-          setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${data.error}` }]);
+        const errState = normalizeAiError(String(data.error));
+        setChatError(errState);
       } else {
-          setMessages(prev => [...prev, { role: 'assistant', content: data.content }]);
+        setMessages(prev => [...prev, { role: 'assistant', content: data.content }]);
       }
-    } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: "Failed to connect to AI." }]);
+    } catch (err) {
+      const errState = normalizeAiError(err instanceof Error ? err.message : String(err));
+      setChatError(errState);
     } finally {
       setLoading(false);
     }
+  };
+
+  const chatBlocked = Boolean(errorState?.blocking || chatError?.blocking);
+
+  const handleSend = async () => {
+    if (!input.trim() || loading || chatBlocked) return;
+    await sendMessage({ role: 'user', content: input });
+  };
+
+  const handleRetry = async () => {
+    if (!lastUserMessage || loading) return;
+    await sendMessage(lastUserMessage, { appendUser: false });
   };
 
   return (
@@ -180,92 +205,124 @@ export function ChatPanel({ initialSummary, logContext, onCollapse, onClose, onR
               {isReanalyzing ? 'Analyzing...' : 'Re-Analyze'}
             </button>
           )}
-          <div className="relative" ref={exportRef}>
-          <button
-            type="button"
-            onClick={() => setExportOpen((prev) => !prev)}
-            className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
-          >
-            Export
-            <ChevronDown className="w-3.5 h-3.5" />
-          </button>
-          {exportOpen && (
-            <div className="absolute right-0 mt-2 w-64 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xl overflow-hidden z-10">
+          {hasSummary && (
+            <div className="relative" ref={exportRef}>
               <button
-                className="w-full text-left text-xs px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors flex items-center gap-2"
-                onClick={() => copyToClipboard(summaryPlain, 'Summary')}
+                type="button"
+                onClick={() => setExportOpen((prev) => !prev)}
+                className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
               >
-                <Copy className="w-3.5 h-3.5 text-zinc-400" />
-                Copy summary (plain)
+                Export
+                <ChevronDown className="w-3.5 h-3.5" />
               </button>
-              <button
-                className="w-full text-left text-xs px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors flex items-center gap-2"
-                onClick={() => copyToClipboard(summaryMarkdown, 'Summary + findings')}
-              >
-                <Copy className="w-3.5 h-3.5 text-zinc-400" />
-                Copy summary + key findings (markdown)
-              </button>
-              <button
-                className="w-full text-left text-xs px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors flex items-center gap-2"
-                onClick={() => copyToClipboard(summaryJson, 'Analysis JSON')}
-              >
-                <Copy className="w-3.5 h-3.5 text-zinc-400" />
-                Copy full analysis JSON
-              </button>
-              <button
-                className="w-full text-left text-xs px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors flex items-center gap-2 border-t border-zinc-200 dark:border-zinc-800"
-                onClick={() => copyToClipboard(cliPrompt, 'CLI prompt')}
-              >
-                <Copy className="w-3.5 h-3.5 text-zinc-400" />
-                Copy CLI-ready prompt
-              </button>
-              {copyNotice && (
-                <div className="px-3 py-2 text-[11px] text-emerald-600 dark:text-emerald-400 border-t border-zinc-200 dark:border-zinc-800">
-                  {copyNotice}
+              {exportOpen && (
+                <div className="absolute right-0 mt-2 w-64 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xl overflow-hidden z-10">
+                  <button
+                    className="w-full text-left text-xs px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors flex items-center gap-2"
+                    onClick={() => copyToClipboard(summaryPlain, 'Summary')}
+                  >
+                    <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                    Copy summary (plain)
+                  </button>
+                  <button
+                    className="w-full text-left text-xs px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors flex items-center gap-2"
+                    onClick={() => copyToClipboard(summaryMarkdown, 'Summary + findings')}
+                  >
+                    <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                    Copy summary + key findings (markdown)
+                  </button>
+                  <button
+                    className="w-full text-left text-xs px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors flex items-center gap-2"
+                    onClick={() => copyToClipboard(summaryJson, 'Analysis JSON')}
+                  >
+                    <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                    Copy full analysis JSON
+                  </button>
+                  <button
+                    className="w-full text-left text-xs px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors flex items-center gap-2 border-t border-zinc-200 dark:border-zinc-800"
+                    onClick={() => copyToClipboard(cliPrompt, 'CLI prompt')}
+                  >
+                    <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                    Copy CLI-ready prompt
+                  </button>
+                  {copyNotice && (
+                    <div className="px-3 py-2 text-[11px] text-emerald-600 dark:text-emerald-400 border-t border-zinc-200 dark:border-zinc-800">
+                      {copyNotice}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           )}
-          </div>
         </div>
       </div>
 
       {/* Messages & Summary */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar" ref={scrollRef}>
+
+        {errorState && (
+          <div className={cn(
+            "p-3 rounded-lg border text-sm",
+            errorState.blocking
+              ? "bg-amber-50 text-amber-900 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-100"
+              : "bg-red-50 text-red-900 border-red-200 dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-100"
+          )}>
+            <div className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">{errorState.title}</div>
+            <p className="text-sm leading-relaxed">{errorState.message}</p>
+            {errorState.retryable && onReanalyze && (
+              <button
+                type="button"
+                onClick={onReanalyze}
+                disabled={isReanalyzing}
+                className={cn(
+                  "mt-2 inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border transition-colors",
+                  isReanalyzing
+                    ? "bg-zinc-200 text-zinc-500 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-500 dark:border-zinc-700 cursor-not-allowed"
+                    : "bg-white/80 hover:bg-white border-red-200 text-red-700 dark:bg-zinc-900 dark:border-red-500/30 dark:text-red-200"
+                )}
+              >
+                <RefreshCw className={cn("w-3.5 h-3.5", isReanalyzing && "animate-spin")} />
+                {isReanalyzing ? 'Retrying...' : 'Retry analysis'}
+              </button>
+            )}
+          </div>
+        )}
         
         {/* The "Old Look" Structured Summary */}
-        <div className="space-y-4 animate-in fade-in duration-500">
-            <div className={cn(
-                "p-3 rounded-lg border",
-                initialSummary.severity === 'high' ? "bg-red-50 text-red-900 border-red-200 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-200" :
-                "bg-white text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300"
-            )}>
-                <div className="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-1">Summary</div>
-                <p className="text-sm leading-relaxed">{initialSummary.summary}</p>
-            </div>
+        {hasSummary && (
+          <div className="space-y-4 animate-in fade-in duration-500">
+              <div className={cn(
+                  "p-3 rounded-lg border",
+                  summaryData.severity === 'high' ? "bg-red-50 text-red-900 border-red-200 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-200" :
+                  "bg-white text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300"
+              )}>
+                  <div className="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-1">Summary</div>
+                  <p className="text-sm leading-relaxed">{summaryData.summary}</p>
+              </div>
 
-            <div className="space-y-2">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Key Findings</div>
-                <ul className="space-y-2">
-                    {(initialSummary.key_findings || []).map((finding, i) => (
-                        <li key={i} className="flex gap-2 text-sm text-zinc-700 dark:text-zinc-300 items-start">
-                            <AlertCircle className="w-4 h-4 text-zinc-400 dark:text-zinc-500 flex-shrink-0 mt-0.5" />
-                            <span>{finding}</span>
-                        </li>
-                    ))}
-                </ul>
-            </div>
+              <div className="space-y-2">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Key Findings</div>
+                  <ul className="space-y-2">
+                      {(summaryData.key_findings || []).map((finding, i) => (
+                          <li key={i} className="flex gap-2 text-sm text-zinc-700 dark:text-zinc-300 items-start">
+                              <AlertCircle className="w-4 h-4 text-zinc-400 dark:text-zinc-500 flex-shrink-0 mt-0.5" />
+                              <span>{finding}</span>
+                          </li>
+                      ))}
+                  </ul>
+              </div>
 
-            <div className="space-y-2">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Recommendation</div>
-                <div className="flex gap-2 text-sm text-indigo-700 bg-indigo-50 border-indigo-100 dark:text-indigo-300 dark:bg-indigo-500/5 p-3 rounded border dark:border-indigo-500/10 items-start">
-                    <CheckCircle className="w-4 h-4 text-indigo-500 dark:text-indigo-400 flex-shrink-0 mt-0.5" />
-                    <span>{initialSummary.recommendation || "No specific recommendation provided."}</span>
-                </div>
-            </div>
+              <div className="space-y-2">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Recommendation</div>
+                  <div className="flex gap-2 text-sm text-indigo-700 bg-indigo-50 border-indigo-100 dark:text-indigo-300 dark:bg-indigo-500/5 p-3 rounded border dark:border-indigo-500/10 items-start">
+                      <CheckCircle className="w-4 h-4 text-indigo-500 dark:text-indigo-400 flex-shrink-0 mt-0.5" />
+                      <span>{summaryData.recommendation || "No specific recommendation provided."}</span>
+                  </div>
+              </div>
 
-            <div className="border-b border-zinc-200 dark:border-zinc-800/50 pt-2" />
-        </div>
+              <div className="border-b border-zinc-200 dark:border-zinc-800/50 pt-2" />
+          </div>
+        )}
 
         {/* Chat Thread */}
         {messages.map((msg, i) => (
@@ -297,18 +354,37 @@ export function ChatPanel({ initialSummary, logContext, onCollapse, onClose, onR
 
       {/* Input */}
       <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+        {chatError && (
+          <div className="mb-3 flex items-start justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200">
+            <div className="flex-1">
+              <div className="text-[10px] uppercase tracking-widest opacity-70">Chat unavailable</div>
+              <div className="text-xs">{chatError.message}</div>
+            </div>
+            {chatError.retryable && (
+              <button
+                type="button"
+                onClick={handleRetry}
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-2 py-1 text-[11px] font-medium text-red-700 hover:bg-red-100 dark:border-red-500/30 dark:bg-zinc-900 dark:text-red-200 dark:hover:bg-red-500/20"
+              >
+                <RefreshCw className="w-3 h-3" />
+                Retry
+              </button>
+            )}
+          </div>
+        )}
         <div className="relative">
             <input 
                 type="text" 
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder="Ask follow-up questions..."
-                className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md py-2.5 pl-3 pr-10 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
+                placeholder={chatBlocked ? "AI unavailable — check Settings" : "Ask follow-up questions..."}
+                disabled={loading || chatBlocked}
+                className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md py-2.5 pl-3 pr-10 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-600 disabled:opacity-60 disabled:cursor-not-allowed"
             />
             <button 
                 onClick={handleSend}
-                disabled={loading || !input.trim()}
+                disabled={loading || !input.trim() || chatBlocked}
                 className="absolute right-2 top-2.5 text-zinc-400 dark:text-zinc-500 hover:text-indigo-500 dark:hover:text-indigo-400 disabled:opacity-50 transition-colors"
             >
                 <Send className="w-4 h-4" />

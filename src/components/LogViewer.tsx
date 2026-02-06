@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { BarChart3, Bookmark, Clock, Sparkles, Terminal, PanelLeft, FolderOpen, WrapText, Minus, Plus, Type, Copy, Clipboard, Filter, Search } from 'lucide-react';
-import { useDialog } from './Dialog';
 import { cn } from '@/lib/utils';
 import { extractTimestamp } from '@/lib/logParser';
 import { VibeCheckBar } from './VibeCheckBar';
@@ -9,6 +8,7 @@ import { InsightsPanel } from './InsightsPanel';
 import LogLine from '@/components/LogLine';
 import { useLogScroller } from '@/hooks/useLogScroller';
 import { debug } from '@/lib/debug';
+import { normalizeAiError, type AiErrorState } from '@/lib/aiErrors';
 
 interface LogViewerProps {
   content: string | null;
@@ -53,6 +53,7 @@ export function LogViewer({
   const MAX_RENDER_LINES = 5000;
   const [analyzing, setAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
+  const [analysisError, setAnalysisError] = useState<AiErrorState | null>(null);
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -75,11 +76,10 @@ export function LogViewer({
     lineText: string;
   } | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const { showDialog } = useDialog();
-
   // Reset analysis and search when file changes
   useEffect(() => {
     setAnalysis(null);
+    setAnalysisError(null);
     setIsAiPanelOpen(false);
     setSearchQuery('');
     setDebouncedSearch('');
@@ -443,6 +443,7 @@ export function LogViewer({
     if (!content) return;
     setIsLive(false); // Pause live tailing
     setAnalyzing(true);
+    setAnalysisError(null);
     const analysisContent = (debouncedSearch || timeRange)
       ? timeFilteredLines.map(item => item.line).join('\n')
       : content;
@@ -455,28 +456,10 @@ export function LogViewer({
       const data = await res.json();
       
       if (data.error) {
-        // Handle API errors (e.g. rate limits)
         debug.error("Analysis Error:", data.error);
-        const message = String(data.error);
-        if (message.toLowerCase().includes('api key') && message.toLowerCase().includes('missing')) {
-          showDialog({
-            title: 'API Key Required',
-            message: 'No API key is configured.\n\nGo to Settings → AI Configuration to add your API key.',
-            variant: 'warning',
-          });
-        } else if (message.toLowerCase().includes('ai features are disabled')) {
-          showDialog({
-            title: 'AI Disabled',
-            message: 'AI features are currently disabled.\n\nGo to Settings → AI Configuration to enable them.',
-            variant: 'info',
-          });
-        } else {
-          showDialog({
-            title: 'Analysis Failed',
-            message: data.error,
-            variant: 'error',
-          });
-        }
+        const errState = normalizeAiError(String(data.error));
+        setAnalysisError(errState);
+        setIsAiPanelOpen(true);
         return;
       }
       
@@ -484,11 +467,9 @@ export function LogViewer({
       setIsAiPanelOpen(true);
     } catch (err) {
       debug.error(err);
-      showDialog({
-        title: 'Connection Error',
-        message: 'Failed to connect to the analysis service.\n\nPlease check your internet connection and try again.',
-        variant: 'error',
-      });
+      const message = err instanceof Error ? err.message : String(err);
+      setAnalysisError(normalizeAiError(message));
+      setIsAiPanelOpen(true);
     } finally {
       setAnalyzing(false);
     }
@@ -1096,10 +1077,11 @@ export function LogViewer({
         )}
 
         {/* AI Panel (Slide in) */}
-        {analysis && content && isAiPanelOpen && (
+        {(analysis || analysisError) && content && isAiPanelOpen && (
             <div className="animate-in slide-in-from-right duration-300 h-full border-l border-zinc-800">
                 <ChatPanel
                   initialSummary={analysis}
+                  errorState={analysisError}
                   logContext={content}
                   onCollapse={() => setIsAiPanelOpen(false)}
                   onClose={() => setIsAiPanelOpen(false)}
