@@ -123,6 +123,51 @@ run_with_spinner() {
 }
 
 # ============================================================================
+# PREFLIGHT CHECKS
+# ============================================================================
+
+check_wrapper_script() {
+    local script="$PROJECT_DIR/electron/scripts/after-install.sh"
+    if [ ! -f "$script" ]; then
+        print_error "after-install.sh not found: $script"
+        return 1
+    fi
+    if ! grep -q "cat > \"\\$BIN_LINK\" << 'EOF'" "$script"; then
+        print_error "after-install.sh wrapper heredoc is not quoted; CLI flags may break"
+        return 1
+    fi
+    if ! grep -q -- "--web" "$script"; then
+        print_error "after-install.sh wrapper does not handle --web/--help in foreground"
+        return 1
+    fi
+    print_success "Wrapper script sanity check passed"
+}
+
+preflight_release() {
+    print_substep "Checking wrapper script..."
+    check_wrapper_script
+
+    print_substep "Checking GitHub CLI auth..."
+    if ! command -v gh &> /dev/null; then
+        print_error "GitHub CLI (gh) not installed"
+        return 1
+    fi
+    if ! gh auth status &> /dev/null 2>&1; then
+        print_error "Not logged into GitHub CLI. Run 'gh auth login'"
+        return 1
+    fi
+    print_success "GitHub CLI authenticated"
+
+    print_substep "Checking AUR repo..."
+    if [ ! -d "$AUR_DIR" ]; then
+        print_error "AUR directory not found at $AUR_DIR"
+        print_info "Clone it first: git clone ssh://aur@aur.archlinux.org/alogi.git $AUR_DIR"
+        return 1
+    fi
+    print_success "AUR repo found"
+}
+
+# ============================================================================
 # VERSION MANAGEMENT
 # ============================================================================
 
@@ -342,15 +387,12 @@ commit_changes() {
     msg=${msg:-$default_msg}
 
     git -C "$PROJECT_DIR" add -A
-    git -C "$PROJECT_DIR" commit -m "$msg" > /dev/null && print_success "Changes committed"
+    git -C "$PROJECT_DIR" commit -m "$msg" && print_success "Changes committed"
 }
 
 push_changes() {
     print_substep "Pushing to origin..."
-    git -C "$PROJECT_DIR" push origin main > /dev/null 2>&1 &
-    local pid=$!
-    spinner $pid "Pushing commits..."
-    wait $pid && print_success "Pushed to origin"
+    run_with_spinner "Pushing commits..." git -C "$PROJECT_DIR" push origin main
 }
 
 auto_commit_and_push() {
@@ -362,17 +404,14 @@ auto_commit_and_push() {
         print_success "Files staged"
 
         print_substep "Committing..."
-        git -C "$PROJECT_DIR" commit -m "chore: release v$VERSION" > /dev/null
+        git -C "$PROJECT_DIR" commit -m "chore: release v$VERSION"
         print_success "Committed: release v$VERSION"
     else
         print_info "No changes to commit"
     fi
 
     print_substep "Pushing to origin..."
-    git -C "$PROJECT_DIR" push origin main > /dev/null 2>&1 &
-    local pid=$!
-    spinner $pid "Pushing..."
-    wait $pid && print_success "Pushed to origin"
+    run_with_spinner "Pushing..." git -C "$PROJECT_DIR" push origin main
 }
 
 create_github_release() {
@@ -424,7 +463,7 @@ create_github_release() {
     gh release create "$TAG" \
         --title "Alogi $TAG" \
         --notes "$NOTES" \
-        --repo allisonhere/alogi > /dev/null 2>&1
+        --repo allisonhere/alogi
     print_success "Release created"
 
     # Upload assets
@@ -432,21 +471,21 @@ create_github_release() {
 
     local uploaded=0
     if [ -f "$DIST_DIR/Alogi-amd64.deb" ]; then
-        gh release upload "$TAG" "$DIST_DIR/Alogi-amd64.deb" --repo allisonhere/alogi > /dev/null 2>&1
+        gh release upload "$TAG" "$DIST_DIR/Alogi-amd64.deb" --repo allisonhere/alogi
         print_file_size "$DIST_DIR/Alogi-amd64.deb"
         ((uploaded++)) || true
     fi
 
     local TARBALL="$DIST_DIR/alogi-$VERSION-linux-unpacked.tar.gz"
     if [ -f "$TARBALL" ]; then
-        gh release upload "$TAG" "$TARBALL" --repo allisonhere/alogi > /dev/null 2>&1
+        gh release upload "$TAG" "$TARBALL" --repo allisonhere/alogi
         print_file_size "$TARBALL"
         ((uploaded++)) || true
     fi
 
     local ARCH_PKG=$(ls "$DIST_DIR"/alogi-*.pkg.tar.zst 2>/dev/null | head -1)
     if [ -n "$ARCH_PKG" ] && [ -f "$ARCH_PKG" ]; then
-        gh release upload "$TAG" "$ARCH_PKG#alogi-arch.pkg.tar.zst" --repo allisonhere/alogi > /dev/null 2>&1
+        gh release upload "$TAG" "$ARCH_PKG#alogi-arch.pkg.tar.zst" --repo allisonhere/alogi
         print_file_size "$ARCH_PKG"
         ((uploaded++)) || true
     fi
@@ -479,10 +518,26 @@ update_aur() {
     cd "$AUR_DIR"
     if [ -n "$(git status --porcelain)" ]; then
         print_warning "AUR repo has local changes, stashing before pull"
-        git stash -u -m "alogi-release-auto-stash" > /dev/null 2>&1
+        git stash -u -m "alogi-release-auto-stash"
     fi
-    git pull > /dev/null 2>&1
+    git pull
     print_success "AUR repo updated"
+
+    # Ensure we're on a branch (not detached HEAD)
+    if ! git symbolic-ref -q HEAD >/dev/null; then
+        if git show-ref --verify --quiet refs/remotes/origin/master; then
+            git checkout -B master origin/master
+        elif git show-ref --verify --quiet refs/remotes/origin/main; then
+            git checkout -B main origin/main
+        elif git show-ref --verify --quiet refs/heads/master; then
+            git checkout master
+        elif git show-ref --verify --quiet refs/heads/main; then
+            git checkout main
+        else
+            git checkout -B master
+        fi
+        print_success "Checked out AUR branch"
+    fi
 
     print_substep "Syncing AUR packaging files..."
     local AUR_SRC="$PROJECT_DIR/packaging/arch/aur"
@@ -528,13 +583,17 @@ PY
     print_success ".SRCINFO generated"
 
     print_substep "Committing and pushing..."
+    if git diff --quiet; then
+        print_info "No AUR changes to publish"
+        return 0
+    fi
     add_files=(PKGBUILD .SRCINFO)
     [ -f alogi.desktop ] && add_files+=(alogi.desktop)
     [ -f icon.png ] && add_files+=(icon.png)
     [ -f README.md ] && add_files+=(README.md)
     git add "${add_files[@]}"
-    git commit -m "Update to $VERSION" > /dev/null 2>&1
-    git push > /dev/null 2>&1
+    git commit -m "Update to $VERSION"
+    git push
     print_success "Pushed to AUR"
 
     echo ""
@@ -547,30 +606,33 @@ PY
 
 full_release() {
     TOTAL_START=$(date +%s)
-    local total_steps=8
+    local total_steps=9
 
-    print_step 1 $total_steps "Version bump"
+    print_step 1 $total_steps "Preflight checks"
+    preflight_release
+
+    print_step 2 $total_steps "Version bump"
     bump_version
 
-    print_step 2 $total_steps "Cleaning old builds"
+    print_step 3 $total_steps "Cleaning old builds"
     clean_builds
 
-    print_step 3 $total_steps "Building Next.js"
+    print_step 4 $total_steps "Building Next.js"
     build_nextjs
 
-    print_step 4 $total_steps "Building .deb package"
+    print_step 5 $total_steps "Building .deb package"
     build_deb
 
-    print_step 5 $total_steps "Building Arch package"
+    print_step 6 $total_steps "Building Arch package"
     build_arch
 
-    print_step 6 $total_steps "Committing & pushing"
+    print_step 7 $total_steps "Committing & pushing"
     auto_commit_and_push
 
-    print_step 7 $total_steps "Creating GitHub release"
+    print_step 8 $total_steps "Creating GitHub release"
     create_github_release
 
-    print_step 8 $total_steps "Updating AUR"
+    print_step 9 $total_steps "Updating AUR"
     update_aur
 
     # Summary
