@@ -390,8 +390,9 @@
             <p>Native .deb package for apt-based systems.</p>
             <div class="code-wrap">
               <button class="copy-btn" type="button" data-copy-target="code-deb">Copy</button>
-              <pre><code id="code-deb">curl -LO https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb
-sudo apt install ./Alogi-amd64.deb</code></pre>
+              <pre><code id="code-deb"># Download to /tmp to avoid apt sandbox warnings on locked-down $HOME
+curl -L -o /tmp/Alogi-amd64.deb https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb
+sudo apt install /tmp/Alogi-amd64.deb</code></pre>
             </div>
             <a class="btn btn-sm" href="https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb">Download .deb</a>
           </div>

@@ -39,9 +39,11 @@ Alogi is an AI-powered log viewer designed for developers and DevOps engineers. 
 ### Ubuntu / Debian
 
 ```bash
-wget https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb
-sudo dpkg -i Alogi-amd64.deb
+wget -O /tmp/Alogi-amd64.deb https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb
+sudo apt install /tmp/Alogi-amd64.deb
 ```
+
+Using `/tmp` avoids apt sandbox warnings when your home directory isn't world-readable.
 
 ### Arch Linux / CachyOS
 
