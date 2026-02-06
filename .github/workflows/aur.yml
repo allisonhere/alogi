@@ -56,6 +56,14 @@ jobs:
             exit 1
           fi
           git clone "${{ secrets.AUR_REPO }}" aur-repo
+          cd aur-repo
+          if git show-ref --verify --quiet refs/remotes/origin/master; then
+            git checkout -B master origin/master
+          elif git show-ref --verify --quiet refs/remotes/origin/main; then
+            git checkout -B main origin/main
+          else
+            git checkout -B master
+          fi
 
       - name: Prepare PKGBUILD
         run: |
