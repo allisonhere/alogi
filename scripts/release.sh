@@ -474,6 +474,28 @@ update_aur() {
     git pull > /dev/null 2>&1
     print_success "AUR repo updated"
 
+    print_substep "Syncing AUR packaging files..."
+    local AUR_SRC="$PROJECT_DIR/packaging/arch/aur"
+    if [ -f "$AUR_SRC/PKGBUILD" ]; then
+        cp -f "$AUR_SRC/PKGBUILD" "$AUR_DIR/PKGBUILD"
+    fi
+    if [ -f "$AUR_SRC/README.md" ]; then
+        cp -f "$AUR_SRC/README.md" "$AUR_DIR/README.md"
+    fi
+    if [ -f "$AUR_SRC/alogi.desktop" ]; then
+        cp -f "$AUR_SRC/alogi.desktop" "$AUR_DIR/alogi.desktop"
+    elif [ -f "$ARCH_DIR/alogi.desktop" ]; then
+        cp -f "$ARCH_DIR/alogi.desktop" "$AUR_DIR/alogi.desktop"
+    fi
+    if [ -f "$AUR_SRC/icon.png" ]; then
+        cp -f "$AUR_SRC/icon.png" "$AUR_DIR/icon.png"
+    fi
+    if [ -d "$AUR_SRC/icons" ]; then
+        rm -rf "$AUR_DIR/icons"
+        cp -a "$AUR_SRC/icons" "$AUR_DIR/icons"
+    fi
+    print_success "AUR packaging files synced"
+
     print_substep "Updating PKGBUILD..."
     sed -i "s/^pkgver=.*/pkgver=$VERSION/" PKGBUILD
     sed -i "s/sha256sums=(\"[^\"]*\"/sha256sums=(\"$SHA256\"/" PKGBUILD
