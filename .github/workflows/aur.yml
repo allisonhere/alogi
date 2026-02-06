@@ -62,7 +62,7 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           cp packaging/arch/aur/PKGBUILD aur-repo/PKGBUILD
           cp packaging/arch/alogi.desktop aur-repo/alogi.desktop
-          cp packaging/arch/icon.png aur-repo/icon.png
+          cp packaging/arch/aur/icon.png aur-repo/icon.png
           sed -i "s/__VERSION__/${VERSION}/g" aur-repo/PKGBUILD
           sed -i "s/__SHA256__/${SHA256}/g" aur-repo/PKGBUILD
 
