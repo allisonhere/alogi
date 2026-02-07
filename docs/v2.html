@@ -414,6 +414,39 @@ sudo pacman -U alogi-arch.pkg.tar.zst</code></pre>
       </div>
     </section>
 
+    <section id="web-server">
+      <div class="wrap">
+        <div class="section-header">
+          <div class="section-label">Web Mode</div>
+          <h2 class="section-title">Run the UI in your browser</h2>
+          <p class="section-desc">Serve the same UI over HTTP without the desktop window.</p>
+        </div>
+        <div class="install-grid">
+          <div class="install-card">
+            <h3>Local (default)</h3>
+            <p>Runs on your machine only. Opens in the browser.</p>
+            <div class="code-wrap">
+              <button class="copy-btn" type="button" data-copy-target="code-web-local">Copy</button>
+              <pre><code id="code-web-local">alogi --web --open</code></pre>
+            </div>
+            <p class="section-desc">Default URL: <code>http://127.0.0.1:3000</code></p>
+          </div>
+          <div class="install-card">
+            <h3>LAN access</h3>
+            <p>Expose the UI to your local network on port 8111.</p>
+            <div class="code-wrap">
+              <button class="copy-btn" type="button" data-copy-target="code-web-lan">Copy</button>
+              <pre><code id="code-web-lan">alogi --web --host 0.0.0.0 --port 8111 --open</code></pre>
+            </div>
+            <p class="section-desc">Open from another device: <code>http://&lt;your-host-ip&gt;:8111</code></p>
+          </div>
+        </div>
+        <div class="install-footer">
+          <span class="section-desc">Security note: LAN mode has no built-in auth yet. Use only on trusted networks.</span>
+        </div>
+      </div>
+    </section>
+
     <section>
       <div class="wrap">
         <div class="help-card">

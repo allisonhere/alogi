@@ -48,8 +48,8 @@ All processing happens locally — your logs never leave your machine unless you
 
 **Ubuntu/Debian:**
 ```bash
-wget https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb
-sudo dpkg -i Alogi-amd64.deb
+wget -O /tmp/Alogi-amd64.deb https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb
+sudo apt install /tmp/Alogi-amd64.deb
 ```
 
 **Arch Linux:**

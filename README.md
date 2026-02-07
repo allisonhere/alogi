@@ -85,6 +85,14 @@ alogi --web --open
 Defaults to `127.0.0.1:3000`. Use `--host` and `--port` to override.
 Desktop mode is the default. You can force it with `--desktop`.
 
+LAN example:
+
+```bash
+alogi --web --host 0.0.0.0 --port 8111 --open
+```
+
+Security note: LAN mode has no built-in auth yet. Use only on trusted networks.
+
 ## 🔑 Configuration
 
 You can configure Alogi via the **Settings** page (Gear icon in bottom left). Settings are stored at `~/.config/alogi/config.json`.

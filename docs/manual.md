@@ -73,6 +73,27 @@ alogi --web --open
 Defaults to `127.0.0.1:3000`. Use `--host` and `--port` to override.
 Desktop mode is the default. You can force it with `--desktop`.
 
+#### LAN Access Example
+
+To allow other devices on your network to access the UI:
+
+```bash
+alogi --web --host 0.0.0.0 --port 8111 --open
+```
+
+Then open `http://<your-host-ip>:8111` from another device on the same network.
+
+#### Security Notes
+
+- `--host 0.0.0.0` exposes the UI to your local network.
+- There is no built-in authentication yet, so only use this on trusted networks.
+- Use a firewall to restrict access if needed.
+
+#### Troubleshooting
+
+- If `alogi --help` launches the desktop app, you are on an older build.
+- The web server prints its URL in the terminal when it starts.
+
 ---
 
 ## Getting Started
