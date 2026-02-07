@@ -1,8 +1,9 @@
 name: Publish AUR
 
 on:
-  release:
-    types: [published]
+  workflow_run:
+    workflows: ["Release Linux Artifacts"]
+    types: [completed]
   workflow_dispatch:
     inputs:
       version:
@@ -14,16 +15,31 @@ permissions:
 
 jobs:
   aur:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Resolve version
         id: version
         run: |
           if [ -n "${{ github.event.inputs.version }}" ]; then
             VERSION="${{ github.event.inputs.version }}"
+          elif [ "${{ github.event_name }}" = "workflow_run" ]; then
+            HEAD_SHA="${{ github.event.workflow_run.head_sha }}"
+            TAG_FROM_SHA=$(git tag --points-at "$HEAD_SHA" | grep '^v' | head -n1 || true)
+            if [ -n "$TAG_FROM_SHA" ]; then
+              VERSION="${TAG_FROM_SHA#v}"
+            elif [[ "${{ github.event.workflow_run.head_branch }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              VERSION="${{ github.event.workflow_run.head_branch }}"
+              VERSION="${VERSION#v}"
+            else
+              echo "Unable to resolve version from workflow_run payload" >&2
+              exit 1
+            fi
           else
             VERSION="${GITHUB_REF_NAME#v}"
           fi
@@ -32,8 +48,9 @@ jobs:
       - name: Download release tarball
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          curl -L -o "alogi-${VERSION}-linux-unpacked.tar.gz" \
+          curl -fL -o "alogi-${VERSION}-linux-unpacked.tar.gz" \
             "https://github.com/${{ github.repository }}/releases/download/v${VERSION}/alogi-${VERSION}-linux-unpacked.tar.gz"
+          tar -tzf "alogi-${VERSION}-linux-unpacked.tar.gz" | grep -q '^linux-unpacked/'
           SHA256=$(sha256sum "alogi-${VERSION}-linux-unpacked.tar.gz" | awk '{print $1}')
           echo "SHA256=$SHA256" >> $GITHUB_ENV
 

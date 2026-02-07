@@ -122,6 +122,50 @@ run_with_spinner() {
   fi
 }
 
+wait_for_release_workflow() {
+  local tag="$1"
+  local commit_sha
+  commit_sha=$(git -C "$PROJECT_DIR" rev-list -n1 "$tag")
+  local timeout_seconds=1800
+  local poll_interval=10
+  local waited=0
+
+  print_substep "Waiting for release workflow (tag: $tag, commit: ${commit_sha:0:8})..."
+  while [ $waited -lt $timeout_seconds ]; do
+    local run_meta
+    run_meta=$(gh run list \
+      --repo allisonhere/alogi \
+      --workflow release.yml \
+      --commit "$commit_sha" \
+      --event push \
+      --limit 1 \
+      --json databaseId,status,conclusion \
+      --jq 'if length == 0 then "" else "\(.[0].databaseId) \(.[0].status) \(.[0].conclusion)" end' 2>/dev/null || true)
+    local run_id=""
+    local status=""
+    local conclusion=""
+    if [ -n "$run_meta" ]; then
+      read -r run_id status conclusion <<<"$run_meta"
+    fi
+
+    if [ -n "$run_id" ] && [ "$status" = "completed" ]; then
+      if [ "$conclusion" = "success" ]; then
+        print_success "Release workflow succeeded (run: $run_id)"
+        return 0
+      fi
+      print_error "Release workflow failed (run: $run_id, conclusion: $conclusion)"
+      gh run view "$run_id" --repo allisonhere/alogi || true
+      return 1
+    fi
+
+    sleep "$poll_interval"
+    waited=$((waited + poll_interval))
+  done
+
+  print_error "Timed out waiting for release workflow"
+  return 1
+}
+
 # ============================================================================
 # PREFLIGHT CHECKS
 # ============================================================================
@@ -467,39 +511,16 @@ create_github_release() {
   fi
   [ -z "$NOTES" ] && NOTES="Release $TAG"
 
-  # Create release
-  print_substep "Creating GitHub release..."
-  gh release create "$TAG" \
+  # Ensure CI-produced release artifacts are final before AUR checksum updates.
+  wait_for_release_workflow "$TAG"
+
+  # Keep release title/notes aligned with local changelog after CI creates/updates the release.
+  print_substep "Updating release title/notes..."
+  gh release edit "$TAG" \
     --title "Alogi $TAG" \
     --notes "$NOTES" \
     --repo allisonhere/alogi
-  print_success "Release created"
-
-  # Upload assets
-  print_substep "Uploading assets..."
-
-  local uploaded=0
-  if [ -f "$DIST_DIR/Alogi-amd64.deb" ]; then
-    gh release upload "$TAG" "$DIST_DIR/Alogi-amd64.deb" --repo allisonhere/alogi
-    print_file_size "$DIST_DIR/Alogi-amd64.deb"
-    ((uploaded++)) || true
-  fi
-
-  local TARBALL="$DIST_DIR/alogi-$VERSION-linux-unpacked.tar.gz"
-  if [ -f "$TARBALL" ]; then
-    gh release upload "$TAG" "$TARBALL" --repo allisonhere/alogi
-    print_file_size "$TARBALL"
-    ((uploaded++)) || true
-  fi
-
-  local ARCH_PKG=$(ls "$DIST_DIR"/alogi-*.pkg.tar.zst 2>/dev/null | head -1)
-  if [ -n "$ARCH_PKG" ] && [ -f "$ARCH_PKG" ]; then
-    gh release upload "$TAG" "$ARCH_PKG#alogi-arch.pkg.tar.zst" --repo allisonhere/alogi
-    print_file_size "$ARCH_PKG"
-    ((uploaded++)) || true
-  fi
-
-  print_success "Uploaded $uploaded assets"
+  print_success "Release metadata updated"
   echo ""
   echo -e "  ${GREEN}→${NC} https://github.com/allisonhere/alogi/releases/tag/$TAG"
 }
@@ -515,12 +536,17 @@ update_aur() {
   local GITHUB_TARBALL="https://github.com/allisonhere/alogi/releases/download/v${VERSION}/alogi-${VERSION}-linux-unpacked.tar.gz"
 
   print_substep "Fetching SHA256 from GitHub release..."
-  local SHA256=$(curl -sL "$GITHUB_TARBALL" | sha256sum | awk '{print $1}')
-  if [ -z "$SHA256" ] || [ "$SHA256" = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" ]; then
-    print_error "Failed to fetch tarball from GitHub (empty or not found)"
+  local tmp_tarball
+  tmp_tarball=$(mktemp)
+  if ! curl -fsSL "$GITHUB_TARBALL" -o "$tmp_tarball"; then
+    rm -f "$tmp_tarball"
+    print_error "Failed to download release tarball"
     print_info "Make sure the release exists: $GITHUB_TARBALL"
     return 1
   fi
+  local SHA256
+  SHA256=$(sha256sum "$tmp_tarball" | awk '{print $1}')
+  rm -f "$tmp_tarball"
   print_success "SHA256: ${SHA256:0:16}..."
 
   print_substep "Pulling latest from AUR..."

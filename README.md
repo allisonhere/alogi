@@ -178,8 +178,16 @@ Notes:
 
 ### GitHub Releases + AUR automation
 
-* Tag a release `vX.Y.Z` to publish deb + linux-unpacked to GitHub Releases.
-* Optional AUR publishing is wired via `.github/workflows/aur.yml` and requires AUR secrets (see `packaging/arch/aur/README.md`).
+Release flow is deterministic to keep AUR checksums correct:
+
+1. `scripts/release.sh` creates and pushes tag `vX.Y.Z`.
+2. `.github/workflows/release.yml` builds and uploads release assets.
+3. `.github/workflows/aur.yml` runs after the release workflow succeeds, downloads the published tarball, computes SHA256, and updates AUR.
+
+Notes:
+* CI is the single publisher for `alogi-<version>-linux-unpacked.tar.gz`.
+* The AUR checksum is derived from the final GitHub release asset, not from a local build artifact.
+* Manual AUR publishing still requires AUR secrets (see `packaging/arch/aur/README.md`).
 
 ## License
 
