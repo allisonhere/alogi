@@ -558,14 +558,7 @@ export function LogViewer({
   };
 
   const hostType = getHostType();
-
-  if (loading && !content) { // Only show full loading if no content yet
-    return <div className="flex-1 flex items-center justify-center text-zinc-500" role="status" aria-live="polite">Loading content...</div>;
-  }
-
-  if (!content) {
-    return <div className="flex-1 flex items-center justify-center text-zinc-600" role="status">Select a file to view logs.</div>;
-  }
+  const hasContent = Boolean(content);
 
     return (
 
@@ -585,7 +578,7 @@ export function LogViewer({
                     </div>
                     <div className="min-w-0">
                       <div className="ui-section-label">Current source</div>
-                      <span className="font-mono text-sm text-primary truncate block">{filename}</span>
+                      <span className="font-mono text-sm text-primary truncate block">{filename ?? 'No file selected'}</span>
                     </div>
 
                     {isLive && (
@@ -604,17 +597,16 @@ export function LogViewer({
 
               </div>
             </div>
-            <div className="-mx-2 -mb-[12rem] overflow-x-auto px-2 pb-[12rem]">
+            <div className="-mx-2 px-2 toolbar-scroll">
               <div className="flex min-w-max items-center gap-2 whitespace-nowrap">
 
-                  {/* Panel Toggles - Segmented Group */}
-                  <div className="theme-toolbar-group ui-control-group flex-shrink-0" role="group" aria-label="Panel toggles">
+                  <div className="flex flex-shrink-0 items-center gap-2" role="group" aria-label="Panel toggles">
                       <button
                           onClick={onToggleHosts}
                           aria-pressed={showHosts}
                           className={cn(
-                              "theme-toolbar-button ui-control-segment px-2.5 py-1.5 text-xs font-medium flex items-center gap-1.5",
-                              showHosts ? "ui-control-active" : "ui-control-ghost"
+                              "theme-toolbar-button ui-control px-2.5 py-1.5 text-xs font-medium flex items-center gap-1.5",
+                              showHosts ? "ui-control-active border border-[var(--border-strong)]" : "ui-control-secondary"
                           )}
                           title={showHosts ? 'Hide hosts panel' : 'Show hosts panel'}
                       >
@@ -625,8 +617,8 @@ export function LogViewer({
                           onClick={onToggleFiles}
                           aria-pressed={showFiles}
                           className={cn(
-                              "theme-toolbar-button ui-control-segment px-2.5 py-1.5 text-xs font-medium flex items-center gap-1.5",
-                              showFiles ? "ui-control-active" : "ui-control-ghost"
+                              "theme-toolbar-button ui-control px-2.5 py-1.5 text-xs font-medium flex items-center gap-1.5",
+                              showFiles ? "ui-control-active border border-[var(--border-strong)]" : "ui-control-secondary"
                           )}
                           title={showFiles ? 'Hide files panel' : 'Show files panel'}
                       >
@@ -947,31 +939,33 @@ export function LogViewer({
       )}
 
       <div className="relative z-0">
-      <VibeCheckBar 
-        lines={windowedLines.map(l => l.line)} 
-        onScrollTo={(index) => {
-            const container = scrollRef.current;
-            if (!container) return;
-            if (shouldVirtualize) {
-              const targetTop = index * rowHeight - container.clientHeight / 2 + rowHeight / 2;
+      {hasContent && (
+        <VibeCheckBar 
+          lines={windowedLines.map(l => l.line)} 
+          onScrollTo={(index) => {
+              const container = scrollRef.current;
+              if (!container) return;
+              if (shouldVirtualize) {
+                const targetTop = index * rowHeight - container.clientHeight / 2 + rowHeight / 2;
+                container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+                return;
+              }
+              const child = container.children[index] as HTMLElement | undefined;
+              if (!child) return;
+              const targetTop = child.offsetTop - container.clientHeight / 2 + child.clientHeight / 2;
               container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
-              return;
-            }
-            const child = container.children[index] as HTMLElement | undefined;
-            if (!child) return;
-            const targetTop = child.offsetTop - container.clientHeight / 2 + child.clientHeight / 2;
-            container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
-        }}
-        onScrub={(ratio) => {
-            const container = scrollRef.current;
-            if (!container) return;
-            const totalScrollable = container.scrollHeight - container.clientHeight;
-            if (totalScrollable <= 0) return;
-            container.scrollTop = Math.max(0, Math.min(totalScrollable, ratio * totalScrollable));
-        }}
-        viewportStart={viewportRange.start}
-        viewportEnd={viewportRange.end}
-      />
+          }}
+          onScrub={(ratio) => {
+              const container = scrollRef.current;
+              if (!container) return;
+              const totalScrollable = container.scrollHeight - container.clientHeight;
+              if (totalScrollable <= 0) return;
+              container.scrollTop = Math.max(0, Math.min(totalScrollable, ratio * totalScrollable));
+          }}
+          viewportStart={viewportRange.start}
+          viewportEnd={viewportRange.end}
+        />
+      )}
       </div>
 
       <div className="relative z-0 flex-1 flex min-h-0 overflow-hidden">
@@ -984,7 +978,15 @@ export function LogViewer({
             onScroll={scheduleViewportUpdate}
             className="flex-1 min-h-0 overflow-auto p-4 font-mono text-sm text-primary leading-relaxed custom-scrollbar"
         >
-            {windowedLines.length > 0 ? (
+            {!hasContent ? (
+              <div
+                className="flex h-full items-center justify-center text-zinc-600"
+                role="status"
+                aria-live={loading ? 'polite' : 'off'}
+              >
+                {loading ? 'Loading content...' : 'Select a file to view logs.'}
+              </div>
+            ) : windowedLines.length > 0 ? (
               shouldVirtualize ? (
                 <div style={{ height: windowedLines.length * rowHeight, position: 'relative' }}>
                   {visibleLines.map(({ line, index }, i) => {

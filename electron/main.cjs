@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-const { app, BrowserWindow, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const net = require('net');
@@ -189,16 +189,89 @@ const attachExternalLinkHandlers = (win, appOrigin) => {
   });
 };
 
+const createAppMenu = () => Menu.buildFromTemplate([
+  ...(process.platform === 'darwin'
+    ? [{
+      label: app.name,
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
+    }]
+    : []),
+  {
+    label: 'File',
+    submenu: [
+      process.platform === 'darwin' ? { role: 'close' } : { role: 'quit' }
+    ]
+  },
+  {
+    label: 'Edit',
+    submenu: [
+      { role: 'undo' },
+      { role: 'redo' },
+      { type: 'separator' },
+      { role: 'cut' },
+      { role: 'copy' },
+      { role: 'paste' },
+      { role: 'selectAll' }
+    ]
+  },
+  {
+    label: 'View',
+    submenu: [
+      { role: 'reload' },
+      { role: 'forceReload' },
+      { role: 'toggleDevTools' },
+      { type: 'separator' },
+      { role: 'resetZoom' },
+      { role: 'zoomIn' },
+      { role: 'zoomOut' },
+      { type: 'separator' },
+      { role: 'togglefullscreen' }
+    ]
+  },
+  {
+    label: 'Window',
+    submenu: [
+      { role: 'minimize' },
+      { role: 'zoom' },
+      ...(process.platform === 'darwin' ? [{ type: 'separator' }, { role: 'front' }] : [{ role: 'close' }])
+    ]
+  },
+  {
+    label: 'Help',
+    submenu: [
+      {
+        label: 'Alogi Website',
+        click: () => openExternal('https://allisonhere.github.io/alogi/')
+      }
+    ]
+  }
+]);
+
 const createWindow = async () => {
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
     backgroundColor: '#09090b',
-    autoHideMenuBar: true,
+    autoHideMenuBar: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs')
     }
   });
+  const menu = createAppMenu();
+  Menu.setApplicationMenu(menu);
+  win.setMenuBarVisibility(true);
+  win.setAutoHideMenuBar(false);
+  win.setMenu(menu);
 
   if (isDev) {
     const appOrigin = new URL(process.env.ELECTRON_START_URL).origin;

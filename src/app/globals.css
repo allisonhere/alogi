@@ -409,6 +409,17 @@ kbd {
   overflow: visible;
 }
 
+.toolbar-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.toolbar-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 .theme-list-row {
   position: relative;
 }
