@@ -13,6 +13,27 @@ import packageJson from '../../../package.json';
 type MissingKey = { id?: string; alias?: string; keyPath?: string };
 type MissingPassword = { id?: string; alias?: string };
 type SaveErrorResponse = { error?: string; missingKeys?: MissingKey[]; missingPasswords?: MissingPassword[] };
+type UpdateCommand = { label: string; command: string };
+type UpdateCheckResponse = {
+  currentVersion: string;
+  latestVersion: string | null;
+  updateAvailable: boolean;
+  publishedAt: string | null;
+  releaseUrl: string | null;
+  archPackageUrl: string | null;
+  notes: string | null;
+  environment: {
+    hasPacman: boolean;
+    hasParu: boolean;
+    hasYay: boolean;
+    isAlogiInstalled: boolean;
+  };
+  commands: {
+    primary: UpdateCommand | null;
+    alternatives: UpdateCommand[];
+  };
+  error?: string;
+};
 
 interface HostValidationErrors {
   hostname?: string;
@@ -64,6 +85,8 @@ export default function SettingsPage() {
   const [touchedFields, setTouchedFields] = useState<Record<string, Set<string>>>({});
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [expandedHosts, setExpandedHosts] = useState<Set<string>>(new Set());
+  const [updateInfo, setUpdateInfo] = useState<UpdateCheckResponse | null>(null);
+  const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'ready' | 'error'>('idle');
 
   const { toasts, showToast, dismissToast } = useToast();
   const { showConfirm } = useDialog();
@@ -126,6 +149,42 @@ export default function SettingsPage() {
 
     loadConfig();
   }, []);
+
+  const checkForUpdates = useCallback(async (silent = false) => {
+    setUpdateStatus('checking');
+
+    try {
+      const res = await fetch('/api/updates', { cache: 'no-store' });
+      const data = await res.json() as UpdateCheckResponse;
+
+      if (!res.ok) {
+        throw new Error(data.error || `Failed to check updates (${res.status})`);
+      }
+
+      setUpdateInfo(data);
+      setUpdateStatus('ready');
+
+      if (!silent) {
+        showToast(
+          'info',
+          data.updateAvailable
+            ? `Update available: v${data.latestVersion}`
+            : `Alogi is up to date${data.currentVersion ? ` (v${data.currentVersion})` : ''}`
+        );
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to check updates';
+      setUpdateStatus('error');
+      setUpdateInfo(null);
+      if (!silent) {
+        showToast('error', message);
+      }
+    }
+  }, [showToast]);
+
+  useEffect(() => {
+    void checkForUpdates(true);
+  }, [checkForUpdates]);
 
   const markFieldTouched = useCallback((hostId: string, field: string) => {
     setTouchedFields(prev => {
@@ -416,6 +475,26 @@ export default function SettingsPage() {
     setHostTestStatus({});
   }, [config?.hosts.length]);
 
+  const copyCommand = useCallback(async (command: string) => {
+    try {
+      await navigator.clipboard.writeText(command);
+      showToast('success', 'Command copied');
+    } catch {
+      showToast('error', 'Failed to copy command');
+    }
+  }, [showToast]);
+
+  const formatPublishedAt = useCallback((value: string | null) => {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  }, []);
+
   if (loading) return <div className="text-zinc-500 p-8">Loading settings...</div>;
   if (error) {
     return (
@@ -450,6 +529,8 @@ export default function SettingsPage() {
     { value: 'developer-ide', title: 'Developer IDE', body: 'Denser framing with stronger pane separation.' },
     { value: 'modern-saas', title: 'Modern SaaS', body: 'Lighter, softer surfaces with cleaner spacing.' },
   ];
+  const currentVersion = updateInfo?.currentVersion ?? packageJson.version;
+  const publishedAt = formatPublishedAt(updateInfo?.publishedAt ?? null);
 
   return (
     <div className="settings-page app-shell min-h-screen flex flex-col items-center py-10 transition-colors px-4">
@@ -1059,6 +1140,155 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
+          </div>
+
+          <div className="border-t border-zinc-200 dark:border-zinc-800 pt-6">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                <Info className="w-4 h-4" /> Updates
+              </h2>
+              <button
+                type="button"
+                onClick={() => void checkForUpdates()}
+                disabled={updateStatus === 'checking'}
+                className="inline-flex items-center gap-2 rounded-md border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50"
+              >
+                {updateStatus === 'checking' ? 'Checking...' : 'Check for updates'}
+              </button>
+            </div>
+
+            <div className={`rounded-xl border p-4 space-y-4 ${
+              updateInfo?.updateAvailable
+                ? 'border-emerald-300 dark:border-emerald-500/40 bg-emerald-50/40 dark:bg-emerald-500/5'
+                : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/40 dark:bg-zinc-900/40'
+            }`}>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                    {updateStatus === 'checking'
+                      ? 'Checking for the latest release...'
+                      : updateStatus === 'error'
+                        ? 'Update check failed'
+                        : updateInfo?.updateAvailable
+                          ? `Update available: v${updateInfo.latestVersion}`
+                          : 'You are up to date'}
+                  </div>
+                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    Current version: <span className="font-mono text-zinc-900 dark:text-zinc-100">v{currentVersion}</span>
+                    {updateInfo?.latestVersion && (
+                      <>
+                        {' '}• Latest: <span className="font-mono text-zinc-900 dark:text-zinc-100">v{updateInfo.latestVersion}</span>
+                      </>
+                    )}
+                    {publishedAt && (
+                      <>
+                        {' '}• Released {publishedAt}
+                      </>
+                    )}
+                  </p>
+                </div>
+
+                {updateInfo?.releaseUrl && (
+                  <a
+                    href={updateInfo.releaseUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-300 hover:underline"
+                  >
+                    View release
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                )}
+              </div>
+
+              {updateStatus === 'error' && (
+                <p className="text-sm text-red-600 dark:text-red-400">
+                  Could not reach GitHub Releases right now. Try again in a moment.
+                </p>
+              )}
+
+              {updateInfo?.notes && (
+                <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-950/50 p-3">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">
+                    Release notes
+                  </div>
+                  <p className="whitespace-pre-wrap text-sm text-zinc-700 dark:text-zinc-300">
+                    {updateInfo.notes}
+                  </p>
+                </div>
+              )}
+
+              {updateInfo?.commands.primary && (
+                <div className="space-y-3">
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">
+                      Recommended command
+                    </div>
+                    <div className="flex items-start gap-2 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-950/60 p-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                          {updateInfo.commands.primary.label}
+                        </div>
+                        <code className="block break-all text-xs text-zinc-900 dark:text-zinc-100">
+                          {updateInfo.commands.primary.command}
+                        </code>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void copyCommand(updateInfo.commands.primary!.command)}
+                        className="inline-flex items-center justify-center rounded-md border border-zinc-300 dark:border-zinc-700 p-2 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                        title="Copy command"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {updateInfo.commands.alternatives.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                        Alternate commands
+                      </div>
+                      {updateInfo.commands.alternatives.map((option) => (
+                        <div
+                          key={`${option.label}-${option.command}`}
+                          className="flex items-start gap-2 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-950/40 p-3"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                              {option.label}
+                            </div>
+                            <code className="block break-all text-xs text-zinc-900 dark:text-zinc-100">
+                              {option.command}
+                            </code>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => void copyCommand(option.command)}
+                            className="inline-flex items-center justify-center rounded-md border border-zinc-300 dark:border-zinc-700 p-2 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                            title="Copy command"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {updateInfo && !updateInfo.commands.primary && (
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                  No Arch install command could be detected on this system. Use the release link above to download the latest build.
+                </p>
+              )}
+
+              {updateInfo && (
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Command suggestions are based on detected tools on this machine and may not match the exact way Alogi was originally installed.
+                </p>
+              )}
+            </div>
           </div>
 
           {/* About Section */}
