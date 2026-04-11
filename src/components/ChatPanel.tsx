@@ -167,7 +167,7 @@ export function ChatPanel({ initialSummary, errorState, logContext, onCollapse, 
             {onCollapse && (
               <button
                 onClick={onCollapse}
-                className="theme-toolbar-button p-1 rounded hover:bg-[var(--surface-hover)] text-muted hover:text-primary transition-colors"
+                className="theme-toolbar-button ui-control-icon ui-control-ghost p-1"
                 title="Collapse panel"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -179,7 +179,7 @@ export function ChatPanel({ initialSummary, errorState, logContext, onCollapse, 
           {onClose && (
             <button
               onClick={onClose}
-              className="theme-toolbar-button p-1 rounded hover:bg-[var(--danger-soft)] text-muted hover:text-[var(--danger)] transition-colors"
+              className="theme-toolbar-button ui-control-icon ui-control-ghost ui-control-danger p-1"
               title="Close panel"
             >
               <X className="w-4 h-4" />
@@ -194,10 +194,10 @@ export function ChatPanel({ initialSummary, errorState, logContext, onCollapse, 
               onClick={onReanalyze}
               disabled={isReanalyzing}
               className={cn(
-                "theme-toolbar-button inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-colors",
+                "theme-toolbar-button ui-control px-3 py-1.5 text-xs font-medium",
                 isReanalyzing
                   ? "bg-[var(--surface-bg)] text-muted cursor-not-allowed"
-                  : "bg-[var(--accent-soft)] text-[var(--accent)] hover:brightness-110"
+                  : "ui-control-active hover:brightness-110"
               )}
               title="Re-analyze with fresh data"
             >
@@ -210,7 +210,7 @@ export function ChatPanel({ initialSummary, errorState, logContext, onCollapse, 
               <button
                 type="button"
                 onClick={() => setExportOpen((prev) => !prev)}
-                className="theme-toolbar-button inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-xl border border-subtle text-secondary hover:bg-[var(--surface-hover)] transition-colors"
+                className="theme-toolbar-button ui-control ui-control-secondary px-2.5 py-1.5 text-xs font-medium"
               >
                 Export
                 <ChevronDown className="w-3.5 h-3.5" />

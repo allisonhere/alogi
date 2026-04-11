@@ -203,7 +203,7 @@ export function HostList({ hosts, selectedHost, onSelectHost, onRefreshFiles, on
               onClick={() => onSelectHost(host)}
               onContextMenu={(e) => handleContextMenu(e, host)}
               className={cn(
-                "theme-list-row w-full text-left px-3 py-2.5 rounded-xl text-sm transition-colors flex items-center gap-2 border border-transparent",
+                "theme-list-row w-full text-left px-3 py-2.5 text-sm transition-colors flex items-center gap-2 border border-transparent",
                 selectedHost === host
                   ? "theme-list-row-selected bg-[var(--accent-soft)] text-[var(--accent)] border-[color:var(--border-strong)]"
                   : "text-secondary hover:bg-[var(--surface-hover)] hover:text-primary"
@@ -233,7 +233,7 @@ export function HostList({ hosts, selectedHost, onSelectHost, onRefreshFiles, on
       <div className="p-2 border-t border-subtle grid grid-cols-[1fr_auto] gap-1 mt-1">
         <Link
             href="/settings"
-            className="theme-footer-link flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-secondary hover:bg-[var(--surface-hover)] hover:text-primary transition-colors"
+            className="theme-footer-link ui-control ui-control-ghost text-secondary flex items-center gap-2 px-3 py-2 text-sm"
         >
             <Settings className="w-4 h-4" />
             Settings
@@ -243,7 +243,7 @@ export function HostList({ hosts, selectedHost, onSelectHost, onRefreshFiles, on
           {isDesktop && (
               <button
                   onClick={() => void window.alogiApp?.quit()}
-                  className="theme-footer-icon p-2 rounded-xl text-secondary hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] transition-colors"
+                  className="theme-footer-icon ui-control-icon ui-control-ghost ui-control-danger text-secondary p-2"
                   aria-label="Quit app"
                   title="Quit"
               >

@@ -168,7 +168,7 @@ export function FileList({ files, selectedFile, selectedCategory, onSelectFile, 
         onClick={() => onSelectFile(file.name, category)}
         onContextMenu={(e) => handleContextMenu(e, file, category)}
         className={cn(
-          "theme-list-row w-full text-left px-3 py-3 rounded-xl text-sm transition-colors group border border-transparent",
+          "theme-list-row w-full text-left px-3 py-3 text-sm transition-colors group border border-transparent",
           isSelected
             ? "theme-list-row-selected bg-[var(--accent-soft)] text-[var(--accent)] border-[color:var(--border-strong)]"
             : "text-secondary hover:bg-[var(--surface-hover)] hover:text-primary"
@@ -201,7 +201,7 @@ export function FileList({ files, selectedFile, selectedCategory, onSelectFile, 
         <button
           onClick={() => toggleCategory(categoryKey)}
           aria-expanded={!isCollapsed}
-          className="theme-list-row w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-secondary hover:bg-[var(--surface-hover)] rounded-xl transition-colors"
+          className="theme-list-row w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-secondary hover:bg-[var(--surface-hover)] transition-colors"
         >
           {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           <Icon className={cn("w-4 h-4", config.color)} />

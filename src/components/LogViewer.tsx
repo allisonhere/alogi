@@ -573,11 +573,11 @@ export function LogViewer({
 
         {/* Header */}
 
-        <div className="theme-pane-header border-b border-subtle app-panel">
-          <div className="px-6 py-3">
-            <div className="flex flex-wrap items-start gap-4">
+        <div className="theme-pane-header z-20 border-b border-subtle app-panel">
+          <div className="px-6 py-3 space-y-3">
+            <div className="flex items-start gap-4">
 
-              <div className="flex-1 min-w-[240px]">
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 min-w-0">
 
                     <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-subtle bg-[var(--surface-bg)]">
@@ -603,19 +603,18 @@ export function LogViewer({
                 </div>
 
               </div>
-
-              <div className="flex items-center gap-2 flex-wrap justify-end min-w-0">
+            </div>
+            <div className="-mx-2 -mb-[12rem] overflow-x-auto px-2 pb-[12rem]">
+              <div className="flex min-w-max items-center gap-2 whitespace-nowrap">
 
                   {/* Panel Toggles - Segmented Group */}
-                  <div className="theme-toolbar-group inline-flex rounded-xl border border-subtle bg-[var(--surface-bg)] flex-shrink-0" role="group" aria-label="Panel toggles">
+                  <div className="theme-toolbar-group ui-control-group flex-shrink-0" role="group" aria-label="Panel toggles">
                       <button
                           onClick={onToggleHosts}
                           aria-pressed={showHosts}
                           className={cn(
-                              "theme-toolbar-button px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 border-r border-subtle rounded-l-xl",
-                              showHosts
-                                  ? "bg-[var(--accent-soft)] text-[var(--accent)]"
-                                  : "text-muted hover:bg-[var(--surface-hover)] hover:text-primary"
+                              "theme-toolbar-button ui-control-segment px-2.5 py-1.5 text-xs font-medium flex items-center gap-1.5",
+                              showHosts ? "ui-control-active" : "ui-control-ghost"
                           )}
                           title={showHosts ? 'Hide hosts panel' : 'Show hosts panel'}
                       >
@@ -626,10 +625,8 @@ export function LogViewer({
                           onClick={onToggleFiles}
                           aria-pressed={showFiles}
                           className={cn(
-                              "theme-toolbar-button px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 rounded-r-xl",
-                              showFiles
-                                  ? "bg-[var(--accent-soft)] text-[var(--accent)]"
-                                  : "text-muted hover:bg-[var(--surface-hover)] hover:text-primary"
+                              "theme-toolbar-button ui-control-segment px-2.5 py-1.5 text-xs font-medium flex items-center gap-1.5",
+                              showFiles ? "ui-control-active" : "ui-control-ghost"
                           )}
                           title={showFiles ? 'Hide files panel' : 'Show files panel'}
                       >
@@ -638,19 +635,15 @@ export function LogViewer({
                       </button>
                   </div>
 
-                  {/* Divider */}
-                  <div className="h-6 w-px bg-[var(--border-subtle)] hidden sm:block" />
+                  <div className="h-6 w-px bg-[var(--border-subtle)] flex-shrink-0" />
 
-                  {/* Live Toggle */}
                   <button
                       ref={liveButtonRef}
                       onClick={() => setIsLive(!isLive)}
                       aria-pressed={isLive}
                       className={cn(
-                          "theme-toolbar-button px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center gap-2 whitespace-nowrap",
-                          isLive
-                              ? "bg-[var(--success-soft)] text-[var(--success)] hover:brightness-110"
-                              : "bg-[var(--surface-bg)] text-muted hover:bg-[var(--surface-hover)]"
+                          "theme-toolbar-button ui-control px-3 py-1.5 text-xs font-medium flex items-center gap-2 whitespace-nowrap flex-shrink-0",
+                          isLive ? "ui-control-success hover:brightness-110" : "ui-control-secondary"
                       )}
                       title={isLive ? 'Disable live updates' : 'Enable live updates'}
                   >
@@ -663,19 +656,15 @@ export function LogViewer({
                       {isLive ? 'Live' : 'Paused'}
                   </button>
 
-                  {/* Divider */}
-                  <div className="h-6 w-px bg-[var(--border-subtle)] hidden sm:block" />
+                  <div className="h-6 w-px bg-[var(--border-subtle)] flex-shrink-0" />
 
-                  {/* Filters Group */}
-                  <div className="theme-toolbar-group inline-flex rounded-xl border border-subtle bg-[var(--surface-bg)] flex-shrink-0">
+                  <div className="theme-toolbar-group ui-control-group flex-shrink-0">
                       <div className="relative">
                         <button
                             onClick={() => setShowTimeFilter(prev => !prev)}
                             className={cn(
-                                "theme-toolbar-button px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 border-r border-subtle rounded-l-xl",
-                                timeRange
-                                    ? "bg-[var(--accent-soft)] text-[var(--accent)]"
-                                    : "text-muted hover:bg-[var(--surface-hover)] hover:text-primary"
+                                "theme-toolbar-button ui-control-segment px-2.5 py-1.5 text-xs font-medium flex items-center gap-1.5",
+                                timeRange ? "ui-control-active" : "ui-control-ghost"
                             )}
                             title="Filter by time range"
                         >
@@ -687,7 +676,7 @@ export function LogViewer({
                             )}
                         </button>
                         {showTimeFilter && (
-                          <div className="absolute top-full right-0 mt-1 z-50 w-64 rounded-2xl border border-subtle app-panel-strong p-3 space-y-2">
+                          <div className="absolute top-full right-0 mt-1 z-[70] w-64 rounded-2xl border border-subtle app-panel-strong p-3 space-y-2">
                             <div className="flex items-center gap-2">
                               <label className="text-[11px] text-muted w-10">Start</label>
                               <input
@@ -745,10 +734,8 @@ export function LogViewer({
                         <button
                             onClick={() => setShowBookmarks(prev => !prev)}
                             className={cn(
-                                "theme-toolbar-button px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 border-r border-subtle",
-                                showBookmarks
-                                    ? "bg-[var(--accent-soft)] text-[var(--accent)]"
-                                    : "text-muted hover:bg-[var(--surface-hover)] hover:text-primary"
+                                "theme-toolbar-button ui-control-segment px-2.5 py-1.5 text-xs font-medium flex items-center gap-1.5",
+                                showBookmarks ? "ui-control-active" : "ui-control-ghost"
                             )}
                             title="Toggle bookmarks (Ctrl/Cmd + B to bookmark a line)"
                         >
@@ -760,7 +747,7 @@ export function LogViewer({
                             )}
                         </button>
                         {showBookmarks && bookmarks.size > 0 && (
-                          <div className="absolute top-full right-0 mt-1 z-50 w-80 max-h-64 overflow-y-auto rounded-2xl border border-subtle app-panel-strong">
+                          <div className="absolute top-full right-0 mt-1 z-[70] w-80 max-h-64 overflow-y-auto rounded-2xl border border-subtle app-panel-strong">
                             <div className="p-2 space-y-0.5">
                               {Array.from(bookmarks).sort((a, b) => a - b).map(idx => {
                                 const lineText = lines[idx] ?? '';
@@ -792,7 +779,7 @@ export function LogViewer({
                           </div>
                         )}
                         {showBookmarks && bookmarks.size === 0 && (
-                          <div className="absolute top-full right-0 mt-1 z-50 w-64 rounded-2xl border border-subtle app-panel-strong p-4 text-center">
+                          <div className="absolute top-full right-0 mt-1 z-[70] w-64 rounded-2xl border border-subtle app-panel-strong p-4 text-center">
                             <p className="text-xs text-secondary">No bookmarks yet.</p>
                             <p className="text-[10px] text-muted mt-1">Click the gutter icon or press Ctrl+B</p>
                           </div>
@@ -801,10 +788,8 @@ export function LogViewer({
                       <button
                           onClick={() => setInsightsOpen(prev => !prev)}
                           className={cn(
-                              "theme-toolbar-button px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 rounded-r-lg",
-                              insightsOpen
-                                  ? "bg-[var(--accent-soft)] text-[var(--accent)]"
-                                  : "text-muted hover:bg-[var(--surface-hover)] hover:text-primary"
+                              "theme-toolbar-button ui-control-segment px-2.5 py-1.5 text-xs font-medium flex items-center gap-1.5",
+                              insightsOpen ? "ui-control-active" : "ui-control-ghost"
                           )}
                           title="Toggle insights"
                       >
@@ -812,18 +797,14 @@ export function LogViewer({
                       </button>
                   </div>
 
-                  {/* Divider */}
-                  <div className="h-6 w-px bg-[var(--border-subtle)] hidden sm:block" />
+                  <div className="h-6 w-px bg-[var(--border-subtle)] flex-shrink-0" />
 
-                  {/* Display Options Group */}
-                  <div className="theme-toolbar-group inline-flex rounded-xl border border-subtle bg-[var(--surface-bg)] flex-shrink-0">
+                  <div className="theme-toolbar-group ui-control-group flex-shrink-0">
                       <button
                           onClick={() => setWrapLines(prev => !prev)}
                           className={cn(
-                              "theme-toolbar-button px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 border-r border-subtle rounded-l-xl",
-                              wrapLines
-                                  ? "bg-[var(--accent-soft)] text-[var(--accent)]"
-                                  : "text-muted hover:bg-[var(--surface-hover)] hover:text-primary"
+                              "theme-toolbar-button ui-control-segment px-2.5 py-1.5 text-xs font-medium flex items-center gap-1.5",
+                              wrapLines ? "ui-control-active" : "ui-control-ghost"
                           )}
                           title="Toggle line wrap (W)"
                       >
@@ -832,14 +813,14 @@ export function LogViewer({
                       <button
                           onClick={() => adjustFontSize(-1)}
                           disabled={fontSize <= FONT_SIZES[0]}
-                          className="theme-toolbar-button px-2 py-1.5 text-xs font-medium transition-colors text-muted hover:bg-[var(--surface-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="theme-toolbar-button ui-control-segment ui-control-ghost px-2 py-1.5 text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed"
                           title="Decrease font size (Ctrl/Cmd -)"
                       >
                           <Minus className="w-3.5 h-3.5" />
                       </button>
                       <button
                           onClick={() => setFontSize(13)}
-                          className="theme-toolbar-button px-2 py-1.5 text-xs font-medium transition-colors text-muted hover:bg-[var(--surface-hover)] border-x border-subtle"
+                          className="theme-toolbar-button ui-control-segment ui-control-ghost px-2 py-1.5 text-xs font-medium"
                           title="Reset font size (Ctrl/Cmd 0)"
                       >
                           <Type className="w-3.5 h-3.5" />
@@ -847,17 +828,16 @@ export function LogViewer({
                       <button
                           onClick={() => adjustFontSize(1)}
                           disabled={fontSize >= FONT_SIZES[FONT_SIZES.length - 1]}
-                          className="theme-toolbar-button px-2 py-1.5 text-xs font-medium transition-colors text-muted hover:bg-[var(--surface-hover)] disabled:opacity-40 disabled:cursor-not-allowed rounded-r-xl"
+                          className="theme-toolbar-button ui-control-segment ui-control-ghost px-2 py-1.5 text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed"
                           title="Increase font size (Ctrl/Cmd +)"
                       >
                           <Plus className="w-3.5 h-3.5" />
                       </button>
                   </div>
 
-              </div>
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-                <div className="relative w-full max-w-[420px]">
+                  <div className="h-6 w-px bg-[var(--border-subtle)] flex-shrink-0" />
+
+                  <div className="relative min-w-[280px] flex-1 max-w-[420px]">
 
                     <input
                         ref={searchInputRef}
@@ -873,7 +853,7 @@ export function LogViewer({
                         onChange={(e) => setSearchQuery(e.target.value)}
 
                         className={cn(
-                            "w-full ui-input py-1.5 pl-8 pr-16 text-xs",
+                            "w-full ui-input py-1.5 pl-8 pr-16 text-xs min-w-0",
                             regexError
                                 ? "border-[var(--danger)] focus:ring-[var(--danger)]/50"
                                 : ""
@@ -896,10 +876,8 @@ export function LogViewer({
                         <button
                             onClick={() => setIsRegex(prev => !prev)}
                             className={cn(
-                                "p-0.5 rounded text-[10px] font-mono font-bold transition-colors",
-                                isRegex 
-                                    ? "bg-[var(--accent-soft)] text-[var(--accent)]" 
-                                    : "text-muted hover:bg-[var(--surface-hover)] hover:text-primary"
+                                "ui-control-icon ui-control-ghost px-1.5 text-[10px] font-mono font-bold",
+                                isRegex ? "ui-control-active" : ""
                             )}
                             title="Toggle Regex (Ctrl/Cmd + R)"
                         >
@@ -911,7 +889,7 @@ export function LogViewer({
 
                                 onClick={() => setSearchQuery('')}
 
-                                className="text-muted hover:text-primary"
+                                className="ui-control-icon ui-control-ghost p-1"
 
                             >
 
@@ -922,36 +900,35 @@ export function LogViewer({
                         )}
                     </div>
 
-                </div>
-                <div className="ml-auto flex-shrink-0">
-                    <button
-                        ref={analyzeButtonRef}
-                        onClick={() => {
-                            if (analysis) {
-                                setIsAiPanelOpen(prev => !prev);
-                            } else {
-                                handleAnalyze();
-                            }
-                        }}
-                        disabled={analyzing}
-                        className={cn(
-                            "theme-toolbar-button flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all flex-shrink-0",
-                            analyzing
-                                ? "bg-[var(--surface-bg)] text-muted cursor-not-allowed"
-                                : "bg-[var(--accent)] text-[var(--accent-contrast)] shadow-lg cursor-pointer hover:brightness-110"
-                        )}
-                    >
-                        <Sparkles className="w-3 h-3" />
-                        {analyzing ? 'Analyzing...' : analysis ? (isAiPanelOpen ? 'Hide AI' : 'Show AI') : 'AI Analyze'}
-                    </button>
-                </div>
+                  </div>
+                  <button
+                      ref={analyzeButtonRef}
+                      onClick={() => {
+                          if (analysis) {
+                              setIsAiPanelOpen(prev => !prev);
+                          } else {
+                              handleAnalyze();
+                          }
+                      }}
+                      disabled={analyzing}
+                      className={cn(
+                          "theme-toolbar-button ui-control flex items-center gap-2 px-3 py-1.5 text-xs font-medium flex-shrink-0",
+                          analyzing
+                              ? "ui-control-secondary cursor-not-allowed"
+                              : "ui-control-primary shadow-lg cursor-pointer hover:brightness-110"
+                      )}
+                  >
+                      <Sparkles className="w-3 h-3" />
+                      {analyzing ? 'Analyzing...' : analysis ? (isAiPanelOpen ? 'Hide AI' : 'Show AI') : 'AI Analyze'}
+                  </button>
+              </div>
             </div>
           </div>
 
         </div>
 
       {timeFilteredLines.length > MAX_RENDER_LINES && !debouncedSearch && !timeRange && (
-        <div className="px-6 py-2 text-xs bg-warning-soft text-[var(--warning)] border-b border-subtle flex items-center justify-between">
+        <div className="relative z-0 px-6 py-2 text-xs bg-warning-soft text-[var(--warning)] border-b border-subtle flex items-center justify-between">
           <span className="flex flex-wrap items-center gap-2">
             Large log: {shouldWindow ? `showing last ${MAX_RENDER_LINES} of ${timeFilteredLines.length} lines` : `showing all ${timeFilteredLines.length} lines`}
             {wrapLines && (
@@ -969,6 +946,7 @@ export function LogViewer({
         </div>
       )}
 
+      <div className="relative z-0">
       <VibeCheckBar 
         lines={windowedLines.map(l => l.line)} 
         onScrollTo={(index) => {
@@ -994,8 +972,9 @@ export function LogViewer({
         viewportStart={viewportRange.start}
         viewportEnd={viewportRange.end}
       />
+      </div>
 
-      <div className="flex-1 flex min-h-0 overflow-hidden">
+      <div className="relative z-0 flex-1 flex min-h-0 overflow-hidden">
         {/* Code View */}
         <div
             ref={scrollRef}
@@ -1103,7 +1082,7 @@ export function LogViewer({
 
       {/* Status Bar */}
       {content && (
-        <div className="flex-shrink-0 h-7 px-4 flex items-center gap-4 border-t border-subtle app-panel text-[11px] font-mono text-muted">
+        <div className="relative z-0 flex-shrink-0 h-7 px-4 flex items-center gap-4 border-t border-subtle app-panel text-[11px] font-mono text-muted">
           <span className="flex items-center gap-1.5">
             <span>Lines:</span>
             <span className="text-secondary">{lines.length.toLocaleString()}</span>
