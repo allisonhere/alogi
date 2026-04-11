@@ -96,7 +96,7 @@ export function OnboardingOverlay({ steps, onFinish, onSkip }: OnboardingOverlay
   };
 
   return (
-    <div className="fixed inset-0 z-50 pointer-events-none">
+    <div className="fixed inset-0 z-50 pointer-events-none" role="presentation">
       <div className="absolute inset-0 bg-black/60" />
       {targetRect && (
         <div
@@ -112,8 +112,16 @@ export function OnboardingOverlay({ steps, onFinish, onSkip }: OnboardingOverlay
 
       <div
         ref={calloutRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Onboarding step ${activeIndex + 1} of ${availableSteps.length}: ${activeStep.title}`}
         className="absolute max-w-[380px] bg-white dark:bg-zinc-950/95 border border-indigo-300/60 dark:border-indigo-500/40 rounded-2xl shadow-[0_18px_50px_rgba(15,23,42,0.35),0_0_30px_rgba(99,102,241,0.25)] p-5 text-zinc-900 dark:text-zinc-100 pointer-events-auto backdrop-blur"
         style={{ top: calloutPos.top, left: calloutPos.left }}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') (onSkip ?? onFinish)();
+          if (e.key === 'ArrowRight') handleNext();
+          if (e.key === 'ArrowLeft') handleBack();
+        }}
       >
         <div className="text-[11px] uppercase tracking-[0.24em] text-indigo-500/80 dark:text-indigo-300/70 mb-2">
           Step {activeIndex + 1} / {availableSteps.length}
@@ -137,6 +145,7 @@ export function OnboardingOverlay({ steps, onFinish, onSkip }: OnboardingOverlay
             </button>
             <button
               onClick={handleNext}
+              autoFocus
               className="px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-500"
             >
               {activeIndex === availableSteps.length - 1 ? 'Done' : 'Next'}

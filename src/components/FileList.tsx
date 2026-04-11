@@ -163,6 +163,8 @@ export function FileList({ files, selectedFile, selectedCategory, onSelectFile, 
     return (
       <button
         key={`${category}-${file.name}`}
+        role="option"
+        aria-selected={isSelected}
         onClick={() => onSelectFile(file.name, category)}
         onContextMenu={(e) => handleContextMenu(e, file, category)}
         className={cn(
@@ -198,6 +200,7 @@ export function FileList({ files, selectedFile, selectedCategory, onSelectFile, 
       <div key={categoryKey} className="mb-2">
         <button
           onClick={() => toggleCategory(categoryKey)}
+          aria-expanded={!isCollapsed}
           className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 rounded-md transition-colors"
         >
           {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -222,9 +225,9 @@ export function FileList({ files, selectedFile, selectedCategory, onSelectFile, 
         <FileText className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
         <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">Files</h2>
       </div>
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
+      <div className="flex-1 overflow-y-auto p-2 space-y-1" role="listbox" aria-label="Log files">
         {loading ? (
-          <div className="text-zinc-500 text-sm p-4 text-center">Loading...</div>
+          <div className="text-zinc-500 text-sm p-4 text-center" role="status">Loading...</div>
         ) : hasCategories ? (
           // Render categorized sections for remote hosts
           <>
@@ -253,8 +256,14 @@ export function FileList({ files, selectedFile, selectedCategory, onSelectFile, 
       )}
 
       {showFileInfo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowFileInfo(null)}>
-          <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-xl p-4 min-w-[280px]" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowFileInfo(null)} role="presentation">
+          <div
+            role="dialog"
+            aria-label="File information"
+            className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-xl p-4 min-w-[280px]"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => { if (e.key === 'Escape') setShowFileInfo(null); }}
+          >
             <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-3 flex items-center gap-2">
               <FileText className="w-4 h-4" />
               File Info

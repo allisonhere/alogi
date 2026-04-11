@@ -125,8 +125,12 @@ export function DialogProvider({ children }: { children: ReactNode }) {
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm"
           onClick={handleClose}
           onKeyDown={handleKeyDown}
+          role="presentation"
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dialog-title"
             className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-700 shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-in zoom-in-95 fade-in duration-200"
             onClick={(e) => e.stopPropagation()}
           >
@@ -136,12 +140,13 @@ export function DialogProvider({ children }: { children: ReactNode }) {
                 <Icon className="w-6 h-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-lg">
+                <h3 id="dialog-title" className="font-semibold text-zinc-900 dark:text-zinc-100 text-lg">
                   {dialog.title}
                 </h3>
               </div>
               <button
                 onClick={handleClose}
+                aria-label="Close dialog"
                 className="flex-shrink-0 p-1 rounded-md text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
               >
                 <X className="w-5 h-5" />

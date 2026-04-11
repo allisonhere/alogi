@@ -514,6 +514,9 @@ export default function Dashboard() {
 
       {showHosts && (
         <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize hosts panel"
           onMouseDown={startResize('hosts')}
           className="w-1.5 bg-zinc-200/60 dark:bg-zinc-800/60 hover:bg-indigo-400/60 cursor-col-resize transition-colors"
         />
@@ -535,6 +538,9 @@ export default function Dashboard() {
 
       {showFiles && selectedHost && (
         <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize files panel"
           onMouseDown={startResize('files')}
           className="w-1.5 bg-zinc-200/60 dark:bg-zinc-800/60 hover:bg-emerald-400/60 cursor-col-resize transition-colors"
         />
@@ -557,9 +563,15 @@ export default function Dashboard() {
       />
 
       {showSudoPrompt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-white dark:bg-zinc-950/95 border border-indigo-300/60 dark:border-indigo-500/40 rounded-2xl shadow-[0_18px_50px_rgba(15,23,42,0.35)] backdrop-blur p-6 w-full max-w-sm">
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-1">Elevated Access Required</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" role="presentation">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sudo-dialog-title"
+            className="bg-white dark:bg-zinc-950/95 border border-indigo-300/60 dark:border-indigo-500/40 rounded-2xl shadow-[0_18px_50px_rgba(15,23,42,0.35)] backdrop-blur p-6 w-full max-w-sm"
+            onKeyDown={(e) => { if (e.key === 'Escape') { setShowSudoPrompt(false); pendingRetry.current = null; } }}
+          >
+            <h2 id="sudo-dialog-title" className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-1">Elevated Access Required</h2>
             <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">This file requires sudo. Your password is stored in memory only for this session.</p>
             <input
               type="password"
@@ -567,6 +579,7 @@ export default function Dashboard() {
               onChange={e => setSudoPassword(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && sudoPassword) handleSudoSubmit(); }}
               placeholder="Password"
+              aria-label="Sudo password"
               autoFocus
               className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 mb-3"
             />

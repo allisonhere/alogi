@@ -176,7 +176,7 @@ export function HostList({ hosts, selectedHost, onSelectHost, onRefreshFiles, on
   }, [selectedHost, onSelectHost, onRefreshFiles, onRemoveHost, showDialog, showConfirm]);
 
   return (
-    <div className="w-full border-r border-zinc-800 bg-zinc-50 dark:bg-zinc-950 flex flex-col h-full min-h-0 transition-colors" onContextMenu={(e) => e.preventDefault()}>
+    <nav aria-label="Hosts" className="w-full border-r border-zinc-800 bg-zinc-50 dark:bg-zinc-950 flex flex-col h-full min-h-0 transition-colors" onContextMenu={(e) => e.preventDefault()}>
       <div className="px-4 py-3 h-[64px] border-b border-zinc-200 dark:border-zinc-800 flex items-start gap-3">
         <img
           src="/logo.svg"
@@ -189,7 +189,7 @@ export function HostList({ hosts, selectedHost, onSelectHost, onRefreshFiles, on
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
+      <div className="flex-1 overflow-y-auto p-2 space-y-1" role="listbox" aria-label="Hosts">
         {hosts.map((host) => {
           const Icon = getHostIcon(host);
           const iconColor = getHostIconColor(host);
@@ -197,6 +197,8 @@ export function HostList({ hosts, selectedHost, onSelectHost, onRefreshFiles, on
           return (
             <button
               key={host}
+              role="option"
+              aria-selected={selectedHost === host}
               onClick={() => onSelectHost(host)}
               onContextMenu={(e) => handleContextMenu(e, host)}
               className={cn(
@@ -240,6 +242,7 @@ export function HostList({ hosts, selectedHost, onSelectHost, onRefreshFiles, on
             <button
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                 className="p-2 rounded-md text-zinc-600 dark:text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-900 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors"
+                aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
                 title="Toggle Theme"
             >
                 {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -255,6 +258,6 @@ export function HostList({ hosts, selectedHost, onSelectHost, onRefreshFiles, on
           onClose={() => setContextMenu(null)}
         />
       )}
-    </div>
+    </nav>
   );
 }

@@ -560,16 +560,16 @@ export function LogViewer({
   const hostType = getHostType();
 
   if (loading && !content) { // Only show full loading if no content yet
-    return <div className="flex-1 flex items-center justify-center text-zinc-500">Loading content...</div>;
+    return <div className="flex-1 flex items-center justify-center text-zinc-500" role="status" aria-live="polite">Loading content...</div>;
   }
 
   if (!content) {
-    return <div className="flex-1 flex items-center justify-center text-zinc-600">Select a file to view logs.</div>;
+    return <div className="flex-1 flex items-center justify-center text-zinc-600" role="status">Select a file to view logs.</div>;
   }
 
     return (
 
-      <div className="flex-1 flex flex-col bg-white dark:bg-[#09090b] h-screen min-h-0 overflow-hidden transition-colors" onContextMenu={(e) => e.preventDefault()}>
+      <main className="flex-1 flex flex-col bg-white dark:bg-[#09090b] h-screen min-h-0 overflow-hidden transition-colors" onContextMenu={(e) => e.preventDefault()}>
 
         {/* Header */}
 
@@ -604,9 +604,10 @@ export function LogViewer({
               <div className="flex items-center gap-2 flex-wrap justify-end min-w-0">
 
                   {/* Panel Toggles - Segmented Group */}
-                  <div className="inline-flex rounded-lg border border-zinc-200 dark:border-zinc-700 flex-shrink-0">
+                  <div className="inline-flex rounded-lg border border-zinc-200 dark:border-zinc-700 flex-shrink-0" role="group" aria-label="Panel toggles">
                       <button
                           onClick={onToggleHosts}
+                          aria-pressed={showHosts}
                           className={cn(
                               "px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 border-r border-zinc-200 dark:border-zinc-700 rounded-l-lg",
                               showHosts
@@ -620,6 +621,7 @@ export function LogViewer({
                       </button>
                       <button
                           onClick={onToggleFiles}
+                          aria-pressed={showFiles}
                           className={cn(
                               "px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 rounded-r-lg",
                               showFiles
@@ -640,6 +642,7 @@ export function LogViewer({
                   <button
                       ref={liveButtonRef}
                       onClick={() => setIsLive(!isLive)}
+                      aria-pressed={isLive}
                       className={cn(
                           "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-2 whitespace-nowrap",
                           isLive
@@ -991,8 +994,11 @@ export function LogViewer({
 
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Code View */}
-        <div 
+        <div
             ref={scrollRef}
+            role="log"
+            aria-label="Log output"
+            aria-live={isLive ? 'polite' : 'off'}
             onScroll={scheduleViewportUpdate}
             className="flex-1 min-h-0 overflow-auto p-4 font-mono text-sm text-zinc-300 leading-relaxed custom-scrollbar"
         >
@@ -1143,12 +1149,15 @@ export function LogViewer({
       {/* Context Menu */}
       {contextMenu && (
         <div
+          role="menu"
+          aria-label="Log line actions"
           className="fixed z-50 min-w-[180px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl py-1 text-sm"
           style={{ top: contextMenu.y, left: contextMenu.x }}
           onMouseDown={(e) => e.stopPropagation()}
           onContextMenu={(e) => e.preventDefault()}
         >
           <button
+            role="menuitem"
             onClick={handleCopy}
             className="w-full text-left px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2"
           >
@@ -1156,22 +1165,25 @@ export function LogViewer({
             Copy
           </button>
           <button
+            role="menuitem"
             onClick={handleCopyWithContext}
             className="w-full text-left px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2"
           >
             <Clipboard className="w-3.5 h-3.5" />
             Copy with context
           </button>
-          <div className="border-t border-zinc-200 dark:border-zinc-700 my-1" />
+          <div role="separator" className="border-t border-zinc-200 dark:border-zinc-700 my-1" />
           <button
+            role="menuitem"
             onClick={handleContextBookmark}
             className="w-full text-left px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2"
           >
             <Bookmark className="w-3.5 h-3.5" />
             {bookmarks.has(contextMenu.lineIndex) ? 'Remove bookmark' : 'Bookmark'}
           </button>
-          <div className="border-t border-zinc-200 dark:border-zinc-700 my-1" />
+          <div role="separator" className="border-t border-zinc-200 dark:border-zinc-700 my-1" />
           <button
+            role="menuitem"
             onClick={handleFilterToThis}
             className="w-full text-left px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2"
           >
@@ -1179,6 +1191,7 @@ export function LogViewer({
             Filter to this
           </button>
           <button
+            role="menuitem"
             onClick={handleSearchSimilar}
             className="w-full text-left px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2"
           >
@@ -1187,6 +1200,6 @@ export function LogViewer({
           </button>
         </div>
       )}
-    </div>
+    </main>
   );
 }
