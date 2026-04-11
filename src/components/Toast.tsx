@@ -25,26 +25,26 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
   }, [toast.id, onDismiss]);
 
   const icons = {
-    success: <CheckCircle className="w-4 h-4 text-emerald-500" />,
-    error: <AlertCircle className="w-4 h-4 text-red-500" />,
-    info: <Info className="w-4 h-4 text-blue-500" />,
+    success: <CheckCircle className="w-4 h-4 text-[var(--success)]" />,
+    error: <AlertCircle className="w-4 h-4 text-[var(--danger)]" />,
+    info: <Info className="w-4 h-4 text-[var(--accent)]" />,
   };
 
   const bgColors = {
-    success: 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30',
-    error: 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/30',
-    info: 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30',
+    success: 'bg-success-soft border-[color:var(--border-strong)]',
+    error: 'bg-danger-soft border-[color:var(--border-strong)]',
+    info: 'bg-accent-soft border-[color:var(--border-strong)]',
   };
 
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg ${bgColors[toast.type]} animate-in slide-in-from-right-full duration-200`}
+      className={`flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-lg backdrop-blur ${bgColors[toast.type]} animate-in slide-in-from-right-full duration-200`}
     >
       {icons[toast.type]}
-      <span className="text-sm text-zinc-800 dark:text-zinc-200 flex-1">{toast.message}</span>
+      <span className="text-sm text-primary flex-1">{toast.message}</span>
       <button
         onClick={() => onDismiss(toast.id)}
-        className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+        className="text-muted hover:text-primary transition-colors"
       >
         <X className="w-4 h-4" />
       </button>

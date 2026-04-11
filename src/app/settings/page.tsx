@@ -4,9 +4,10 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Save, ArrowLeft, Server, Cpu, Key, Trash2, Copy, X, ChevronDown, Settings, Github, ExternalLink, Heart, Info } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import type { AlogiConfig, HostConfig } from '@/lib/config';
+import type { AlogiConfig, HostConfig, UiTheme } from '@/lib/config';
 import { ToastContainer, useToast } from '@/components/Toast';
 import { useDialog } from '@/components/Dialog';
+import { useUiTheme } from '@/components/theme-provider';
 import packageJson from '../../../package.json';
 
 type MissingKey = { id?: string; alias?: string; keyPath?: string };
@@ -48,6 +49,7 @@ function hasValidationErrors(errors: HostValidationErrors): boolean {
 }
 
 export default function SettingsPage() {
+  const { uiTheme, setUiTheme } = useUiTheme();
   const [config, setConfig] = useState<AlogiConfig | null>(null);
   const [savedConfig, setSavedConfig] = useState<AlogiConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -111,6 +113,7 @@ export default function SettingsPage() {
           throw new Error(`Failed to load settings (${res.status})`);
         }
         const data = await res.json();
+        data.ui = { onboardingDismissed: false, theme: 'operator-console', ...data.ui };
         setConfig(data);
         setSavedConfig(data);
       } catch (err) {
@@ -442,19 +445,27 @@ export default function SettingsPage() {
   if (!config) return <div className="text-zinc-500 p-8">Loading settings...</div>;
 
   const provider = config.ai.provider || 'gemini';
+  const themeCards: Array<{ value: UiTheme; title: string; body: string }> = [
+    { value: 'operator-console', title: 'Operator Console', body: 'Dark, restrained, high signal-to-noise.' },
+    { value: 'developer-ide', title: 'Developer IDE', body: 'Denser framing with stronger pane separation.' },
+    { value: 'modern-saas', title: 'Modern SaaS', body: 'Lighter, softer surfaces with cleaner spacing.' },
+  ];
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 flex flex-col items-center py-10 transition-colors">
-      <div className="w-full max-w-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden shadow-xl">
+    <div className="settings-page app-shell min-h-screen flex flex-col items-center py-10 transition-colors px-4">
+      <div className="ui-card w-full max-w-4xl overflow-hidden">
         {/* Header */}
-        <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/50">
+        <div className="p-6 border-b border-subtle flex items-center justify-between bg-[var(--surface-bg)]">
           <div className="flex items-center gap-4">
-            <Link href="/" className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-full transition-colors text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
+            <Link href="/" className="p-2 hover:bg-[var(--surface-hover)] rounded-full transition-colors text-secondary hover:text-primary">
               <ArrowLeft className="w-5 h-5" />
             </Link>
-            <h1 className="text-xl font-bold">Settings</h1>
+            <div>
+              <div className="ui-section-label">Workspace</div>
+              <h1 className="text-xl font-bold text-primary">Settings</h1>
+            </div>
             {isDirty && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30">
+              <span className="ui-badge bg-warning-soft text-[var(--warning)]">
                 Unsaved changes
               </span>
             )}
@@ -463,7 +474,7 @@ export default function SettingsPage() {
             onClick={handleSave}
             disabled={saving || hasAnyValidationErrors}
             title={hasAnyValidationErrors ? 'Fix validation errors before saving' : undefined}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50 shadow-sm"
+            className="ui-button ui-button-primary px-4 py-2 text-sm font-medium disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
             {saving ? "Saving..." : "Save Changes"}
@@ -471,6 +482,37 @@ export default function SettingsPage() {
         </div>
 
         <div className="p-6 space-y-8">
+          <div>
+            <h2 className="ui-section-label mb-4 flex items-center gap-2">
+              <Settings className="w-4 h-4" /> Appearance
+            </h2>
+            <div className="grid gap-3 md:grid-cols-3">
+              {themeCards.map((themeOption) => {
+                const active = (config.ui?.theme ?? uiTheme) === themeOption.value;
+                return (
+                  <button
+                    key={themeOption.value}
+                    type="button"
+                    onClick={() => {
+                      setUiTheme(themeOption.value);
+                      setConfig({ ...config, ui: { ...config.ui, theme: themeOption.value } });
+                    }}
+                    className={`rounded-2xl border p-4 text-left transition-colors ${
+                      active
+                        ? 'border-[color:var(--accent)] bg-[var(--accent-soft)]'
+                        : 'border-subtle bg-[var(--surface-bg)] hover:bg-[var(--surface-hover)]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="font-semibold text-primary">{themeOption.title}</div>
+                      {active && <span className="ui-badge bg-[var(--accent)] text-[var(--accent-contrast)] border-transparent">Active</span>}
+                    </div>
+                    <p className="mt-2 text-sm text-secondary">{themeOption.body}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {/* AI Section */}
           <div>

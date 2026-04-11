@@ -499,7 +499,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex h-screen w-full min-h-0 bg-white dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 overflow-hidden transition-colors" onContextMenu={(e) => e.preventDefault()}>
+    <div className="app-shell flex h-screen w-full min-h-0 overflow-hidden transition-colors" onContextMenu={(e) => e.preventDefault()}>
       {showHosts && (
         <div ref={hostPanelRef} style={{ width: hostWidth }} className="flex-shrink-0">
           <HostList
@@ -518,7 +518,7 @@ export default function Dashboard() {
           aria-orientation="vertical"
           aria-label="Resize hosts panel"
           onMouseDown={startResize('hosts')}
-          className="w-1.5 bg-zinc-200/60 dark:bg-zinc-800/60 hover:bg-indigo-400/60 cursor-col-resize transition-colors"
+          className="w-1.5 bg-[var(--border-subtle)] hover:bg-[var(--accent)]/60 cursor-col-resize transition-colors"
         />
       )}
       
@@ -542,7 +542,7 @@ export default function Dashboard() {
           aria-orientation="vertical"
           aria-label="Resize files panel"
           onMouseDown={startResize('files')}
-          className="w-1.5 bg-zinc-200/60 dark:bg-zinc-800/60 hover:bg-emerald-400/60 cursor-col-resize transition-colors"
+          className="w-1.5 bg-[var(--border-subtle)] hover:bg-[var(--accent)]/60 cursor-col-resize transition-colors"
         />
       )}
 
@@ -563,16 +563,16 @@ export default function Dashboard() {
       />
 
       {showSudoPrompt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" role="presentation">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" role="presentation">
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="sudo-dialog-title"
-            className="bg-white dark:bg-zinc-950/95 border border-indigo-300/60 dark:border-indigo-500/40 rounded-2xl shadow-[0_18px_50px_rgba(15,23,42,0.35)] backdrop-blur p-6 w-full max-w-sm"
+            className="ui-card p-6 w-full max-w-sm"
             onKeyDown={(e) => { if (e.key === 'Escape') { setShowSudoPrompt(false); pendingRetry.current = null; } }}
           >
-            <h2 id="sudo-dialog-title" className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-1">Elevated Access Required</h2>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">This file requires sudo. Your password is stored in memory only for this session.</p>
+            <h2 id="sudo-dialog-title" className="text-lg font-semibold text-primary mb-1">Elevated Access Required</h2>
+            <p className="text-sm text-muted mb-4">This file requires sudo. Your password is stored in memory only for this session.</p>
             <input
               type="password"
               value={sudoPassword}
@@ -581,20 +581,20 @@ export default function Dashboard() {
               placeholder="Password"
               aria-label="Sudo password"
               autoFocus
-              className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 mb-3"
+              className="ui-input mb-3 px-3 py-2"
             />
-            {sudoError && <p className="text-sm text-red-500 mb-3">{sudoError}</p>}
+            {sudoError && <p className="text-sm text-[var(--danger)] mb-3">{sudoError}</p>}
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => { setShowSudoPrompt(false); pendingRetry.current = null; }}
-                className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-sm"
+                className="ui-button ui-button-secondary px-4 py-2 text-sm"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSudoSubmit}
                 disabled={!sudoPassword || sudoLoading}
-                className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors text-sm"
+                className="ui-button ui-button-primary px-4 py-2 text-sm disabled:opacity-50"
               >
                 {sudoLoading ? 'Authenticating...' : 'Authenticate'}
               </button>

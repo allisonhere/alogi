@@ -75,14 +75,14 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
       role="menu"
       aria-label="Context menu"
       tabIndex={-1}
-      className="fixed z-50 min-w-[180px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl py-1 text-sm focus:outline-none"
+      className="fixed z-50 min-w-[180px] rounded-2xl border border-subtle app-panel-strong py-1 text-sm focus:outline-none"
       style={{ top: y, left: x }}
       onMouseDown={(e) => e.stopPropagation()}
       onContextMenu={(e) => e.preventDefault()}
     >
       {items.map((item, i) => {
         if (item.separator) {
-          return <div key={i} role="separator" className="border-t border-zinc-200 dark:border-zinc-700 my-1" />;
+          return <div key={i} role="separator" className="border-t border-subtle my-1" />;
         }
         actionIndex++;
         const isFocused = actionIndex === focusedIndex;
@@ -105,11 +105,11 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
             aria-disabled={item.disabled}
             className={`w-full text-left px-3 py-1.5 text-xs transition-colors flex items-center gap-2 ${
               item.disabled
-                ? 'text-zinc-400 dark:text-zinc-600 cursor-not-allowed'
+                ? 'text-muted cursor-not-allowed'
                 : item.danger
-                ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10'
-                : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-            } ${isFocused && !item.disabled ? 'bg-zinc-100 dark:bg-zinc-800' : ''}`}
+                ? 'text-[var(--danger)] hover:bg-[var(--danger-soft)]'
+                : 'text-primary hover:bg-[var(--surface-hover)]'
+            } ${isFocused && !item.disabled ? 'bg-[var(--surface-hover)]' : ''}`}
           >
             {item.icon && <span className="w-3.5 h-3.5 flex items-center justify-center">{item.icon}</span>}
             {item.label}

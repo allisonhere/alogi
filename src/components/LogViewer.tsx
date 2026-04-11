@@ -569,21 +569,24 @@ export function LogViewer({
 
     return (
 
-      <main className="flex-1 flex flex-col bg-white dark:bg-[#09090b] h-screen min-h-0 overflow-hidden transition-colors" onContextMenu={(e) => e.preventDefault()}>
+      <main className="flex-1 flex flex-col app-shell h-screen min-h-0 overflow-hidden transition-colors" onContextMenu={(e) => e.preventDefault()}>
 
         {/* Header */}
 
-        <div className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950">
-          <div className="px-6 py-2">
+        <div className="theme-pane-header border-b border-subtle app-panel">
+          <div className="px-6 py-3">
             <div className="flex flex-wrap items-start gap-4">
 
               <div className="flex-1 min-w-[240px]">
-                <div className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300 min-w-0">
+                <div className="flex items-center gap-3 min-w-0">
 
-                    <img src="/logo.svg" alt="Alogi logo" className="w-5 h-5 flex-shrink-0" />
-                    <Terminal className="w-4 h-4 text-zinc-400 dark:text-zinc-500 flex-shrink-0" />
-
-                    <span className="font-mono text-sm truncate">{filename}</span>
+                    <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-subtle bg-[var(--surface-bg)]">
+                      <Terminal className="w-4 h-4 text-accent flex-shrink-0" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="ui-section-label">Current source</div>
+                      <span className="font-mono text-sm text-primary truncate block">{filename}</span>
+                    </div>
 
                     {isLive && (
 
@@ -604,15 +607,15 @@ export function LogViewer({
               <div className="flex items-center gap-2 flex-wrap justify-end min-w-0">
 
                   {/* Panel Toggles - Segmented Group */}
-                  <div className="inline-flex rounded-lg border border-zinc-200 dark:border-zinc-700 flex-shrink-0" role="group" aria-label="Panel toggles">
+                  <div className="theme-toolbar-group inline-flex rounded-xl border border-subtle bg-[var(--surface-bg)] flex-shrink-0" role="group" aria-label="Panel toggles">
                       <button
                           onClick={onToggleHosts}
                           aria-pressed={showHosts}
                           className={cn(
-                              "px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 border-r border-zinc-200 dark:border-zinc-700 rounded-l-lg",
+                              "theme-toolbar-button px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 border-r border-subtle rounded-l-xl",
                               showHosts
-                                  ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
-                                  : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
+                                  ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                                  : "text-muted hover:bg-[var(--surface-hover)] hover:text-primary"
                           )}
                           title={showHosts ? 'Hide hosts panel' : 'Show hosts panel'}
                       >
@@ -623,10 +626,10 @@ export function LogViewer({
                           onClick={onToggleFiles}
                           aria-pressed={showFiles}
                           className={cn(
-                              "px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 rounded-r-lg",
+                              "theme-toolbar-button px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 rounded-r-xl",
                               showFiles
-                                  ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
-                                  : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
+                                  ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                                  : "text-muted hover:bg-[var(--surface-hover)] hover:text-primary"
                           )}
                           title={showFiles ? 'Hide files panel' : 'Show files panel'}
                       >
@@ -636,7 +639,7 @@ export function LogViewer({
                   </div>
 
                   {/* Divider */}
-                  <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-700 hidden sm:block" />
+                  <div className="h-6 w-px bg-[var(--border-subtle)] hidden sm:block" />
 
                   {/* Live Toggle */}
                   <button
@@ -644,10 +647,10 @@ export function LogViewer({
                       onClick={() => setIsLive(!isLive)}
                       aria-pressed={isLive}
                       className={cn(
-                          "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-2 whitespace-nowrap",
+                          "theme-toolbar-button px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center gap-2 whitespace-nowrap",
                           isLive
-                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-500/25"
-                              : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                              ? "bg-[var(--success-soft)] text-[var(--success)] hover:brightness-110"
+                              : "bg-[var(--surface-bg)] text-muted hover:bg-[var(--surface-hover)]"
                       )}
                       title={isLive ? 'Disable live updates' : 'Enable live updates'}
                   >
@@ -661,54 +664,54 @@ export function LogViewer({
                   </button>
 
                   {/* Divider */}
-                  <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-700 hidden sm:block" />
+                  <div className="h-6 w-px bg-[var(--border-subtle)] hidden sm:block" />
 
                   {/* Filters Group */}
-                  <div className="inline-flex rounded-lg border border-zinc-200 dark:border-zinc-700 flex-shrink-0">
+                  <div className="theme-toolbar-group inline-flex rounded-xl border border-subtle bg-[var(--surface-bg)] flex-shrink-0">
                       <div className="relative">
                         <button
                             onClick={() => setShowTimeFilter(prev => !prev)}
                             className={cn(
-                                "px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 border-r border-zinc-200 dark:border-zinc-700 rounded-l-lg",
+                                "theme-toolbar-button px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 border-r border-subtle rounded-l-xl",
                                 timeRange
-                                    ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
-                                    : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
+                                    ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                                    : "text-muted hover:bg-[var(--surface-hover)] hover:text-primary"
                             )}
                             title="Filter by time range"
                         >
                             <Clock className="w-3.5 h-3.5" />
                             {timeRange && (
-                              <span className="px-1.5 py-0.5 rounded-full bg-indigo-500 text-white text-[9px] leading-none font-bold">
+                              <span className="px-1.5 py-0.5 rounded-full bg-[var(--accent)] text-[var(--accent-contrast)] text-[9px] leading-none font-bold">
                                 {timeRange.start}-{timeRange.end}
                               </span>
                             )}
                         </button>
                         {showTimeFilter && (
-                          <div className="absolute top-full right-0 mt-1 z-50 w-64 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl p-3 space-y-2">
+                          <div className="absolute top-full right-0 mt-1 z-50 w-64 rounded-2xl border border-subtle app-panel-strong p-3 space-y-2">
                             <div className="flex items-center gap-2">
-                              <label className="text-[11px] text-zinc-500 dark:text-zinc-400 w-10">Start</label>
+                              <label className="text-[11px] text-muted w-10">Start</label>
                               <input
                                 type="time"
                                 value={timeStart}
                                 onChange={(e) => setTimeStart(e.target.value)}
-                                className="flex-1 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded px-2 py-1 text-xs text-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                                className="ui-input flex-1 px-2 py-1 text-xs"
                               />
                             </div>
                             <div className="flex items-center gap-2">
-                              <label className="text-[11px] text-zinc-500 dark:text-zinc-400 w-10">End</label>
+                              <label className="text-[11px] text-muted w-10">End</label>
                               <input
                                 type="time"
                                 value={timeEnd}
                                 onChange={(e) => setTimeEnd(e.target.value)}
-                                className="flex-1 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded px-2 py-1 text-xs text-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                                className="ui-input flex-1 px-2 py-1 text-xs"
                               />
                             </div>
                             {detectedTimeRange ? (
-                              <p className="text-[10px] text-zinc-400 dark:text-zinc-500">
+                              <p className="text-[10px] text-muted">
                                 Log range: {detectedTimeRange.earliest} &ndash; {detectedTimeRange.latest}
                               </p>
                             ) : (
-                              <p className="text-[10px] text-zinc-400 dark:text-zinc-500">No timestamps detected</p>
+                              <p className="text-[10px] text-muted">No timestamps detected</p>
                             )}
                             <div className="flex gap-1.5 pt-1">
                               <button
@@ -719,7 +722,7 @@ export function LogViewer({
                                   }
                                 }}
                                 disabled={!timeStart || !timeEnd}
-                                className="flex-1 px-2 py-1 rounded text-[11px] font-medium bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                className="ui-button ui-button-primary flex-1 px-2 py-1 text-[11px] font-medium disabled:opacity-40 disabled:cursor-not-allowed"
                               >
                                 Apply
                               </button>
@@ -730,7 +733,7 @@ export function LogViewer({
                                   setTimeEnd('');
                                   setShowTimeFilter(false);
                                 }}
-                                className="flex-1 px-2 py-1 rounded text-[11px] font-medium border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                                className="ui-button ui-button-secondary flex-1 px-2 py-1 text-[11px] font-medium"
                               >
                                 Clear
                               </button>
@@ -742,10 +745,10 @@ export function LogViewer({
                         <button
                             onClick={() => setShowBookmarks(prev => !prev)}
                             className={cn(
-                                "px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 border-r border-zinc-200 dark:border-zinc-700",
+                                "theme-toolbar-button px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 border-r border-subtle",
                                 showBookmarks
-                                    ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
-                                    : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
+                                    ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                                    : "text-muted hover:bg-[var(--surface-hover)] hover:text-primary"
                             )}
                             title="Toggle bookmarks (Ctrl/Cmd + B to bookmark a line)"
                         >
@@ -757,7 +760,7 @@ export function LogViewer({
                             )}
                         </button>
                         {showBookmarks && bookmarks.size > 0 && (
-                          <div className="absolute top-full right-0 mt-1 z-50 w-80 max-h-64 overflow-y-auto rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl">
+                          <div className="absolute top-full right-0 mt-1 z-50 w-80 max-h-64 overflow-y-auto rounded-2xl border border-subtle app-panel-strong">
                             <div className="p-2 space-y-0.5">
                               {Array.from(bookmarks).sort((a, b) => a - b).map(idx => {
                                 const lineText = lines[idx] ?? '';
@@ -766,22 +769,22 @@ export function LogViewer({
                                   <button
                                     key={idx}
                                     onClick={() => { jumpToLine(idx); setShowBookmarks(false); }}
-                                    className="w-full text-left px-2 py-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2 group transition-colors"
+                                    className="w-full text-left px-2 py-1.5 rounded-xl hover:bg-[var(--surface-hover)] flex items-center gap-2 group transition-colors"
                                   >
                                     <span className={cn(
                                       "w-1.5 h-1.5 rounded-full flex-shrink-0",
                                       severity === 'error' ? "bg-red-500" : severity === 'warn' ? "bg-orange-400" : "bg-zinc-400"
                                     )} />
-                                    <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 flex-shrink-0 w-8 text-right">{idx + 1}</span>
-                                    <span className="text-xs text-zinc-600 dark:text-zinc-300 truncate font-mono">{lineText.trim().slice(0, 80)}</span>
+                                    <span className="text-[11px] font-mono text-muted flex-shrink-0 w-8 text-right">{idx + 1}</span>
+                                    <span className="text-xs text-secondary truncate font-mono">{lineText.trim().slice(0, 80)}</span>
                                   </button>
                                 );
                               })}
                             </div>
-                            <div className="border-t border-zinc-200 dark:border-zinc-700 p-1.5">
+                            <div className="border-t border-subtle p-1.5">
                               <button
                                 onClick={() => { setBookmarks(new Set()); setShowBookmarks(false); }}
-                                className="w-full text-center text-[11px] text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 py-1 rounded hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                                className="w-full text-center text-[11px] text-[var(--danger)] py-1 rounded-xl hover:bg-[var(--danger-soft)] transition-colors"
                               >
                                 Clear all bookmarks
                               </button>
@@ -789,19 +792,19 @@ export function LogViewer({
                           </div>
                         )}
                         {showBookmarks && bookmarks.size === 0 && (
-                          <div className="absolute top-full right-0 mt-1 z-50 w-64 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl p-4 text-center">
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400">No bookmarks yet.</p>
-                            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">Click the gutter icon or press Ctrl+B</p>
+                          <div className="absolute top-full right-0 mt-1 z-50 w-64 rounded-2xl border border-subtle app-panel-strong p-4 text-center">
+                            <p className="text-xs text-secondary">No bookmarks yet.</p>
+                            <p className="text-[10px] text-muted mt-1">Click the gutter icon or press Ctrl+B</p>
                           </div>
                         )}
                       </div>
                       <button
                           onClick={() => setInsightsOpen(prev => !prev)}
                           className={cn(
-                              "px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 rounded-r-lg",
+                              "theme-toolbar-button px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 rounded-r-lg",
                               insightsOpen
-                                  ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
-                                  : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
+                                  ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                                  : "text-muted hover:bg-[var(--surface-hover)] hover:text-primary"
                           )}
                           title="Toggle insights"
                       >
@@ -810,17 +813,17 @@ export function LogViewer({
                   </div>
 
                   {/* Divider */}
-                  <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-700 hidden sm:block" />
+                  <div className="h-6 w-px bg-[var(--border-subtle)] hidden sm:block" />
 
                   {/* Display Options Group */}
-                  <div className="inline-flex rounded-lg border border-zinc-200 dark:border-zinc-700 flex-shrink-0">
+                  <div className="theme-toolbar-group inline-flex rounded-xl border border-subtle bg-[var(--surface-bg)] flex-shrink-0">
                       <button
                           onClick={() => setWrapLines(prev => !prev)}
                           className={cn(
-                              "px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 border-r border-zinc-200 dark:border-zinc-700 rounded-l-lg",
+                              "theme-toolbar-button px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 border-r border-subtle rounded-l-xl",
                               wrapLines
-                                  ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
-                                  : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
+                                  ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                                  : "text-muted hover:bg-[var(--surface-hover)] hover:text-primary"
                           )}
                           title="Toggle line wrap (W)"
                       >
@@ -829,14 +832,14 @@ export function LogViewer({
                       <button
                           onClick={() => adjustFontSize(-1)}
                           disabled={fontSize <= FONT_SIZES[0]}
-                          className="px-2 py-1.5 text-xs font-medium transition-colors text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="theme-toolbar-button px-2 py-1.5 text-xs font-medium transition-colors text-muted hover:bg-[var(--surface-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
                           title="Decrease font size (Ctrl/Cmd -)"
                       >
                           <Minus className="w-3.5 h-3.5" />
                       </button>
                       <button
                           onClick={() => setFontSize(13)}
-                          className="px-2 py-1.5 text-xs font-medium transition-colors text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 border-x border-zinc-200 dark:border-zinc-700"
+                          className="theme-toolbar-button px-2 py-1.5 text-xs font-medium transition-colors text-muted hover:bg-[var(--surface-hover)] border-x border-subtle"
                           title="Reset font size (Ctrl/Cmd 0)"
                       >
                           <Type className="w-3.5 h-3.5" />
@@ -844,7 +847,7 @@ export function LogViewer({
                       <button
                           onClick={() => adjustFontSize(1)}
                           disabled={fontSize >= FONT_SIZES[FONT_SIZES.length - 1]}
-                          className="px-2 py-1.5 text-xs font-medium transition-colors text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 disabled:opacity-40 disabled:cursor-not-allowed rounded-r-lg"
+                          className="theme-toolbar-button px-2 py-1.5 text-xs font-medium transition-colors text-muted hover:bg-[var(--surface-hover)] disabled:opacity-40 disabled:cursor-not-allowed rounded-r-xl"
                           title="Increase font size (Ctrl/Cmd +)"
                       >
                           <Plus className="w-3.5 h-3.5" />
@@ -870,20 +873,20 @@ export function LogViewer({
                         onChange={(e) => setSearchQuery(e.target.value)}
 
                         className={cn(
-                            "w-full bg-white dark:bg-zinc-900 border rounded-md py-1.5 pl-8 pr-16 text-xs text-zinc-800 dark:text-zinc-200 dark:focus:text-white focus:outline-none focus:ring-1 transition-colors placeholder:text-zinc-400 dark:placeholder:text-zinc-600",
+                            "w-full ui-input py-1.5 pl-8 pr-16 text-xs",
                             regexError
-                                ? "border-red-400 dark:border-red-500 focus:ring-red-500/50"
-                                : "border-zinc-200 dark:border-zinc-800 focus:ring-indigo-500/50"
+                                ? "border-[var(--danger)] focus:ring-[var(--danger)]/50"
+                                : ""
                         )}
 
                     />
                     {regexError && (
-                        <div className="absolute left-0 top-full mt-1 text-[10px] text-red-500 dark:text-red-400 truncate max-w-full px-1">
+                        <div className="absolute left-0 top-full mt-1 text-[10px] text-[var(--danger)] truncate max-w-full px-1">
                             {regexError}
                         </div>
                     )}
 
-                    <div className="absolute left-2.5 top-2 text-zinc-400 dark:text-zinc-500">
+                    <div className="absolute left-2.5 top-2 text-muted">
 
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
 
@@ -895,8 +898,8 @@ export function LogViewer({
                             className={cn(
                                 "p-0.5 rounded text-[10px] font-mono font-bold transition-colors",
                                 isRegex 
-                                    ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300" 
-                                    : "text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-600 dark:hover:text-zinc-300"
+                                    ? "bg-[var(--accent-soft)] text-[var(--accent)]" 
+                                    : "text-muted hover:bg-[var(--surface-hover)] hover:text-primary"
                             )}
                             title="Toggle Regex (Ctrl/Cmd + R)"
                         >
@@ -908,7 +911,7 @@ export function LogViewer({
 
                                 onClick={() => setSearchQuery('')}
 
-                                className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300"
+                                className="text-muted hover:text-primary"
 
                             >
 
@@ -932,10 +935,10 @@ export function LogViewer({
                         }}
                         disabled={analyzing}
                         className={cn(
-                            "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all flex-shrink-0",
+                            "theme-toolbar-button flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all flex-shrink-0",
                             analyzing
-                                ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed"
-                                : "bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-500 dark:to-purple-500 hover:from-indigo-500 hover:to-purple-500 dark:hover:from-indigo-400 dark:hover:to-purple-400 text-white shadow-lg shadow-indigo-500/20 cursor-pointer"
+                                ? "bg-[var(--surface-bg)] text-muted cursor-not-allowed"
+                                : "bg-[var(--accent)] text-[var(--accent-contrast)] shadow-lg cursor-pointer hover:brightness-110"
                         )}
                     >
                         <Sparkles className="w-3 h-3" />
@@ -948,18 +951,18 @@ export function LogViewer({
         </div>
 
       {timeFilteredLines.length > MAX_RENDER_LINES && !debouncedSearch && !timeRange && (
-        <div className="px-6 py-2 text-xs bg-amber-50 text-amber-900 border-b border-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:border-amber-500/20 flex items-center justify-between">
+        <div className="px-6 py-2 text-xs bg-warning-soft text-[var(--warning)] border-b border-subtle flex items-center justify-between">
           <span className="flex flex-wrap items-center gap-2">
             Large log: {shouldWindow ? `showing last ${MAX_RENDER_LINES} of ${timeFilteredLines.length} lines` : `showing all ${timeFilteredLines.length} lines`}
             {wrapLines && (
-              <span className="text-amber-700/80 dark:text-amber-200/70">
+              <span className="text-[var(--text-secondary)]">
                 Tip: turn off Wrap for smoother scrolling.
               </span>
             )}
           </span>
           <button
             onClick={() => setShowAllLines(!showAllLines)}
-            className="text-xs px-2 py-1 rounded border border-amber-300 dark:border-amber-500/30 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors"
+            className="ui-button ui-button-secondary text-xs px-2 py-1"
           >
             {shouldWindow ? 'Show all' : 'Show latest only'}
           </button>
@@ -1000,7 +1003,7 @@ export function LogViewer({
             aria-label="Log output"
             aria-live={isLive ? 'polite' : 'off'}
             onScroll={scheduleViewportUpdate}
-            className="flex-1 min-h-0 overflow-auto p-4 font-mono text-sm text-zinc-300 leading-relaxed custom-scrollbar"
+            className="flex-1 min-h-0 overflow-auto p-4 font-mono text-sm text-primary leading-relaxed custom-scrollbar"
         >
             {windowedLines.length > 0 ? (
               shouldVirtualize ? (
@@ -1053,15 +1056,15 @@ export function LogViewer({
                 ))
               )
             ) : (
-                <div className="flex flex-col items-center justify-center h-full text-zinc-600 space-y-2">
+                <div className="flex flex-col items-center justify-center h-full text-secondary space-y-2">
                     <div className="text-sm italic">No matches found for {`"${searchQuery}"`}</div>
-                    <button onClick={() => setSearchQuery('')} className="text-xs text-indigo-400 hover:underline">Clear search</button>
+                    <button onClick={() => setSearchQuery('')} className="text-xs text-accent hover:underline">Clear search</button>
                 </div>
             )}
         </div>
 
         {insightsOpen && (
-            <div className="w-80 border-l border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0b0d12]">
+            <div className="theme-ai-panel w-80 border-l border-subtle app-panel">
                 <InsightsPanel
                   data={insightsData}
                   onJump={(index) => {
@@ -1084,7 +1087,7 @@ export function LogViewer({
 
         {/* AI Panel (Slide in) */}
         {(analysis || analysisError) && content && isAiPanelOpen && (
-            <div className="animate-in slide-in-from-right duration-300 h-full border-l border-zinc-800">
+            <div className="animate-in slide-in-from-right duration-300 h-full border-l border-subtle">
                 <ChatPanel
                   initialSummary={analysis}
                   errorState={analysisError}
@@ -1100,22 +1103,22 @@ export function LogViewer({
 
       {/* Status Bar */}
       {content && (
-        <div className="flex-shrink-0 h-6 px-4 flex items-center gap-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-[11px] font-mono text-zinc-500 dark:text-zinc-500">
+        <div className="flex-shrink-0 h-7 px-4 flex items-center gap-4 border-t border-subtle app-panel text-[11px] font-mono text-muted">
           <span className="flex items-center gap-1.5">
-            <span className="text-zinc-400 dark:text-zinc-600">Lines:</span>
-            <span className="text-zinc-600 dark:text-zinc-400">{lines.length.toLocaleString()}</span>
+            <span>Lines:</span>
+            <span className="text-secondary">{lines.length.toLocaleString()}</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="text-zinc-400 dark:text-zinc-600">Size:</span>
-            <span className="text-zinc-600 dark:text-zinc-400">{formatFileSize(fileSize ?? content.length)}</span>
+            <span>Size:</span>
+            <span className="text-secondary">{formatFileSize(fileSize ?? content.length)}</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="text-zinc-400 dark:text-zinc-600">Encoding:</span>
-            <span className="text-zinc-600 dark:text-zinc-400">UTF-8</span>
+            <span>Encoding:</span>
+            <span className="text-secondary">UTF-8</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="text-zinc-400 dark:text-zinc-600">Position:</span>
-            <span className="text-zinc-600 dark:text-zinc-400">
+            <span>Position:</span>
+            <span className="text-secondary">
               {isLive ? 'Tail' : `${Math.min(viewportRange.end, windowedLines.length).toLocaleString()} / ${windowedLines.length.toLocaleString()}`}
             </span>
           </span>
@@ -1124,7 +1127,7 @@ export function LogViewer({
               <span className="relative flex h-1.5 w-1.5">
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
               </span>
-              <span className="text-emerald-600 dark:text-emerald-400">SSH Connected</span>
+              <span className="text-[var(--success)]">SSH Connected</span>
             </span>
           )}
           {hostType === 'journal' && (
@@ -1132,7 +1135,7 @@ export function LogViewer({
               <span className="relative flex h-1.5 w-1.5">
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-indigo-500"></span>
               </span>
-              <span className="text-indigo-600 dark:text-indigo-400">Journal</span>
+              <span className="text-accent">Journal</span>
             </span>
           )}
           {hostType === 'local' && (
@@ -1140,7 +1143,7 @@ export function LogViewer({
               <span className="relative flex h-1.5 w-1.5">
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-zinc-400"></span>
               </span>
-              <span className="text-zinc-600 dark:text-zinc-400">Local</span>
+              <span className="text-secondary">Local</span>
             </span>
           )}
         </div>
@@ -1151,7 +1154,7 @@ export function LogViewer({
         <div
           role="menu"
           aria-label="Log line actions"
-          className="fixed z-50 min-w-[180px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl py-1 text-sm"
+          className="fixed z-50 min-w-[180px] rounded-2xl border border-subtle app-panel-strong py-1 text-sm"
           style={{ top: contextMenu.y, left: contextMenu.x }}
           onMouseDown={(e) => e.stopPropagation()}
           onContextMenu={(e) => e.preventDefault()}
@@ -1159,7 +1162,7 @@ export function LogViewer({
           <button
             role="menuitem"
             onClick={handleCopy}
-            className="w-full text-left px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2"
+            className="w-full text-left px-3 py-1.5 text-xs text-primary hover:bg-[var(--surface-hover)] transition-colors flex items-center gap-2"
           >
             <Copy className="w-3.5 h-3.5" />
             Copy
@@ -1167,12 +1170,12 @@ export function LogViewer({
           <button
             role="menuitem"
             onClick={handleCopyWithContext}
-            className="w-full text-left px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2"
+            className="w-full text-left px-3 py-1.5 text-xs text-primary hover:bg-[var(--surface-hover)] transition-colors flex items-center gap-2"
           >
             <Clipboard className="w-3.5 h-3.5" />
             Copy with context
           </button>
-          <div role="separator" className="border-t border-zinc-200 dark:border-zinc-700 my-1" />
+          <div role="separator" className="border-t border-subtle my-1" />
           <button
             role="menuitem"
             onClick={handleContextBookmark}

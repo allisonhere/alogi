@@ -1,4 +1,5 @@
-const { app, BrowserWindow, Menu, shell } = require('electron');
+/* eslint-disable @typescript-eslint/no-require-imports */
+const { app, BrowserWindow, shell, ipcMain } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const net = require('net');
@@ -33,7 +34,7 @@ const loadUrlWithRetry = async (win, url, retries = 20) => {
     try {
       await win.loadURL(url);
       return;
-    } catch (err) {
+    } catch {
       if (attempt === retries - 1) {
         throw err;
       }
@@ -167,7 +168,7 @@ const attachExternalLinkHandlers = (win, appOrigin) => {
     if (!appOrigin) return true;
     try {
       return new URL(url).origin !== appOrigin;
-    } catch (err) {
+    } catch {
       return true;
     }
   };
@@ -243,6 +244,10 @@ const runWebMode = async (cli) => {
 };
 
 const cli = parseArgs(process.argv);
+
+ipcMain.handle('app:quit', () => {
+  app.quit();
+});
 
 app.whenReady().then(async () => {
   if (cli.help) {

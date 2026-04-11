@@ -40,23 +40,23 @@ export function useDialog() {
 const variantConfig: Record<DialogVariant, { icon: typeof CheckCircle; iconClass: string; buttonClass: string }> = {
   success: {
     icon: CheckCircle,
-    iconClass: 'text-emerald-500',
-    buttonClass: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+    iconClass: 'text-[var(--success)]',
+    buttonClass: 'ui-button ui-button-primary',
   },
   error: {
     icon: XCircle,
-    iconClass: 'text-red-500',
-    buttonClass: 'bg-red-600 hover:bg-red-700 text-white',
+    iconClass: 'text-[var(--danger)]',
+    buttonClass: 'ui-button ui-button-primary',
   },
   warning: {
     icon: AlertTriangle,
-    iconClass: 'text-amber-500',
-    buttonClass: 'bg-amber-600 hover:bg-amber-700 text-white',
+    iconClass: 'text-[var(--warning)]',
+    buttonClass: 'ui-button ui-button-primary',
   },
   info: {
     icon: Info,
-    iconClass: 'text-blue-500',
-    buttonClass: 'bg-blue-600 hover:bg-blue-700 text-white',
+    iconClass: 'text-[var(--accent)]',
+    buttonClass: 'ui-button ui-button-primary',
   },
 };
 
@@ -131,7 +131,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="dialog-title"
-            className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-700 shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-in zoom-in-95 fade-in duration-200"
+            className="ui-card w-full max-w-md mx-4 overflow-hidden animate-in zoom-in-95 fade-in duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -140,14 +140,14 @@ export function DialogProvider({ children }: { children: ReactNode }) {
                 <Icon className="w-6 h-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 id="dialog-title" className="font-semibold text-zinc-900 dark:text-zinc-100 text-lg">
+                <h3 id="dialog-title" className="font-semibold text-primary text-lg">
                   {dialog.title}
                 </h3>
               </div>
               <button
                 onClick={handleClose}
                 aria-label="Close dialog"
-                className="flex-shrink-0 p-1 rounded-md text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                className="flex-shrink-0 p-1 rounded-md text-muted hover:text-primary hover:bg-[var(--surface-hover)] transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -155,25 +155,25 @@ export function DialogProvider({ children }: { children: ReactNode }) {
 
             {/* Body */}
             <div className="px-4 py-3 pl-[52px]">
-              <p className="text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap">
+              <p className="text-sm text-secondary whitespace-pre-wrap">
                 {dialog.message}
               </p>
             </div>
 
             {/* Footer */}
-            <div className="flex justify-end gap-2 px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border-t border-zinc-200 dark:border-zinc-700">
+            <div className="flex justify-end gap-2 px-4 py-3 border-t border-subtle bg-[var(--surface-bg)]">
               {dialog.type === 'confirm' ? (
                 <>
                   <button
                     onClick={handleClose}
-                    className="px-4 py-2 rounded-lg text-sm font-medium border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+                    className="ui-button ui-button-secondary px-4 py-2 text-sm font-medium"
                   >
                     {confirmLabels.cancel}
                   </button>
                   <button
                     onClick={handleConfirm}
                     autoFocus
-                    className={cn("px-4 py-2 rounded-lg text-sm font-medium transition-colors", config.buttonClass)}
+                    className={cn("px-4 py-2 text-sm font-medium", config.buttonClass)}
                   >
                     {confirmLabels.confirm}
                   </button>
@@ -182,7 +182,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
                 <button
                   onClick={handleClose}
                   autoFocus
-                  className={cn("px-4 py-2 rounded-lg text-sm font-medium transition-colors", config.buttonClass)}
+                  className={cn("px-4 py-2 text-sm font-medium", config.buttonClass)}
                 >
                   OK
                 </button>

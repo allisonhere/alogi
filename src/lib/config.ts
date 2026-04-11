@@ -18,6 +18,8 @@ export interface HostConfig {
   type?: 'ssh' | 'docker';
 }
 
+export type UiTheme = 'operator-console' | 'developer-ide' | 'modern-saas';
+
 export interface AlogiConfig {
   general: {
     logPath: string;
@@ -34,6 +36,7 @@ export interface AlogiConfig {
   hosts: HostConfig[];
   ui?: {
     onboardingDismissed?: boolean;
+    theme?: UiTheme;
   };
 }
 
@@ -52,6 +55,7 @@ const DEFAULT_CONFIG: AlogiConfig = {
   hosts: [],
   ui: {
     onboardingDismissed: false,
+    theme: 'operator-console',
   },
 };
 

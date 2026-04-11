@@ -68,12 +68,12 @@ export function VibeCheckBar({ lines, onScrollTo, onScrub, viewportStart = 0, vi
 
   return (
     <div
-      className="h-3 w-full bg-zinc-950 border-b border-zinc-900 relative cursor-crosshair group"
+      className="h-3 w-full bg-[var(--app-bg-elevated)] border-b border-subtle relative cursor-crosshair group"
       onMouseDown={startDrag}
       onClick={handleScrub}
       title="Vibe Check: Click to jump to events"
     >
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-900/50 pointer-events-none" />
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-[var(--surface-hover)] pointer-events-none" />
 
       <div className="absolute inset-0 flex">
         {segments.map((segment, i) => {
@@ -106,10 +106,12 @@ export function VibeCheckBar({ lines, onScrollTo, onScrub, viewportStart = 0, vi
       </div>
 
       <div
-        className="absolute top-0 bottom-0 border border-indigo-300/70 bg-indigo-400/10 pointer-events-none"
+        className="absolute top-0 bottom-0 border pointer-events-none"
         style={{
           left: `${Math.max(0, Math.min(1, viewportStart)) * 100}%`,
           width: `${Math.max(2, (Math.min(1, viewportEnd) - Math.max(0, viewportStart)) * 100)}%`,
+          borderColor: 'color-mix(in srgb, var(--accent) 80%, transparent)',
+          background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
         }}
       />
     </div>

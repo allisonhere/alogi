@@ -158,28 +158,28 @@ export function ChatPanel({ initialSummary, errorState, logContext, onCollapse, 
   };
 
   return (
-    <div className="flex flex-col h-full bg-zinc-50 dark:bg-zinc-900/30 border-l border-zinc-200 dark:border-zinc-800 w-96 transition-colors">
+    <div className="theme-ai-panel flex flex-col h-full app-panel border-l border-subtle w-96 transition-colors">
       {/* Header */}
-      <div className="border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+      <div className="theme-pane-header border-b border-subtle bg-[var(--panel-bg-strong)]">
         {/* Title row */}
         <div className="px-3 pt-3 pb-2 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             {onCollapse && (
               <button
                 onClick={onCollapse}
-                className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+                className="theme-toolbar-button p-1 rounded hover:bg-[var(--surface-hover)] text-muted hover:text-primary transition-colors"
                 title="Collapse panel"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
             )}
-            <Sparkles className="w-4 h-4 text-purple-500 dark:text-purple-400" />
-            <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm">AI Investigator</h3>
+            <Sparkles className="w-4 h-4 text-accent" />
+            <h3 className="font-semibold text-primary text-sm">AI Investigator</h3>
           </div>
           {onClose && (
             <button
               onClick={onClose}
-              className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-500/20 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+              className="theme-toolbar-button p-1 rounded hover:bg-[var(--danger-soft)] text-muted hover:text-[var(--danger)] transition-colors"
               title="Close panel"
             >
               <X className="w-4 h-4" />
@@ -194,10 +194,10 @@ export function ChatPanel({ initialSummary, errorState, logContext, onCollapse, 
               onClick={onReanalyze}
               disabled={isReanalyzing}
               className={cn(
-                "inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-colors",
+                "theme-toolbar-button inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-colors",
                 isReanalyzing
-                  ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed"
-                  : "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-500/30"
+                  ? "bg-[var(--surface-bg)] text-muted cursor-not-allowed"
+                  : "bg-[var(--accent-soft)] text-[var(--accent)] hover:brightness-110"
               )}
               title="Re-analyze with fresh data"
             >
@@ -210,36 +210,36 @@ export function ChatPanel({ initialSummary, errorState, logContext, onCollapse, 
               <button
                 type="button"
                 onClick={() => setExportOpen((prev) => !prev)}
-                className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                className="theme-toolbar-button inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-xl border border-subtle text-secondary hover:bg-[var(--surface-hover)] transition-colors"
               >
                 Export
                 <ChevronDown className="w-3.5 h-3.5" />
               </button>
               {exportOpen && (
-                <div className="absolute right-0 mt-2 w-64 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xl overflow-hidden z-10">
+                <div className="absolute right-0 mt-2 w-64 rounded-2xl border border-subtle app-panel-strong overflow-hidden z-10">
                   <button
-                    className="w-full text-left text-xs px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors flex items-center gap-2"
+                    className="theme-list-row w-full text-left text-xs px-3 py-2 hover:bg-[var(--surface-hover)] transition-colors flex items-center gap-2"
                     onClick={() => copyToClipboard(summaryPlain, 'Summary')}
                   >
                     <Copy className="w-3.5 h-3.5 text-zinc-400" />
                     Copy summary (plain)
                   </button>
                   <button
-                    className="w-full text-left text-xs px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors flex items-center gap-2"
+                    className="theme-list-row w-full text-left text-xs px-3 py-2 hover:bg-[var(--surface-hover)] transition-colors flex items-center gap-2"
                     onClick={() => copyToClipboard(summaryMarkdown, 'Summary + findings')}
                   >
                     <Copy className="w-3.5 h-3.5 text-zinc-400" />
                     Copy summary + key findings (markdown)
                   </button>
                   <button
-                    className="w-full text-left text-xs px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors flex items-center gap-2"
+                    className="theme-list-row w-full text-left text-xs px-3 py-2 hover:bg-[var(--surface-hover)] transition-colors flex items-center gap-2"
                     onClick={() => copyToClipboard(summaryJson, 'Analysis JSON')}
                   >
                     <Copy className="w-3.5 h-3.5 text-zinc-400" />
                     Copy full analysis JSON
                   </button>
                   <button
-                    className="w-full text-left text-xs px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors flex items-center gap-2 border-t border-zinc-200 dark:border-zinc-800"
+                    className="theme-list-row w-full text-left text-xs px-3 py-2 hover:bg-[var(--surface-hover)] transition-colors flex items-center gap-2 border-t border-subtle"
                     onClick={() => copyToClipboard(cliPrompt, 'CLI prompt')}
                   >
                     <Copy className="w-3.5 h-3.5 text-zinc-400" />

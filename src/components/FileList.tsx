@@ -168,10 +168,10 @@ export function FileList({ files, selectedFile, selectedCategory, onSelectFile, 
         onClick={() => onSelectFile(file.name, category)}
         onContextMenu={(e) => handleContextMenu(e, file, category)}
         className={cn(
-          "w-full text-left px-3 py-3 rounded-md text-sm transition-colors group",
+          "theme-list-row w-full text-left px-3 py-3 rounded-xl text-sm transition-colors group border border-transparent",
           isSelected
-            ? "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20 border"
-            : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200"
+            ? "theme-list-row-selected bg-[var(--accent-soft)] text-[var(--accent)] border-[color:var(--border-strong)]"
+            : "text-secondary hover:bg-[var(--surface-hover)] hover:text-primary"
         )}
       >
         <div className="flex items-center gap-2 font-medium">
@@ -180,7 +180,7 @@ export function FileList({ files, selectedFile, selectedCategory, onSelectFile, 
             : <FileText className="w-4 h-4" />}
           {file.name}
         </div>
-        <div className="flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-600 mt-1 pl-6 group-hover:text-zinc-600 dark:group-hover:text-zinc-500">
+        <div className="flex items-center gap-1 text-xs text-muted mt-1 pl-6 group-hover:text-secondary">
           <Clock className="w-3 h-3" />
           {formatUpdated(file.updated)}
         </div>
@@ -201,12 +201,12 @@ export function FileList({ files, selectedFile, selectedCategory, onSelectFile, 
         <button
           onClick={() => toggleCategory(categoryKey)}
           aria-expanded={!isCollapsed}
-          className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 rounded-md transition-colors"
+          className="theme-list-row w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-secondary hover:bg-[var(--surface-hover)] rounded-xl transition-colors"
         >
           {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           <Icon className={cn("w-4 h-4", config.color)} />
           <span>{config.label}</span>
-          <span className="ml-auto text-xs text-zinc-400 dark:text-zinc-600">
+          <span className="ml-auto text-xs text-muted">
             {categoryFiles.length}
           </span>
         </button>
@@ -220,14 +220,17 @@ export function FileList({ files, selectedFile, selectedCategory, onSelectFile, 
   };
 
   return (
-    <div className="w-full border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 flex flex-col h-full min-h-0 transition-colors" onContextMenu={(e) => e.preventDefault()}>
-      <div className="px-4 py-3 h-[64px] border-b border-zinc-200 dark:border-zinc-800 flex items-start gap-2">
-        <FileText className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
-        <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">Files</h2>
+    <div className="app-panel w-full border-r flex flex-col h-full min-h-0 transition-colors" onContextMenu={(e) => e.preventDefault()}>
+      <div className="theme-pane-header px-4 py-4 border-b border-subtle flex items-center gap-2">
+        <FileText className="w-4 h-4 text-[var(--accent)]" />
+        <div>
+          <div className="ui-section-label">Sources</div>
+          <h2 className="font-semibold text-primary leading-tight">Logs & Services</h2>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto p-2 space-y-1" role="listbox" aria-label="Log files">
         {loading ? (
-          <div className="text-zinc-500 text-sm p-4 text-center" role="status">Loading...</div>
+          <div className="text-muted text-sm p-4 text-center" role="status">Loading...</div>
         ) : hasCategories ? (
           // Render categorized sections for remote hosts
           <>
@@ -240,7 +243,7 @@ export function FileList({ files, selectedFile, selectedCategory, onSelectFile, 
           files.map((file) => renderFileButton(file, null))
         )}
         {!loading && files.length === 0 && (
-          <div className="text-zinc-500 text-sm p-4 text-center">
+          <div className="text-muted text-sm p-4 text-center">
             No files found.
           </div>
         )}
@@ -256,41 +259,41 @@ export function FileList({ files, selectedFile, selectedCategory, onSelectFile, 
       )}
 
       {showFileInfo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowFileInfo(null)} role="presentation">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowFileInfo(null)} role="presentation">
           <div
             role="dialog"
             aria-label="File information"
-            className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-xl p-4 min-w-[280px]"
+            className="ui-card p-4 min-w-[280px]"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => { if (e.key === 'Escape') setShowFileInfo(null); }}
           >
-            <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-3 flex items-center gap-2">
+            <h3 className="font-semibold text-primary mb-3 flex items-center gap-2">
               <FileText className="w-4 h-4" />
               File Info
             </h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-zinc-500 dark:text-zinc-400">Name:</span>
-                <span className="text-zinc-900 dark:text-zinc-100 font-mono">{showFileInfo.name}</span>
+                <span className="text-muted">Name:</span>
+                <span className="text-primary font-mono">{showFileInfo.name}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-zinc-500 dark:text-zinc-400">Size:</span>
-                <span className="text-zinc-900 dark:text-zinc-100 font-mono">{formatFileSize(showFileInfo.size)}</span>
+                <span className="text-muted">Size:</span>
+                <span className="text-primary font-mono">{formatFileSize(showFileInfo.size)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-zinc-500 dark:text-zinc-400">Modified:</span>
-                <span className="text-zinc-900 dark:text-zinc-100 font-mono">{formatUpdated(showFileInfo.updated)}</span>
+                <span className="text-muted">Modified:</span>
+                <span className="text-primary font-mono">{formatUpdated(showFileInfo.updated)}</span>
               </div>
               {showFileInfo.category && (
                 <div className="flex justify-between">
-                  <span className="text-zinc-500 dark:text-zinc-400">Category:</span>
-                  <span className="text-zinc-900 dark:text-zinc-100 font-mono">{showFileInfo.category}</span>
+                  <span className="text-muted">Category:</span>
+                  <span className="text-primary font-mono">{showFileInfo.category}</span>
                 </div>
               )}
             </div>
             <button
               onClick={() => setShowFileInfo(null)}
-              className="mt-4 w-full px-3 py-1.5 rounded-md text-sm bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+              className="ui-button ui-button-secondary mt-4 w-full px-3 py-1.5 text-sm"
             >
               Close
             </button>
