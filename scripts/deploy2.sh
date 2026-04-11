@@ -13,6 +13,8 @@ NC='\033[0m'
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SSH_REMOTE="git@github.com:allisonhere/alogi.git"
+ARCH_DIR="$PROJECT_DIR/packaging/arch"
+AUR_DIR="$HOME/aur-alogi"
 
 print_step() {
   echo -e "\n${BOLD}${CYAN}[$1/$2]${NC} ${BOLD}$3${NC}"
@@ -165,6 +167,109 @@ create_github_release() {
   echo -e "\n  ${GREEN}→${NC} https://github.com/allisonhere/alogi/releases/tag/$TAG"
 }
 
+update_aur() {
+  if [ ! -d "$AUR_DIR" ]; then
+    print_error "AUR directory not found at $AUR_DIR"
+    print_info "Clone it first: git clone ssh://aur@aur.archlinux.org/alogi.git $AUR_DIR"
+    return 1
+  fi
+
+  # Fetch SHA from GitHub release tarball
+  local GITHUB_TARBALL="https://github.com/allisonhere/alogi/releases/download/v${VERSION}/alogi-${VERSION}-linux-unpacked.tar.gz"
+
+  print_info "Fetching SHA256 from GitHub release..."
+  local tmp_tarball
+  tmp_tarball=$(mktemp)
+  if ! curl -fsSL "$GITHUB_TARBALL" -o "$tmp_tarball"; then
+    rm -f "$tmp_tarball"
+    print_error "Failed to download release tarball"
+    print_info "Make sure the release exists: $GITHUB_TARBALL"
+    return 1
+  fi
+  local SHA256
+  SHA256=$(sha256sum "$tmp_tarball" | awk '{print $1}')
+  rm -f "$tmp_tarball"
+  print_success "SHA256: ${SHA256:0:16}..."
+
+  print_info "Pulling latest from AUR..."
+  cd "$AUR_DIR"
+  if [ -n "$(git status --porcelain)" ]; then
+    print_warning "AUR repo has local changes, stashing before pull"
+    git stash -u -m "alogi-release-auto-stash"
+  fi
+  git pull
+  print_success "AUR repo updated"
+
+  # Ensure we're on a branch (not detached HEAD)
+  if ! git symbolic-ref -q HEAD >/dev/null; then
+    if git show-ref --verify --quiet refs/remotes/origin/master; then
+      git checkout -B master origin/master
+    elif git show-ref --verify --quiet refs/remotes/origin/main; then
+      git checkout -B main origin/main
+    elif git show-ref --verify --quiet refs/heads/master; then
+      git checkout master
+    elif git show-ref --verify --quiet refs/heads/main; then
+      git checkout main
+    else
+      git checkout -B master
+    fi
+    print_success "Checked out AUR branch"
+  fi
+
+  print_info "Syncing AUR packaging files..."
+  local AUR_SRC="$PROJECT_DIR/packaging/arch/aur"
+  [ -f "$AUR_SRC/PKGBUILD" ] && cp -f "$AUR_SRC/PKGBUILD" "$AUR_DIR/PKGBUILD"
+  [ -f "$AUR_SRC/README.md" ] && cp -f "$AUR_SRC/README.md" "$AUR_DIR/README.md"
+  if [ -f "$AUR_SRC/alogi.desktop" ]; then
+    cp -f "$AUR_SRC/alogi.desktop" "$AUR_DIR/alogi.desktop"
+  elif [ -f "$ARCH_DIR/alogi.desktop" ]; then
+    cp -f "$ARCH_DIR/alogi.desktop" "$AUR_DIR/alogi.desktop"
+  fi
+  [ -f "$AUR_SRC/icon.png" ] && cp -f "$AUR_SRC/icon.png" "$AUR_DIR/icon.png"
+  print_success "AUR packaging files synced"
+
+  print_info "Updating PKGBUILD..."
+  sed -i "s/^pkgver=.*/pkgver=$VERSION/" PKGBUILD
+  SHA256="$SHA256" python3 - <<'PY'
+import os
+import re
+from pathlib import Path
+
+path = Path("PKGBUILD")
+text = path.read_text()
+sha = os.environ["SHA256"]
+
+def replace_first_sha(match: re.Match) -> str:
+    return f'{match.group(1)}  "{sha}"'
+
+new_text = re.sub(r'(sha256sums=\(\s*)\"[^\"]*\"', replace_first_sha, text, count=1)
+if new_text == text:
+    raise SystemExit("Failed to update sha256sums in PKGBUILD")
+path.write_text(new_text)
+PY
+  print_success "PKGBUILD updated"
+
+  print_info "Generating .SRCINFO..."
+  makepkg --printsrcinfo >.SRCINFO
+  print_success ".SRCINFO generated"
+
+  print_info "Committing and pushing..."
+  if git diff --quiet; then
+    print_info "No AUR changes to publish"
+    return 0
+  fi
+  local add_files=(PKGBUILD .SRCINFO)
+  [ -f alogi.desktop ] && add_files+=(alogi.desktop)
+  [ -f icon.png ] && add_files+=(icon.png)
+  [ -f README.md ] && add_files+=(README.md)
+  git add "${add_files[@]}"
+  git commit -m "Update to $VERSION"
+  git push
+  print_success "Pushed to AUR"
+
+  echo -e "\n  ${GREEN}→${NC} https://aur.archlinux.org/packages/alogi"
+}
+
 # ============================================================================
 # MAIN
 # ============================================================================
@@ -176,7 +281,7 @@ echo -e "${BLUE}╚════════════════════�
 read_version
 echo -e "\n  Version: ${GREEN}v$VERSION${NC}"
 
-total=5
+total=6
 
 print_step 1 $total "Verifying SSH remote"
 ensure_ssh_remote
@@ -193,6 +298,12 @@ create_tag
 print_step 5 $total "GitHub release"
 create_github_release
 
+print_step 6 $total "Updating AUR"
+update_aur
+
 echo -e "\n${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BOLD}${GREEN}  ✓ Deploy v$VERSION complete!${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "  ${CYAN}→${NC} GitHub: https://github.com/allisonhere/alogi/releases/tag/v$VERSION"
+echo -e "  ${CYAN}→${NC} AUR:    https://aur.archlinux.org/packages/alogi"
+echo ""
