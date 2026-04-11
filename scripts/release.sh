@@ -85,6 +85,191 @@ format_time() {
   fi
 }
 
+trim() {
+  local value="$1"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s' "$value"
+}
+
+normalize_commit_subject() {
+  local subject
+  subject=$(trim "$1")
+  subject="${subject#fix: }"
+  subject="${subject#feat: }"
+  subject="${subject#feature: }"
+  subject="${subject#chore: }"
+  subject="${subject#docs: }"
+  subject="${subject#refactor: }"
+  subject="${subject#ui: }"
+  subject="${subject#build: }"
+  subject="${subject#release: }"
+  printf '%s' "$subject"
+}
+
+should_skip_commit_subject() {
+  local lower=${1,,}
+  [[ "$lower" =~ ^chore:\ release\ v[0-9] ]] && return 0
+  [[ "$lower" =~ ^release\ v[0-9] ]] && return 0
+  [[ "$lower" =~ ^merge[[:space:]] ]] && return 0
+  [[ "$lower" =~ ^bump[[:space:]]version ]] && return 0
+  return 1
+}
+
+get_previous_release_tag() {
+  git -C "$PROJECT_DIR" tag --sort=version:refname \
+    | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+    | grep -vx "v$VERSION" \
+    | tail -n1
+}
+
+collect_release_commits() {
+  local previous_tag="$1"
+  local range=()
+  if [ -n "$previous_tag" ]; then
+    range=("${previous_tag}..HEAD")
+  fi
+
+  if [ "${#range[@]}" -gt 0 ]; then
+    git -C "$PROJECT_DIR" log --format='%s' --reverse "${range[@]}"
+  else
+    git -C "$PROJECT_DIR" log --format='%s' --reverse -n 30
+  fi
+}
+
+build_release_summary() {
+  local previous_tag="$1"
+  local commits
+  commits=$(collect_release_commits "$previous_tag")
+
+  local added=()
+  local changed=()
+  local fixed=()
+
+  while IFS= read -r raw_subject; do
+    [ -z "$raw_subject" ] && continue
+    if should_skip_commit_subject "$raw_subject"; then
+      continue
+    fi
+
+    local subject lower
+    subject=$(normalize_commit_subject "$raw_subject")
+    [ -z "$subject" ] && continue
+    lower=${subject,,}
+
+    if [[ "$lower" =~ (^|[[:space:]])(fix|fixed|bug|bugs|regression|error|errors|issue|issues)($|[[:space:]]) ]]; then
+      fixed+=("- $subject")
+    elif [[ "$lower" =~ (^|[[:space:]])(add|adds|added|new|feature|features|support|supports)($|[[:space:]]) ]]; then
+      added+=("- $subject")
+    else
+      changed+=("- $subject")
+    fi
+  done <<< "$commits"
+
+  [ "${#added[@]}" -eq 0 ] && added+=("- Internal maintenance and release prep")
+  [ "${#changed[@]}" -eq 0 ] && changed+=("- Internal maintenance and release prep")
+  [ "${#fixed[@]}" -eq 0 ] && fixed+=("- Internal maintenance and release prep")
+
+  RELEASE_SUMMARY_ADDED=$(printf '%s\n' "${added[@]}")
+  RELEASE_SUMMARY_CHANGED=$(printf '%s\n' "${changed[@]}")
+  RELEASE_SUMMARY_FIXED=$(printf '%s\n' "${fixed[@]}")
+}
+
+show_release_summary_preview() {
+  echo ""
+  print_substep "Draft CHANGELOG for v$VERSION"
+  echo "  ### Added"
+  while IFS= read -r line; do
+    echo "  $line"
+  done <<< "$RELEASE_SUMMARY_ADDED"
+  echo ""
+  echo "  ### Changed"
+  while IFS= read -r line; do
+    echo "  $line"
+  done <<< "$RELEASE_SUMMARY_CHANGED"
+  echo ""
+  echo "  ### Fixed"
+  while IFS= read -r line; do
+    echo "  $line"
+  done <<< "$RELEASE_SUMMARY_FIXED"
+  echo ""
+}
+
+section_contains_tbd() {
+  local version="$1"
+  awk -v ver="$version" '
+    $0 ~ "^## \\["ver"\\]" {found=1; next}
+    found && $0 ~ "^## \\[" {exit}
+    found && $0 == "- TBD" {print "yes"; exit}
+  ' "$PROJECT_DIR/CHANGELOG.md"
+}
+
+apply_release_summary_to_changelog() {
+  local tmp
+  tmp=$(mktemp)
+  awk \
+    -v ver="$VERSION" \
+    -v added="$RELEASE_SUMMARY_ADDED" \
+    -v changed="$RELEASE_SUMMARY_CHANGED" \
+    -v fixed="$RELEASE_SUMMARY_FIXED" '
+      function print_block(block,    n, i, lines) {
+        n = split(block, lines, "\n")
+        for (i = 1; i <= n; i++) {
+          if (lines[i] != "") print lines[i]
+        }
+      }
+      $0 ~ "^## \\["ver"\\]" {in_section=1; heading=""; print; next}
+      in_section && $0 ~ "^## \\[" {in_section=0; heading=""; print; next}
+      in_section && $0 ~ /^### / {
+        heading=$0
+        print
+        next
+      }
+      in_section && $0 == "- TBD" {
+        if (heading == "### Added") {
+          print_block(added)
+        } else if (heading == "### Changed") {
+          print_block(changed)
+        } else if (heading == "### Fixed") {
+          print_block(fixed)
+        } else {
+          print
+        }
+        next
+      }
+      { print }
+    ' "$PROJECT_DIR/CHANGELOG.md" > "$tmp" && mv "$tmp" "$PROJECT_DIR/CHANGELOG.md"
+}
+
+fill_tbd_changelog_entry() {
+  if [ ! -f "$PROJECT_DIR/CHANGELOG.md" ]; then
+    return 0
+  fi
+
+  if ! grep -q "^## \\[$VERSION\\]" "$PROJECT_DIR/CHANGELOG.md"; then
+    return 0
+  fi
+
+  if [ "$(section_contains_tbd "$VERSION")" != "yes" ]; then
+    return 0
+  fi
+
+  local previous_tag
+  previous_tag=$(get_previous_release_tag || true)
+  build_release_summary "$previous_tag"
+  show_release_summary_preview
+
+  read -p "  Replace TBD with generated summary? [Y/n] " -n 1 -r
+  echo
+  if [[ $REPLY =~ ^[Nn]$ ]]; then
+    print_warning "Leaving TBD placeholders in CHANGELOG.md"
+    return 0
+  fi
+
+  apply_release_summary_to_changelog
+  print_success "Filled CHANGELOG draft for v$VERSION"
+}
+
 spinner() {
   local pid=$1
   local msg=$2
@@ -286,6 +471,7 @@ bump_version() {
   read -p "  Add CHANGELOG entry? [Y/n] " -n 1 -r
   echo
   [[ ! $REPLY =~ ^[Nn]$ ]] && add_changelog_entry
+  fill_tbd_changelog_entry
 }
 
 bump_version_advanced() {
