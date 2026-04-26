@@ -4,6 +4,7 @@ import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { getConfig } from '@/lib/config';
 import { debug } from '@/lib/debug';
+import { retryRateLimited } from '@/lib/aiRetry';
 
 // Smart truncation to prioritize errors and recent logs
 function smartTruncate(content: string, limit: number = 25000): string {
@@ -128,20 +129,7 @@ export async function POST(request: Request) {
 
         const prompt = `${systemPrompt}\n\nLog Data:\n${processedContent}`;
         
-        let result;
-        // Retry logic for Gemini
-        try {
-            result = await model.generateContent(prompt);
-        } catch (e) {
-            const err = e as { message?: string; status?: number };
-            const message = typeof err.message === 'string' ? err.message : '';
-            if (message.includes('429') || err.status === 429) {
-                await new Promise(r => setTimeout(r, 4000));
-                result = await model.generateContent(prompt);
-            } else {
-                throw e;
-            }
-        }
+        const result = await retryRateLimited(() => model.generateContent(prompt));
         
         const text = result.response.text();
         const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -217,6 +205,6 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     debug.error("AI Analysis failed:", message);
-    return NextResponse.json({ error: 'Analysis failed: ' + message }, { status: 500 });
+    return NextResponse.json({ error: 'Analysis failed. Check server logs for details.' }, { status: 500 });
   }
 }

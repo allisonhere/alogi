@@ -291,7 +291,7 @@ export default function Dashboard() {
         });
     };
     fetchFiles();
-  }, [selectedHost]);
+  }, [selectedHost, selectedFile]);
 
   // Fetch Content
   useEffect(() => {

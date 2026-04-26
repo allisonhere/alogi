@@ -5,6 +5,7 @@ import { debug } from './debug';
 
 const CONFIG_DIR = path.join(os.homedir(), '.config', 'alogi');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
+export const SECRET_PLACEHOLDER = '********';
 
 export interface HostConfig {
   id?: string;
@@ -72,11 +73,69 @@ export function getConfig(): AlogiConfig {
   }
 }
 
+function redactSecret(value: string | undefined): string {
+  return value ? SECRET_PLACEHOLDER : '';
+}
+
+export function sanitizeConfigForClient(config: AlogiConfig): AlogiConfig {
+  return {
+    ...config,
+    ai: {
+      ...config.ai,
+      apiKey: redactSecret(config.ai.apiKey),
+      openaiApiKey: redactSecret(config.ai.openaiApiKey),
+      claudeApiKey: redactSecret(config.ai.claudeApiKey),
+    },
+    hosts: config.hosts.map((host) => ({
+      ...host,
+      password: redactSecret(host.password),
+    })),
+  };
+}
+
+function findExistingHost(host: HostConfig, existing: HostConfig[]): HostConfig | undefined {
+  if (host.id) {
+    const byId = existing.find((candidate) => candidate.id === host.id);
+    if (byId) return byId;
+  }
+  return existing.find((candidate) => candidate.alias === host.alias);
+}
+
+export function preserveSecretPlaceholders(
+  config: Partial<AlogiConfig>,
+  existing: AlogiConfig,
+): Partial<AlogiConfig> {
+  const next: Partial<AlogiConfig> = { ...config };
+
+  if (config.ai) {
+    next.ai = {
+      ...config.ai,
+      apiKey: config.ai.apiKey === SECRET_PLACEHOLDER ? existing.ai.apiKey : config.ai.apiKey,
+      openaiApiKey: config.ai.openaiApiKey === SECRET_PLACEHOLDER ? existing.ai.openaiApiKey : config.ai.openaiApiKey,
+      claudeApiKey: config.ai.claudeApiKey === SECRET_PLACEHOLDER ? existing.ai.claudeApiKey : config.ai.claudeApiKey,
+    };
+  }
+
+  if (config.hosts) {
+    next.hosts = config.hosts.map((host) => {
+      const existingHost = findExistingHost(host, existing.hosts);
+      if (host.password !== SECRET_PLACEHOLDER) return host;
+      return {
+        ...host,
+        password: existingHost?.password ?? '',
+      };
+    });
+  }
+
+  return next;
+}
+
 export function saveConfig(config: Partial<AlogiConfig>): void {
   try {
     if (!fs.existsSync(CONFIG_DIR)) {
-      fs.mkdirSync(CONFIG_DIR, { recursive: true });
+      fs.mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
     }
+    fs.chmodSync(CONFIG_DIR, 0o700);
     
     // Merge with existing
     const current = getConfig();
@@ -89,7 +148,8 @@ export function saveConfig(config: Partial<AlogiConfig>): void {
       ui: { ...current.ui, ...config.ui },
     };
     
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(newConfig, null, 2), 'utf-8');
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(newConfig, null, 2), { encoding: 'utf-8', mode: 0o600 });
+    fs.chmodSync(CONFIG_FILE, 0o600);
   } catch (error) {
     debug.error("Failed to save config", error);
     throw error;

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sshExec, type SSHHostConfig } from '@/lib/ssh';
 import { debug } from '@/lib/debug';
+import { getConfig, preserveSecretPlaceholders } from '@/lib/config';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -46,13 +47,21 @@ function diagnoseError(err: Error, config: SSHHostConfig): string {
 
 export async function POST(req: Request) {
   const body = await req.json();
+  const storedConfig = getConfig();
+  const storedHost = typeof body.alias === 'string'
+    ? storedConfig.hosts.find((host) => host.alias === body.alias)
+    : undefined;
+  const [resolvedBody] = preserveSecretPlaceholders(
+    { hosts: [{ ...storedHost, ...body }] },
+    storedConfig,
+  ).hosts ?? [body];
   const config: SSHHostConfig = {
-    hostname: body.hostname,
-    username: body.username,
-    port: body.port ? parseInt(body.port) : 22,
-    keyPath: body.keyPath,
-    password: body.password,
-    authMethod: body.authMethod,
+    hostname: resolvedBody.hostname,
+    username: resolvedBody.username,
+    port: resolvedBody.port ? parseInt(String(resolvedBody.port), 10) : 22,
+    keyPath: resolvedBody.keyPath,
+    password: resolvedBody.password,
+    authMethod: resolvedBody.authMethod,
   };
 
   // Pre-flight validation

@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
-import zlib from 'zlib';
 import { execSync } from 'child_process';
 import { getConfig } from '@/lib/config';
 import { sshExec } from '@/lib/ssh';
-import { hasSudoPassword, sudoReadFile, sudoExec } from '@/lib/sudo';
+import { LogContentTooLargeError, readLocalLogContent } from '@/lib/logReader';
+import { hasSudoPassword, sudoJournalctl, sudoReadLogTail } from '@/lib/sudo';
 import { debug } from '@/lib/debug';
+import { resolveContainedPath, UnsafePathError } from '@/lib/pathSafety';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,10 +85,12 @@ export async function GET(request: Request) {
   // Handle System Journal - Fetch Logs
   if (host === '(system-journal)') {
       let command = `journalctl -n ${tailLines} --no-pager`;
+      const journalArgs = ['-n', String(tailLines), '--no-pager'];
 
       if (file !== 'ALL_SYSTEM_LOGS') {
           const service = file.replace(/[^a-zA-Z0-9\.\-\_\@]/g, '');
           command += ` -u ${service}`;
+          journalArgs.push('-u', service);
       }
 
       try {
@@ -97,7 +100,7 @@ export async function GET(request: Request) {
           if (isPermissionError(error)) {
               if (hasSudoPassword()) {
                   try {
-                      const content = sudoExec(command, 'utf-8');
+                      const content = sudoJournalctl(journalArgs);
                       return NextResponse.json({ content: content || "(No logs found for this period)" });
                   } catch {
                       // fall through to 403
@@ -111,38 +114,41 @@ export async function GET(request: Request) {
   }
 
   // Handle Local Files
-  if (host.includes('..') || file.includes('..') || host.includes('/') || file.includes('/')) {
-     return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 });
-  }
-
   const baseDir = config.general.logPath || path.join(process.cwd(), 'mock-logs');
-  const filePath = path.join(baseDir, host, file);
+  let filePath = '';
 
   try {
+    filePath = resolveContainedPath(baseDir, host, file);
     if (!fs.existsSync(filePath)) {
       return NextResponse.json({ error: 'File not found' }, { status: 404 });
     }
 
-    let content;
-    if (file.endsWith('.gz')) {
-        const buffer = fs.readFileSync(filePath);
-        content = zlib.gunzipSync(buffer).toString('utf-8');
-    } else {
-        content = fs.readFileSync(filePath, 'utf-8');
-    }
+    const content = readLocalLogContent(filePath, tailLines);
 
     return NextResponse.json({ content });
   } catch (error) {
     if (isPermissionError(error)) {
       if (hasSudoPassword()) {
         try {
-          const content = sudoReadFile(filePath);
+          const content = sudoReadLogTail(filePath, tailLines);
           return NextResponse.json({ content });
         } catch {
           // fall through to 403
         }
       }
       return NextResponse.json({ error: 'permission_denied' }, { status: 403 });
+    }
+    if (error instanceof LogContentTooLargeError) {
+      return NextResponse.json(
+        { error: 'Compressed log is too large to decompress safely. Use a smaller rotated log or read it remotely with tail.' },
+        { status: 413 }
+      );
+    }
+    if (error instanceof UnsafePathError) {
+      return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 });
+    }
+    if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
+      return NextResponse.json({ error: 'File not found' }, { status: 404 });
     }
     const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json({ error: 'Failed to read file: ' + message }, { status: 500 });

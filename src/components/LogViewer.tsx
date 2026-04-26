@@ -10,6 +10,8 @@ import { useLogScroller } from '@/hooks/useLogScroller';
 import { debug } from '@/lib/debug';
 import { normalizeAiError, type AiErrorState } from '@/lib/aiErrors';
 
+const FONT_SIZES = [11, 12, 13, 14, 15, 16];
+
 interface LogViewerProps {
   content: string | null;
   loading: boolean;
@@ -48,7 +50,6 @@ export function LogViewer({
   fileSize,
   selectedHost,
 }: LogViewerProps) {
-  const FONT_SIZES = [11, 12, 13, 14, 15, 16];
   const PREF_KEY = 'alogi.logViewerPrefs';
   const MAX_RENDER_LINES = 5000;
   const [analyzing, setAnalyzing] = useState(false);
@@ -175,8 +176,7 @@ export function LogViewer({
     scheduleViewportUpdate, 
     scrollToBottom, 
     startIndex, 
-    endIndex, 
-    visibleCount 
+    endIndex
   } = useLogScroller({
     contentLength: windowedLines.length,
     rowHeight,
@@ -327,11 +327,11 @@ export function LogViewer({
     }
   }, [windowedLines, shouldVirtualize, rowHeight, scrollRef]);
 
-  const adjustFontSize = (delta: number) => {
+  const adjustFontSize = useCallback((delta: number) => {
     const index = FONT_SIZES.indexOf(fontSize);
     const nextIndex = Math.min(FONT_SIZES.length - 1, Math.max(0, index + delta));
     setFontSize(FONT_SIZES[nextIndex]);
-  };
+  }, [fontSize]);
 
   const getSeverity = (line: string) => {
     const lower = line.toLowerCase();
@@ -437,7 +437,7 @@ export function LogViewer({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isLive, setIsLive, fontSize, toggleBookmark, windowedLines, shouldVirtualize, rowHeight, scrollRef]);
+  }, [isLive, setIsLive, adjustFontSize, toggleBookmark, windowedLines, shouldVirtualize, rowHeight, scrollRef]);
 
   const handleAnalyze = async () => {
     if (!content) return;

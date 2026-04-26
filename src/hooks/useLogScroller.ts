@@ -41,10 +41,16 @@ export function useLogScroller({ contentLength, rowHeight, overscan = 12 }: UseL
   }, [updateViewport]);
 
   useEffect(() => {
-    updateViewport();
+    scheduleViewportUpdate();
     window.addEventListener('resize', scheduleViewportUpdate);
-    return () => window.removeEventListener('resize', scheduleViewportUpdate);
-  }, [updateViewport, scheduleViewportUpdate]);
+    return () => {
+      window.removeEventListener('resize', scheduleViewportUpdate);
+      if (viewportRaf.current !== null) {
+        cancelAnimationFrame(viewportRaf.current);
+        viewportRaf.current = null;
+      }
+    };
+  }, [scheduleViewportUpdate]);
 
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {

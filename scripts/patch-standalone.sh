@@ -8,14 +8,14 @@ PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 STANDALONE_NEXT_SERVER="$PROJECT_DIR/.next/standalone/node_modules/next/dist/compiled/next-server"
 SOURCE_NEXT_SERVER="$PROJECT_DIR/node_modules/next/dist/compiled/next-server"
 
-if [ ! -d "$STANDALONE_NEXT_SERVER" ]; then
-    echo "Error: Standalone next-server directory not found. Run 'npm run build' first."
-    exit 1
-fi
-
 if [ ! -d "$SOURCE_NEXT_SERVER" ]; then
     echo "Error: Source next-server directory not found."
     exit 1
+fi
+
+if [ ! -d "$STANDALONE_NEXT_SERVER" ]; then
+    echo "No standalone next-server runtime directory found; nothing to patch."
+    exit 0
 fi
 
 echo "Patching standalone build with missing Turbopack runtime files..."

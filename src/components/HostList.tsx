@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { ExternalLink, HardDrive, Settings, ScrollText, Server, Copy, RefreshCw, Wifi, Pencil, Trash2, Terminal, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useSyncExternalStore } from 'react';
 import { ContextMenu, getMenuPosition, copyToClipboard, type ContextMenuItem } from './ContextMenu';
 import { useDialog } from './Dialog';
@@ -85,29 +86,10 @@ export function HostList({ hosts, selectedHost, onSelectHost, onRefreshFiles, on
           icon: <Wifi className="w-3.5 h-3.5" />,
           onClick: async () => {
             try {
-              // First fetch the host config from settings
-              const settingsRes = await fetch('/api/settings');
-              const settings = await settingsRes.json();
-              const hostConfig = (settings.hosts || []).find((h: { alias: string }) => h.alias === displayName);
-              if (!hostConfig) {
-                showDialog({
-                  title: 'Host Not Found',
-                  message: `Host "${displayName}" not found in settings.`,
-                  variant: 'error',
-                });
-                return;
-              }
               const res = await fetch('/api/hosts/test', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  hostname: hostConfig.hostname,
-                  username: hostConfig.username,
-                  port: hostConfig.port,
-                  keyPath: hostConfig.keyPath,
-                  password: hostConfig.password,
-                  authMethod: hostConfig.authMethod,
-                }),
+                body: JSON.stringify({ alias: displayName }),
               });
               const data = await res.json();
               if (data.success) {
@@ -178,9 +160,11 @@ export function HostList({ hosts, selectedHost, onSelectHost, onRefreshFiles, on
     <nav aria-label="Hosts" className="app-panel w-full border-r flex flex-col h-full min-h-0 transition-colors" onContextMenu={(e) => e.preventDefault()}>
       <div className="theme-pane-header px-4 py-4 border-b border-subtle flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-subtle bg-[var(--accent-soft)]">
-          <img
+          <Image
             src="/logo.svg"
             alt="Alogi logo"
+            width={20}
+            height={20}
             className="w-5 h-5"
           />
         </div>

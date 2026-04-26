@@ -2,7 +2,13 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { getConfig, saveConfig, type AlogiConfig } from '@/lib/config';
+import {
+  getConfig,
+  preserveSecretPlaceholders,
+  sanitizeConfigForClient,
+  saveConfig,
+  type AlogiConfig,
+} from '@/lib/config';
 import { debug } from '@/lib/debug';
 
 function resolveHome(filepath: string): string {
@@ -15,7 +21,7 @@ function resolveHome(filepath: string): string {
 export async function GET() {
   try {
     const config = getConfig();
-    return NextResponse.json(config);
+    return NextResponse.json(sanitizeConfigForClient(config));
   } catch (error) {
     debug.error('Failed to load settings:', error);
     return NextResponse.json(
@@ -27,7 +33,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as Partial<AlogiConfig>;
+    const rawBody = await request.json() as Partial<AlogiConfig>;
+    const body = preserveSecretPlaceholders(rawBody, getConfig());
     const hosts = body.hosts as Array<Partial<AlogiConfig['hosts'][number]>> | undefined;
 
     if (Array.isArray(hosts)) {

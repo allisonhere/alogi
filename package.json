@@ -14,8 +14,8 @@
   "scripts": {
     "dev": "next dev",
     "dev:desktop": "concurrently -k \"next dev\" \"wait-on http://127.0.0.1:3000 && ELECTRON_START_URL=http://127.0.0.1:3000 electron .\"",
-    "build": "next build && ./scripts/patch-standalone.sh",
-    "build:desktop": "next build && ./scripts/patch-standalone.sh",
+    "build": "next build --webpack && ./scripts/patch-standalone.sh",
+    "build:desktop": "next build --webpack && ./scripts/patch-standalone.sh",
     "start": "next start",
     "lint": "eslint",
     "dist:linux": "npm run build:desktop && electron-builder --linux deb --publish never",
@@ -30,7 +30,7 @@
     "@types/ssh2": "^1.15.5",
     "clsx": "^2.1.1",
     "lucide-react": "^0.563.0",
-    "next": "16.1.6",
+    "next": "16.2.4",
     "next-themes": "^0.4.6",
     "openai": "^6.17.0",
     "react": "19.2.3",
@@ -50,12 +50,17 @@
     "electron": "^32.3.0",
     "electron-builder": "^24.13.3",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "16.2.4",
     "jsdom": "^27.4.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.0.18",
     "wait-on": "^7.2.0"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "8.5.10"
+    }
   },
   "build": {
     "appId": "com.allisonhere.alogi",

@@ -4,8 +4,9 @@ import path from 'path';
 import { execSync } from 'child_process';
 import { getConfig } from '@/lib/config';
 import { sshExec, SSHHostConfig } from '@/lib/ssh';
-import { hasSudoPassword, sudoExec } from '@/lib/sudo';
+import { hasSudoPassword, sudoListDirectoryFiles, sudoSystemctl } from '@/lib/sudo';
 import { debug } from '@/lib/debug';
+import { resolveContainedPath, UnsafePathError } from '@/lib/pathSafety';
 
 interface CategorizedFile {
   name: string;
@@ -92,20 +93,14 @@ function isPermissionError(error: unknown): boolean {
   return false;
 }
 
-function parseLsOutput(stdout: string) {
+function parseFindOutput(stdout: string) {
   return stdout.split('\n')
     .filter(line => line.trim())
     .map(line => {
-      const parts = line.split(/\s+/);
-      // ls -la output: perms links owner group size month day time name
-      if (parts.length >= 9) {
-        const name = parts.slice(8).join(' ');
-        const size = parseInt(parts[4], 10) || 0;
-        // skip directories (perms start with 'd') and special entries
-        if (parts[0].startsWith('d') || name === '.' || name === '..') return null;
-        return { name, size, updated: new Date().toISOString() };
-      }
-      return null;
+      const [name, sizeRaw] = line.split('\t');
+      if (!name) return null;
+      const size = parseInt(sizeRaw, 10) || 0;
+      return { name, size, updated: new Date().toISOString() };
     })
     .filter(Boolean);
 }
@@ -176,7 +171,7 @@ export async function GET(request: Request) {
           if (isPermissionError(error)) {
               if (hasSudoPassword()) {
                   try {
-                      const stdout = sudoExec(command, 'utf-8');
+                      const stdout = sudoSystemctl(['list-units', '--type=service', '--state=running', '--no-legend', '--plain']);
                       const files = stdout.split('\n')
                           .filter(line => line.trim())
                           .map(line => {
@@ -195,16 +190,12 @@ export async function GET(request: Request) {
       }
   }
 
-  // Security: prevent directory traversal
-  if (host.includes('..') || host.includes('/')) {
-     return NextResponse.json({ error: 'Invalid host' }, { status: 400 });
-  }
-
   const config = getConfig();
   const baseDir = config.general.logPath || path.join(process.cwd(), 'mock-logs');
-  const hostDir = path.join(baseDir, host);
+  let hostDir = '';
 
   try {
+    hostDir = resolveContainedPath(baseDir, host);
     if (!fs.existsSync(hostDir)) {
       return NextResponse.json({ error: 'Host not found' }, { status: 404 });
     }
@@ -212,25 +203,34 @@ export async function GET(request: Request) {
     const items = fs.readdirSync(hostDir, { withFileTypes: true });
     const files = items
       .filter(item => item.isFile())
-      .map(item => ({
-        name: item.name,
-        size: fs.statSync(path.join(hostDir, item.name)).size,
-        updated: fs.statSync(path.join(hostDir, item.name)).mtime
-      }));
+      .map(item => {
+        const stat = fs.statSync(path.join(hostDir, item.name));
+        return {
+          name: item.name,
+          size: stat.size,
+          updated: stat.mtime,
+        };
+      });
 
     return NextResponse.json({ files });
   } catch (error) {
     if (isPermissionError(error)) {
       if (hasSudoPassword()) {
         try {
-          const stdout = sudoExec(`ls -la '${hostDir.replace(/'/g, "'\\''")}'`, 'utf-8');
-          const files = parseLsOutput(stdout);
+          const stdout = sudoListDirectoryFiles(hostDir);
+          const files = parseFindOutput(stdout);
           return NextResponse.json({ files });
         } catch {
           // fall through
         }
       }
       return NextResponse.json({ error: 'permission_denied' }, { status: 403 });
+    }
+    if (error instanceof UnsafePathError) {
+      return NextResponse.json({ error: 'Invalid host' }, { status: 400 });
+    }
+    if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
+      return NextResponse.json({ error: 'Host not found' }, { status: 404 });
     }
     return NextResponse.json({ error: 'Failed to read files' }, { status: 500 });
   }

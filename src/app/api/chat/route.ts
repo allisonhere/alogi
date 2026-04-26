@@ -4,6 +4,7 @@ import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { getConfig } from '@/lib/config';
 import { debug } from '@/lib/debug';
+import { retryRateLimited } from '@/lib/aiRetry';
 
 type ChatMessage = {
   role: 'user' | 'assistant';
@@ -64,27 +65,8 @@ Answer the user's questions based strictly on these logs. Be technical, precise,
             return NextResponse.json({ error: 'Last message missing' }, { status: 400 });
         }
 
-        // Retry Logic
-        let attempts = 0;
-        const maxAttempts = 3;
-        let lastError: unknown;
-        while (attempts < maxAttempts) {
-            try {
-                const result = await chat.sendMessage(lastMessage.content);
-                return NextResponse.json({ role: 'assistant', content: result.response.text() });
-            } catch (e) {
-                attempts++;
-                lastError = e;
-                const err = e as { message?: string; status?: number };
-                const message = typeof err.message === 'string' ? err.message : '';
-                if (message.includes('429') || err.status === 429) {
-                    await new Promise(r => setTimeout(r, attempts * 5000));
-                    continue;
-                }
-                throw e;
-            }
-        }
-        throw lastError ?? new Error('Rate limited after multiple retries');
+        const result = await retryRateLimited(() => chat.sendMessage(lastMessage.content));
+        return NextResponse.json({ role: 'assistant', content: result.response.text() });
     }
 
     // --- OPENAI HANDLER ---
@@ -128,6 +110,6 @@ Answer the user's questions based strictly on these logs. Be technical, precise,
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     debug.error("Chat Failed:", message);
-    return NextResponse.json({ error: 'Chat failed: ' + message }, { status: 500 });
+    return NextResponse.json({ error: 'Chat failed. Check server logs for details.' }, { status: 500 });
   }
 }

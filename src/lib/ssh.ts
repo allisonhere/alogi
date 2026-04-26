@@ -65,10 +65,11 @@ export function sshExec(config: SSHHostConfig, command: string): Promise<string>
         let stdout = '';
         let stderr = '';
         stream.on('close', (code: number | null, signal: string | null) => {
-          if (code !== 0 && stderr.trim()) {
+          if (code !== 0) {
               const signalInfo = signal ? ` (signal: ${signal})` : '';
-              debug.warn(`SSH command stderr (exit ${code}${signalInfo}): ${stderr.trim()}`);
-              settle(reject, new Error(stderr.trim()));
+              const detail = stderr.trim() || stdout.trim() || `SSH command exited with code ${code ?? 'unknown'}${signalInfo}`;
+              debug.warn(`SSH command failed (exit ${code}${signalInfo}): ${detail}`);
+              settle(reject, new Error(detail));
               return;
           }
           settle(resolve, stdout);

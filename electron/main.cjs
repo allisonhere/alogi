@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const net = require('net');
 const { spawn } = require('child_process');
+const { loadUrlWithRetry } = require('./retry.cjs');
 
 // Use xdg-open directly on Linux to avoid KDE portal issues
 const openExternal = (url) => {
@@ -26,22 +27,6 @@ const getAvailablePort = (host = '127.0.0.1') => new Promise((resolve, reject) =
     server.close(() => resolve(port));
   });
 });
-
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const loadUrlWithRetry = async (win, url, retries = 20) => {
-  for (let attempt = 0; attempt < retries; attempt += 1) {
-    try {
-      await win.loadURL(url);
-      return;
-    } catch {
-      if (attempt === retries - 1) {
-        throw err;
-      }
-      await delay(500);
-    }
-  }
-};
 
 const parseArgs = (argv) => {
   const startIndex = process.defaultApp ? 2 : 1;
@@ -299,7 +284,9 @@ const runWebMode = async (cli) => {
   }
 
   if (!isLoopbackHost(host)) {
-    console.warn('Warning: web mode is bound to a non-loopback host. Ensure access is restricted.');
+    console.error('Refusing to bind web mode to a non-loopback host. Use 127.0.0.1, localhost, or ::1.');
+    app.exit(1);
+    return;
   }
 
   const { port: resolvedPort } = await startNextServer({ host, port });
