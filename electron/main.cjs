@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, shell, ipcMain, utilityProcess } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const net = require('net');
 const { spawn } = require('child_process');
-const { loadUrlWithRetry } = require('./retry.cjs');
 
 // Use xdg-open directly on Linux to avoid KDE portal issues
 const openExternal = (url) => {
@@ -123,6 +122,26 @@ Options:
 `);
 };
 
+let serverProc = null;
+
+const waitForPort = (host, port, { timeout = 30000, interval = 200 } = {}) =>
+  new Promise((resolve, reject) => {
+    const deadline = Date.now() + timeout;
+    const attempt = () => {
+      const sock = net.connect({ host, port });
+      sock.once('connect', () => { sock.destroy(); resolve(); });
+      sock.once('error', () => {
+        sock.destroy();
+        if (Date.now() >= deadline) {
+          reject(new Error(`Server did not start within ${timeout / 1000}s`));
+        } else {
+          setTimeout(attempt, interval);
+        }
+      });
+    };
+    attempt();
+  });
+
 const startNextServer = async ({ host, port } = {}) => {
   const serverRoot = app.isPackaged
     ? path.join(process.resourcesPath, '.next', 'standalone')
@@ -136,13 +155,17 @@ const startNextServer = async ({ host, port } = {}) => {
   const resolvedHost = host || '127.0.0.1';
   const resolvedPort = port || await getAvailablePort(resolvedHost);
 
-  process.env.NODE_ENV = 'production';
-  process.env.HOSTNAME = resolvedHost;
-  process.env.PORT = String(resolvedPort);
+  serverProc = utilityProcess.fork(serverPath, [], {
+    cwd: serverRoot,
+    env: {
+      ...process.env,
+      NODE_ENV: 'production',
+      HOSTNAME: resolvedHost,
+      PORT: String(resolvedPort),
+    },
+  });
 
-  process.chdir(serverRoot);
-  require(serverPath);
-
+  await waitForPort(resolvedHost, resolvedPort);
   return { host: resolvedHost, port: resolvedPort };
 };
 
@@ -269,7 +292,7 @@ const createWindow = async () => {
   const { host, port } = await startNextServer({ host: '127.0.0.1' });
   const appOrigin = toUrl(host, port);
   attachExternalLinkHandlers(win, appOrigin);
-  await loadUrlWithRetry(win, appOrigin);
+  await win.loadURL(appOrigin);
 };
 
 const runWebMode = async (cli) => {
@@ -342,5 +365,12 @@ app.on('activate', () => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
+  }
+});
+
+app.on('will-quit', () => {
+  if (serverProc) {
+    serverProc.kill();
+    serverProc = null;
   }
 });
