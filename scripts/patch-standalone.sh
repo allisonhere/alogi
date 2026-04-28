@@ -1,34 +1,40 @@
 #!/bin/bash
-# Post-build script to copy missing Turbopack runtime files to standalone output
-# This fixes the "Cannot find module app-route-turbo.runtime.prod.js" error
+# Post-build script to copy missing Next.js runtime files to standalone output.
 
 set -e
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-STANDALONE_NEXT_SERVER="$PROJECT_DIR/.next/standalone/node_modules/next/dist/compiled/next-server"
-SOURCE_NEXT_SERVER="$PROJECT_DIR/node_modules/next/dist/compiled/next-server"
+SOURCE_NEXT_DIST="$PROJECT_DIR/node_modules/next/dist"
+STANDALONE_ROOTS=(
+    "$PROJECT_DIR/.next/standalone"
+    "$PROJECT_DIR/.next/standalone/Projects/alogi"
+)
 
-if [ ! -d "$SOURCE_NEXT_SERVER" ]; then
-    echo "Error: Source next-server directory not found."
+if [ ! -d "$SOURCE_NEXT_DIST" ]; then
+    echo "Error: Source Next.js dist directory not found."
     exit 1
 fi
 
-if [ ! -d "$STANDALONE_NEXT_SERVER" ]; then
-    echo "No standalone next-server runtime directory found; nothing to patch."
-    exit 0
-fi
+echo "Patching standalone build with missing Next.js runtime files..."
 
-echo "Patching standalone build with missing Turbopack runtime files..."
+patched=0
 
-# Copy all turbo runtime prod files that are missing
-for file in "$SOURCE_NEXT_SERVER"/*-turbo*.runtime.prod.js; do
-    if [ -f "$file" ]; then
-        filename=$(basename "$file")
-        if [ ! -f "$STANDALONE_NEXT_SERVER/$filename" ]; then
-            echo "  Copying $filename"
-            cp "$file" "$STANDALONE_NEXT_SERVER/"
-        fi
+for standalone_root in "${STANDALONE_ROOTS[@]}"; do
+    standalone_next_dist="$standalone_root/node_modules/next/dist"
+
+    if [ ! -d "$standalone_root/node_modules/next" ]; then
+        continue
     fi
+
+    echo "  Patching $standalone_root"
+    patched=1
+
+    mkdir -p "$standalone_next_dist"
+    cp -Rn "$SOURCE_NEXT_DIST"/. "$standalone_next_dist/"
 done
 
-echo "Done!"
+if [ "$patched" -eq 0 ]; then
+    echo "No standalone Next.js runtime directories found; nothing to patch."
+else
+    echo "Done!"
+fi

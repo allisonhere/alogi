@@ -67,6 +67,8 @@ export default function Dashboard() {
   } | null>(null);
   const hostWidthRef = useRef(hostWidth);
   const fileWidthRef = useRef(fileWidth);
+  const selectedFileRef = useRef(selectedFile);
+  const selectedCategoryRef = useRef(selectedCategory);
 
   useEffect(() => {
     hostWidthRef.current = hostWidth;
@@ -75,6 +77,14 @@ export default function Dashboard() {
   useEffect(() => {
     fileWidthRef.current = fileWidth;
   }, [fileWidth]);
+
+  useEffect(() => {
+    selectedFileRef.current = selectedFile;
+  }, [selectedFile]);
+
+  useEffect(() => {
+    selectedCategoryRef.current = selectedCategory;
+  }, [selectedCategory]);
 
   // Fetch Hosts
   useEffect(() => {
@@ -265,74 +275,120 @@ export default function Dashboard() {
   // Fetch Files
   useEffect(() => {
     if (!selectedHost) return;
-    const fetchFiles = () => {
+    const controller = new AbortController();
+    let active = true;
+    const host = selectedHost;
+
+    const fetchFiles = async () => {
       setLoadingFiles(true);
-      fetch(`/api/files?host=${selectedHost}`)
-        .then(async res => {
-          if (res.status === 403) {
-            const data = await res.json();
-            if (data.error === 'permission_denied') {
-              setLoadingFiles(false);
-              promptSudo(() => fetchFiles());
-              return;
-            }
-          }
-          return res.json();
-        })
-        .then(data => {
-          if (!data) return;
-          setFiles(data.files || []);
-          setLoadingFiles(false);
-          if (selectedFile && !(data.files || []).some((file: FileInfo) => file.name === selectedFile)) {
-            setSelectedFile(null);
-            setSelectedCategory(null);
-            setContent(null);
-          }
+      try {
+        const res = await fetch(`/api/files?host=${encodeURIComponent(host)}`, {
+          signal: controller.signal,
         });
+        const data = await res.json();
+
+        if (!active) return;
+
+        if (res.status === 403 && data.error === 'permission_denied') {
+          setLoadingFiles(false);
+          promptSudo(() => fetchFiles());
+          return;
+        }
+
+        if (!res.ok) {
+          setFiles([]);
+          setContent(data.error ? `Failed to load sources: ${data.error}` : 'Failed to load sources.');
+          return;
+        }
+
+        const nextFiles = data.files || [];
+        setFiles(nextFiles);
+        const restoredFile = selectedFileRef.current;
+        const restoredCategory = selectedCategoryRef.current;
+        if (
+          restoredFile &&
+          !nextFiles.some((file: FileInfo) =>
+            file.name === restoredFile && (file.category ?? null) === restoredCategory
+          )
+        ) {
+          setSelectedFile(null);
+          setSelectedCategory(null);
+          setContent(null);
+        }
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        debug.error('Failed to fetch files:', err);
+        if (active) {
+          setFiles([]);
+          setContent('Failed to load sources.');
+        }
+      } finally {
+        if (active) {
+          setLoadingFiles(false);
+        }
+      }
     };
+
     fetchFiles();
-  }, [selectedHost, selectedFile]);
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [selectedHost]);
 
   // Fetch Content
   useEffect(() => {
     if (!selectedHost || !selectedFile) return;
 
     const controller = new AbortController();
+    const host = selectedHost;
+    const file = selectedFile;
+    const category = selectedCategory;
 
-    const fetchContent = (showLoading = true) => {
+    const fetchContent = async (showLoading = true) => {
         if (showLoading) setLoadingContent(true);
-        // Include category param for remote hosts
-        const categoryParam = selectedCategory ? `&category=${selectedCategory}` : '';
-        fetch(`/api/content?host=${selectedHost}&file=${selectedFile}${categoryParam}&t=${Date.now()}`, {
-          cache: 'no-store',
-          signal: controller.signal,
-        })
-          .then(async res => {
-            if (res.status === 403) {
-              const data = await res.json();
-              if (data.error === 'permission_denied') {
-                if (showLoading) setLoadingContent(false);
-                promptSudo(() => fetchContent(showLoading));
-                return null;
-              }
-            }
-            return res.json();
-          })
-          .then(data => {
-            if (!data) return;
-            setContent(data.content || "");
-            if (showLoading) setLoadingContent(false);
-          })
-          .catch(err => {
-            if (err instanceof DOMException && err.name === 'AbortError') return;
-            debug.error('Failed to fetch content:', err);
+        try {
+          const params = new URLSearchParams({
+            host,
+            file,
+            t: String(Date.now()),
           });
+          if (category) {
+            params.set('category', category);
+          }
+
+          const res = await fetch(`/api/content?${params.toString()}`, {
+            cache: 'no-store',
+            signal: controller.signal,
+          });
+          const data = await res.json();
+
+          if (res.status === 403 && data.error === 'permission_denied') {
+            if (showLoading) setLoadingContent(false);
+            promptSudo(() => fetchContent(showLoading));
+            return;
+          }
+
+          if (!res.ok) {
+            setContent(data.error ? `Failed to load content: ${data.error}` : 'Failed to load content.');
+            return;
+          }
+
+          setContent(data.content || "");
+        } catch (err) {
+          if (err instanceof DOMException && err.name === 'AbortError') return;
+          debug.error('Failed to fetch content:', err);
+          setContent('Failed to load content.');
+        } finally {
+          if (showLoading) setLoadingContent(false);
+        }
     };
 
     // Initial load
     fetchContent(true);
 
-    let interval: NodeJS.Timeout;
+    let interval: NodeJS.Timeout | undefined;
     if (isLive) {
         interval = setInterval(() => fetchContent(false), 2000);
     }
@@ -451,10 +507,23 @@ export default function Dashboard() {
   const handleRefreshFiles = () => {
     if (!selectedHost) return;
     setLoadingFiles(true);
-    fetch(`/api/files?host=${selectedHost}`)
-      .then(res => res.json())
+    fetch(`/api/files?host=${encodeURIComponent(selectedHost)}`)
+      .then(async res => {
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to load sources.');
+        }
+        return data;
+      })
       .then(data => {
         setFiles(data.files || []);
+      })
+      .catch(err => {
+        debug.error('Failed to refresh files:', err);
+        setFiles([]);
+        setContent(err instanceof Error ? `Failed to load sources: ${err.message}` : 'Failed to load sources.');
+      })
+      .finally(() => {
         setLoadingFiles(false);
       });
   };
@@ -489,11 +558,30 @@ export default function Dashboard() {
   const handleRefreshContent = () => {
     if (!selectedHost || !selectedFile) return;
     setLoadingContent(true);
-    const categoryParam = selectedCategory ? `&category=${selectedCategory}` : '';
-    fetch(`/api/content?host=${selectedHost}&file=${selectedFile}${categoryParam}&t=${Date.now()}`)
-      .then(res => res.json())
+    const params = new URLSearchParams({
+      host: selectedHost,
+      file: selectedFile,
+      t: String(Date.now()),
+    });
+    if (selectedCategory) {
+      params.set('category', selectedCategory);
+    }
+    fetch(`/api/content?${params.toString()}`)
+      .then(async res => {
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to load content.');
+        }
+        return data;
+      })
       .then(data => {
         setContent(data.content || "");
+      })
+      .catch(err => {
+        debug.error('Failed to refresh content:', err);
+        setContent(err instanceof Error ? `Failed to load content: ${err.message}` : 'Failed to load content.');
+      })
+      .finally(() => {
         setLoadingContent(false);
       });
   };

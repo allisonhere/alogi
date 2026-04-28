@@ -13,6 +13,11 @@ export interface SSHHostConfig {
   authMethod?: 'key' | 'password';
 }
 
+export interface SSHExecOptions {
+  commandTimeoutMs?: number;
+  readyTimeoutMs?: number;
+}
+
 function resolveHome(filepath: string): string {
     if (filepath.startsWith('~')) {
         return path.join(os.homedir(), filepath.slice(1));
@@ -21,11 +26,14 @@ function resolveHome(filepath: string): string {
 }
 
 const EXEC_TIMEOUT = 30000;
+const READY_TIMEOUT = 10000;
 
-export function sshExec(config: SSHHostConfig, command: string): Promise<string> {
+export function sshExec(config: SSHHostConfig, command: string, options: SSHExecOptions = {}): Promise<string> {
   return new Promise((resolve, reject) => {
     const conn = new Client();
     let settled = false;
+    const commandTimeoutMs = options.commandTimeoutMs ?? EXEC_TIMEOUT;
+    const readyTimeoutMs = options.readyTimeoutMs ?? READY_TIMEOUT;
 
     const settle = (fn: typeof resolve | typeof reject, value: string | Error) => {
       if (settled) return;
@@ -36,8 +44,8 @@ export function sshExec(config: SSHHostConfig, command: string): Promise<string>
     };
 
     const timer = setTimeout(() => {
-      settle(reject, new Error(`SSH command timed out after ${EXEC_TIMEOUT / 1000}s`));
-    }, EXEC_TIMEOUT);
+      settle(reject, new Error(`SSH command timed out after ${commandTimeoutMs / 1000}s`));
+    }, commandTimeoutMs);
 
     const usePassword = config.authMethod === 'password';
     let privateKey: Buffer | undefined;
@@ -87,7 +95,7 @@ export function sshExec(config: SSHHostConfig, command: string): Promise<string>
       username: config.username,
       privateKey,
       password: usePassword ? config.password : undefined,
-      readyTimeout: 10000,
+      readyTimeout: readyTimeoutMs,
     });
   });
 }

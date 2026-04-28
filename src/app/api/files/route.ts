@@ -21,66 +21,63 @@ interface Capabilities {
   docker: boolean;
 }
 
+const DISCOVERY_SSH_OPTIONS = {
+  commandTimeoutMs: 5000,
+  readyTimeoutMs: 5000,
+};
+
 async function probeJournal(config: SSHHostConfig): Promise<CategorizedFile[]> {
-  try {
-    const stdout = await sshExec(config, 'systemctl list-units --type=service --state=running --no-legend --plain 2>/dev/null');
-    const files: CategorizedFile[] = stdout.split('\n')
-      .filter(line => line.trim())
-      .map(line => {
-        const parts = line.split(/\s+/);
-        return {
-          name: parts[0],
-          size: 0,
-          updated: new Date().toISOString(),
-          category: 'journal' as const
-        };
-      });
-    if (files.length > 0) {
-      files.unshift({ name: 'ALL_SYSTEM_LOGS', size: 0, updated: 'All system logs', category: 'journal' });
-    }
-    return files;
-  } catch {
-    return [];
+  const stdout = await sshExec(
+    config,
+    'systemctl list-units --type=service --state=running --no-legend --plain 2>/dev/null',
+    DISCOVERY_SSH_OPTIONS
+  );
+  const files: CategorizedFile[] = stdout.split('\n')
+    .filter(line => line.trim())
+    .map(line => {
+      const parts = line.split(/\s+/);
+      return {
+        name: parts[0],
+        size: 0,
+        updated: new Date().toISOString(),
+        category: 'journal' as const
+      };
+    });
+  if (files.length > 0) {
+    files.unshift({ name: 'ALL_SYSTEM_LOGS', size: 0, updated: 'All system logs', category: 'journal' });
   }
+  return files;
 }
 
 async function probeFiles(config: SSHHostConfig): Promise<CategorizedFile[]> {
-  try {
-    const stdout = await sshExec(config, 'ls -p /var/log 2>/dev/null');
-    return stdout.split('\n')
-      .filter(line => line.trim() && !line.endsWith('/'))
-      .map(line => ({
-        name: line.trim(),
-        size: 0,
-        updated: new Date().toISOString(),
-        category: 'files' as const
-      }));
-  } catch {
-    return [];
-  }
+  const stdout = await sshExec(config, 'ls -p /var/log 2>/dev/null', DISCOVERY_SSH_OPTIONS);
+  return stdout.split('\n')
+    .filter(line => line.trim() && !line.endsWith('/'))
+    .map(line => ({
+      name: line.trim(),
+      size: 0,
+      updated: new Date().toISOString(),
+      category: 'files' as const
+    }));
 }
 
 async function probeDocker(config: SSHHostConfig): Promise<CategorizedFile[]> {
-  try {
-    const stdout = await sshExec(config, 'docker ps --format "{{.Names}}\t{{.Status}}" 2>/dev/null');
-    const files: CategorizedFile[] = stdout.split('\n')
-      .filter(line => line.trim())
-      .map(line => {
-        const [name, status] = line.split('\t');
-        return {
-          name: name.trim(),
-          size: 0,
-          updated: status?.trim() || 'Running',
-          category: 'docker' as const
-        };
-      });
-    if (files.length > 0) {
-      files.unshift({ name: 'ALL_CONTAINERS', size: 0, updated: 'All running containers', category: 'docker' });
-    }
-    return files;
-  } catch {
-    return [];
+  const stdout = await sshExec(config, 'docker ps --format "{{.Names}}\t{{.Status}}" 2>/dev/null', DISCOVERY_SSH_OPTIONS);
+  const files: CategorizedFile[] = stdout.split('\n')
+    .filter(line => line.trim())
+    .map(line => {
+      const [name, status] = line.split('\t');
+      return {
+        name: name.trim(),
+        size: 0,
+        updated: status?.trim() || 'Running',
+        category: 'docker' as const
+      };
+    });
+  if (files.length > 0) {
+    files.unshift({ name: 'ALL_CONTAINERS', size: 0, updated: 'All running containers', category: 'docker' });
   }
+  return files;
 }
 
 function isPermissionError(error: unknown): boolean {
@@ -126,11 +123,21 @@ export async function GET(request: Request) {
 
       try {
           // Probe all three sources in parallel
-          const [journal, files, docker] = await Promise.all([
+          const results = await Promise.allSettled([
               probeJournal(hostConfig),
               probeFiles(hostConfig),
               probeDocker(hostConfig),
           ]);
+          const [journalResult, filesResult, dockerResult] = results;
+          const journal = journalResult.status === 'fulfilled' ? journalResult.value : [];
+          const files = filesResult.status === 'fulfilled' ? filesResult.value : [];
+          const docker = dockerResult.status === 'fulfilled' ? dockerResult.value : [];
+
+          if (results.every(result => result.status === 'rejected')) {
+              const firstError = results.find((result): result is PromiseRejectedResult => result.status === 'rejected')?.reason;
+              const message = firstError instanceof Error ? firstError.message : String(firstError ?? 'Remote discovery failed');
+              return NextResponse.json({ error: `SSH discovery failed: ${message}` }, { status: 502 });
+          }
 
           const capabilities: Capabilities = {
               journal: journal.length > 0,
