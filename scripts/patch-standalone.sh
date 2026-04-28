@@ -4,14 +4,24 @@
 set -e
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-SOURCE_NEXT_DIST="$PROJECT_DIR/node_modules/next/dist"
+SOURCE_NEXT_PACKAGE="$PROJECT_DIR/node_modules/next"
 STANDALONE_ROOTS=(
     "$PROJECT_DIR/.next/standalone"
     "$PROJECT_DIR/.next/standalone/Projects/alogi"
 )
+NEXT_RUNTIME_PACKAGES=(
+    "@next/env"
+    "@swc/helpers"
+    "baseline-browser-mapping"
+    "caniuse-lite"
+    "postcss"
+    "react"
+    "react-dom"
+    "styled-jsx"
+)
 
-if [ ! -d "$SOURCE_NEXT_DIST" ]; then
-    echo "Error: Source Next.js dist directory not found."
+if [ ! -d "$SOURCE_NEXT_PACKAGE" ]; then
+    echo "Error: Source Next.js package directory not found."
     exit 1
 fi
 
@@ -19,18 +29,41 @@ echo "Patching standalone build with missing Next.js runtime files..."
 
 patched=0
 
-for standalone_root in "${STANDALONE_ROOTS[@]}"; do
-    standalone_next_dist="$standalone_root/node_modules/next/dist"
+copy_package() {
+    local package_name="$1"
+    local target_node_modules="$2"
+    local source_package="$PROJECT_DIR/node_modules/$package_name"
+    local target_package="$target_node_modules/$package_name"
+    local target_parent
 
-    if [ ! -d "$standalone_root/node_modules/next" ]; then
+    if [ ! -d "$source_package" ]; then
+        return
+    fi
+
+    target_parent="$(dirname "$target_package")"
+    mkdir -p "$target_parent"
+    if [ -d "$target_package" ]; then
+        cp -Rn "$source_package"/. "$target_package/"
+    else
+        cp -Rn "$source_package" "$target_package"
+    fi
+}
+
+for standalone_root in "${STANDALONE_ROOTS[@]}"; do
+    standalone_node_modules="$standalone_root/node_modules"
+    standalone_next_package="$standalone_root/node_modules/next"
+
+    if [ ! -d "$standalone_next_package" ]; then
         continue
     fi
 
     echo "  Patching $standalone_root"
     patched=1
 
-    mkdir -p "$standalone_next_dist"
-    cp -Rn "$SOURCE_NEXT_DIST"/. "$standalone_next_dist/"
+    cp -Rn "$SOURCE_NEXT_PACKAGE"/. "$standalone_next_package/"
+    for package_name in "${NEXT_RUNTIME_PACKAGES[@]}"; do
+        copy_package "$package_name" "$standalone_node_modules"
+    done
 done
 
 if [ "$patched" -eq 0 ]; then

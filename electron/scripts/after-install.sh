@@ -48,7 +48,11 @@ for arg in "$@"; do
   esac
 done
 
-"$BIN" "$@" &>/dev/null & disown
+LOG_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/alogi"
+LOG_FILE="$LOG_DIR/alogi.log"
+mkdir -p "$LOG_DIR"
+printf '\n[%s] launching %s\n' "$(date --iso-8601=seconds)" "$BIN" >> "$LOG_FILE"
+"$BIN" "$@" >> "$LOG_FILE" 2>&1 & disown
 EOF
 
 chmod 755 "$BIN_LINK"
