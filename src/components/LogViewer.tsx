@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { BarChart3, Bookmark, Clock, Sparkles, Terminal, PanelLeft, FolderOpen, WrapText, Minus, Plus, Type, Copy, Clipboard, Filter, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { extractTimestamp } from '@/lib/logParser';
@@ -77,6 +78,18 @@ export function LogViewer({
     lineText: string;
   } | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const timeFilterButtonRef = useRef<HTMLButtonElement>(null);
+  const [timeFilterPosition, setTimeFilterPosition] = useState<{ top: number; right: number } | null>(null);
+
+  const updateTimeFilterPosition = useCallback(() => {
+    const rect = timeFilterButtonRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setTimeFilterPosition({
+      top: rect.bottom + 4,
+      right: window.innerWidth - rect.right,
+    });
+  }, []);
+
   // Reset analysis and search when file changes
   useEffect(() => {
     setAnalysis(null);
@@ -162,6 +175,18 @@ export function LogViewer({
     if (!earliest || !latest) return null;
     return { earliest, latest };
   }, [showTimeFilter, lineTimestamps]);
+
+  useEffect(() => {
+    if (!showTimeFilter) return;
+
+    updateTimeFilterPosition();
+    window.addEventListener('resize', updateTimeFilterPosition);
+    window.addEventListener('scroll', updateTimeFilterPosition, true);
+    return () => {
+      window.removeEventListener('resize', updateTimeFilterPosition);
+      window.removeEventListener('scroll', updateTimeFilterPosition, true);
+    };
+  }, [showTimeFilter, updateTimeFilterPosition]);
 
   const shouldWindow = !debouncedSearch && !timeRange && timeFilteredLines.length > MAX_RENDER_LINES && !showAllLines;
   const windowStart = shouldWindow ? timeFilteredLines.length - MAX_RENDER_LINES : 0;
@@ -653,7 +678,17 @@ export function LogViewer({
                   <div className="theme-toolbar-group ui-control-group flex-shrink-0">
                       <div className="relative">
                         <button
-                            onClick={() => setShowTimeFilter(prev => !prev)}
+                            ref={timeFilterButtonRef}
+                            onClick={() => {
+                              setShowTimeFilter(prev => {
+                                if (prev) {
+                                  setTimeFilterPosition(null);
+                                  return false;
+                                }
+                                updateTimeFilterPosition();
+                                return true;
+                              });
+                            }}
                             className={cn(
                                 "theme-toolbar-button ui-control-segment px-2.5 py-1.5 text-xs font-medium flex items-center gap-1.5",
                                 timeRange ? "ui-control-active" : "ui-control-ghost"
@@ -667,8 +702,11 @@ export function LogViewer({
                               </span>
                             )}
                         </button>
-                        {showTimeFilter && (
-                          <div className="absolute top-full right-0 mt-1 z-[70] w-64 rounded-2xl border border-subtle app-panel-strong p-3 space-y-2">
+                        {showTimeFilter && timeFilterPosition && typeof document !== 'undefined' && createPortal(
+                          <div
+                            className="fixed z-[70] w-64 rounded-2xl border border-subtle app-panel-strong p-3 space-y-2"
+                            style={{ top: timeFilterPosition.top, right: timeFilterPosition.right }}
+                          >
                             <div className="flex items-center gap-2">
                               <label className="text-[11px] text-muted w-10">Start</label>
                               <input
@@ -719,7 +757,8 @@ export function LogViewer({
                                 Clear
                               </button>
                             </div>
-                          </div>
+                          </div>,
+                          document.body
                         )}
                       </div>
                       <div className="relative">
