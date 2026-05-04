@@ -30,6 +30,7 @@ depends=(
   "dbus"
   "glib2"
 )
+options=("!strip")
 source=(
   "https://github.com/allisonhere/alogi/releases/download/v${pkgver}/alogi-${pkgver}-linux-unpacked.tar.gz"
   "alogi.desktop"
