@@ -4,7 +4,7 @@
   <img src="docs/logo.svg" alt="Alogi logo" width="120" height="120" />
 </p>
 
-**Alog** (AI + Log) is a modern, local-first log viewer built for DevOps engineers and developers who are tired of `grep` and `tail`. It combines a sleek, high-contrast UI with AI analysis to detect patterns and explain errors in plain English.
+**Alogi** (AI + Log) is a modern, local-first log viewer built for DevOps engineers and developers who are tired of `grep` and `tail`. It combines a sleek, high-contrast UI with AI analysis to detect patterns and explain errors in plain English.
 
 ![Alogi Dashboard](https://github.com/allisonhere/alogi/blob/main/screenshot.png?raw=true)
 
