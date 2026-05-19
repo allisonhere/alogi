@@ -270,22 +270,17 @@ const createWindow = async () => {
     width: 1440,
     height: 900,
     backgroundColor: '#09090b',
-    autoHideMenuBar: false,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs')
     }
   });
-  const menu = createAppMenu();
-  Menu.setApplicationMenu(menu);
-  win.setMenuBarVisibility(true);
-  win.setAutoHideMenuBar(false);
-  win.setMenu(menu);
+  Menu.setApplicationMenu(null);
 
   if (isDev) {
     const appOrigin = new URL(process.env.ELECTRON_START_URL).origin;
     attachExternalLinkHandlers(win, appOrigin);
     await win.loadURL(process.env.ELECTRON_START_URL);
-    win.webContents.openDevTools({ mode: 'detach' });
     return;
   }
 
