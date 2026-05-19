@@ -4,15 +4,15 @@
   <img src="docs/logo.svg" alt="Alogi logo" width="120" height="120" />
 </p>
 
-**Alogi** (AI + Logi) is a modern, local-first log viewer built for DevOps engineers and developers who are tired of `grep` and `tail`. It combines a sleek, high-contrast UI with AI analysis to detect patterns and explain errors in plain English.
+**Alog** (AI + Log) is a modern, local-first log viewer built for DevOps engineers and developers who are tired of `grep` and `tail`. It combines a sleek, high-contrast UI with AI analysis to detect patterns and explain errors in plain English.
 
 ![Alogi Dashboard](https://github.com/allisonhere/alogi/blob/main/screenshot.png?raw=true)
 
 ## 🚀 Features
 
 *   **⚡️ Live Tailing:** Watch logs stream in real-time (like `tail -f`) with auto-scrolling.
-*   **🧠 AI Analysis:** Click "Analyze" to scan your logs for errors, root causes, and actionable recommendations (Claude, Gemini, or OpenAI). Uses **Smart Context** to capture errors and recent logs even in massive files.
-*   **💬 AI Chat:** Ask questions about the current log context with a conversational panel (Claude, Gemini, or OpenAI).
+*   **🧠 AI Analysis:** Click "Analyze" to scan your logs for errors, root causes, and actionable recommendations (Claude, Gemini, OpenAI, or Ollama). Uses **Smart Context** to capture errors and recent logs even in massive files.
+*   **💬 AI Chat:** Ask questions about the current log context with a conversational panel (Claude, Gemini, OpenAI, or Ollama).
 *   **🔍 Regex Search:** Filter logs using regular expressions (toggle with `.*` or `Ctrl+R`).
 *   **🎨 Smart Highlighting:**
     *   **Vibe Check Bar:** A visual heatmap at the top of the screen showing where errors (Red) and warnings (Orange) are buried.
@@ -35,7 +35,7 @@
 *   **Framework:** Next.js 16 (App Router)
 *   **Styling:** Tailwind CSS v4 (Cyberpunk/Terminal aesthetic)
 *   **Icons:** Lucide React
-*   **AI:** Anthropic SDK (Claude) + Google Generative AI SDK (Gemini) + OpenAI SDK
+*   **AI:** Anthropic SDK (Claude) + Google Generative AI SDK (Gemini) + OpenAI SDK (OpenAI + Ollama)
 *   **Backend:** Node.js (Local FS & Child Process)
 
 ## 📦 Installation
@@ -103,6 +103,7 @@ You can also prefill values via environment variables:
 *   `ANTHROPIC_API_KEY` for Claude
 *   `GEMINI_API_KEY` for Gemini
 *   `OPENAI_API_KEY` for OpenAI
+*   `OLLAMA_BASE_URL` for Ollama (defaults to `http://localhost:11434`)
 
 ## 🖥️ Usage
 
