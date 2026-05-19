@@ -301,16 +301,19 @@ export default function SettingsPage() {
     if (!config) return;
     const provider = config.ai.provider || 'gemini';
     const apiKey = provider === 'openai' ? (config.ai.openaiApiKey || '') : provider === 'claude' ? (config.ai.claudeApiKey || '') : (config.ai.apiKey || '');
-    if (!apiKey.trim()) {
+    if (provider !== 'ollama' && !apiKey.trim()) {
       setAiTestStatus({ state: 'error', message: 'Paste an API key first.' });
       return;
     }
     setAiTestStatus({ state: 'testing' });
+    const body = provider === 'ollama'
+      ? JSON.stringify({ provider, baseUrl: config.ai.ollamaBaseUrl || 'http://localhost:11434', model: config.ai.model })
+      : JSON.stringify({ provider, apiKey, model: config.ai.model });
     try {
       const res = await fetch('/api/ai/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, apiKey, model: config.ai.model }),
+        body,
       });
       const data = await res.json();
       if (!res.ok || data?.error) {
@@ -428,6 +431,7 @@ export default function SettingsPage() {
     switch (provider) {
       case 'openai': return config.ai.openaiApiKey || '';
       case 'claude': return config.ai.claudeApiKey || '';
+      case 'ollama': return config.ai.ollamaBaseUrl || '';
       default: return config.ai.apiKey || '';
     }
   }, [config]);
@@ -442,6 +446,9 @@ export default function SettingsPage() {
       case 'claude':
         setConfig({ ...config, ai: { ...config.ai, claudeApiKey: value } });
         break;
+      case 'ollama':
+        setConfig({ ...config, ai: { ...config.ai, ollamaBaseUrl: value } });
+        break;
       default:
         setConfig({ ...config, ai: { ...config.ai, apiKey: value } });
     }
@@ -453,6 +460,7 @@ export default function SettingsPage() {
     switch (provider) {
       case 'openai': return 'sk-...';
       case 'claude': return 'sk-ant-...';
+      case 'ollama': return 'http://localhost:11434';
       default: return 'AIza...';
     }
   }, [config]);
@@ -463,13 +471,14 @@ export default function SettingsPage() {
     switch (provider) {
       case 'openai': return 'OpenAI API Key';
       case 'claude': return 'Claude API Key';
+      case 'ollama': return 'Ollama Base URL';
       default: return 'Gemini API Key';
     }
   }, [config]);
 
   useEffect(() => {
     setAiTestStatus({ state: 'idle' });
-  }, [config?.ai?.provider, config?.ai?.apiKey, config?.ai?.openaiApiKey, config?.ai?.claudeApiKey, config?.ai?.model]);
+  }, [config?.ai?.provider, config?.ai?.apiKey, config?.ai?.openaiApiKey, config?.ai?.claudeApiKey, config?.ai?.ollamaBaseUrl, config?.ai?.model]);
 
   // Reset host test status when host config changes significantly
   useEffect(() => {
@@ -671,8 +680,8 @@ export default function SettingsPage() {
                 <select
                   value={provider}
                   onChange={(e) => {
-                    const newProvider = e.target.value as 'gemini' | 'openai' | 'claude';
-                    const model = newProvider === 'openai' ? 'gpt-4o' : newProvider === 'claude' ? 'claude-sonnet-4-20250514' : 'gemini-flash-latest';
+                    const newProvider = e.target.value as 'gemini' | 'openai' | 'claude' | 'ollama';
+                    const model = newProvider === 'openai' ? 'gpt-4o' : newProvider === 'claude' ? 'claude-sonnet-4-20250514' : newProvider === 'ollama' ? 'llama3.2' : 'gemini-flash-latest';
                     setConfig({
                       ...config,
                       ai: {
@@ -687,6 +696,7 @@ export default function SettingsPage() {
                   <option value="gemini">Google Gemini</option>
                   <option value="openai">OpenAI</option>
                   <option value="claude">Anthropic Claude</option>
+                  <option value="ollama">Ollama (Local)</option>
                 </select>
               </div>
 
@@ -695,14 +705,14 @@ export default function SettingsPage() {
                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">{getApiKeyLabel()}</label>
                 <div className="relative">
                   <input
-                    type="password"
+                    type={provider === 'ollama' ? 'text' : 'password'}
                     value={getCurrentApiKey()}
                     onChange={(e) => setCurrentApiKey(e.target.value)}
                     placeholder={getApiKeyPlaceholder()}
-                    className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md px-3 py-2 pl-9 pr-9 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none"
+                    className={`w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-500 outline-none ${provider !== 'ollama' ? 'pl-9 pr-9' : ''}`}
                   />
-                  <Key className="w-4 h-4 text-zinc-500 absolute left-3 top-2.5" />
-                  {getCurrentApiKey() && (
+                  {provider !== 'ollama' && <Key className="w-4 h-4 text-zinc-500 absolute left-3 top-2.5" />}
+                  {provider !== 'ollama' && getCurrentApiKey() && (
                     <button
                       type="button"
                       onClick={() => setCurrentApiKey('')}
@@ -720,7 +730,7 @@ export default function SettingsPage() {
                     disabled={aiTestStatus.state === 'testing' || config.ai.enabled === false}
                     className="text-xs px-3 py-1.5 rounded-md border border-indigo-200 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 disabled:opacity-50 transition-colors"
                   >
-                    {aiTestStatus.state === 'testing' ? 'Testing...' : 'Test key'}
+                    {aiTestStatus.state === 'testing' ? 'Testing...' : provider === 'ollama' ? 'Test connection' : 'Test key'}
                   </button>
                   {aiTestStatus.state !== 'idle' && (
                     <span className={`text-xs ${aiTestStatus.state === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -773,6 +783,17 @@ export default function SettingsPage() {
                         <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
                       </optgroup>
                     </>
+                  )}
+                  {provider === 'ollama' && (
+                    <optgroup label="Popular Models (must be pulled locally)">
+                      <option value="llama3.2">llama3.2</option>
+                      <option value="llama3.1">llama3.1</option>
+                      <option value="mistral">mistral</option>
+                      <option value="phi4">phi4</option>
+                      <option value="gemma3">gemma3</option>
+                      <option value="qwen2.5">qwen2.5</option>
+                      <option value="deepseek-r1">deepseek-r1</option>
+                    </optgroup>
                   )}
                 </select>
               </div>

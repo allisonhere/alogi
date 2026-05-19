@@ -42,6 +42,7 @@ describe('saveConfig permissions', () => {
         apiKey: 'secret',
         openaiApiKey: '',
         claudeApiKey: '',
+        ollamaBaseUrl: 'http://localhost:11434',
         model: 'gemini-flash-latest',
       },
     };

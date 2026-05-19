@@ -105,6 +105,20 @@ Answer the user's questions based strictly on these logs. Be technical, precise,
         return NextResponse.json({ role: 'assistant', content: text });
     }
 
+    // --- OLLAMA HANDLER ---
+    if (provider === 'ollama') {
+        const baseURL = (config.ai.ollamaBaseUrl || 'http://localhost:11434') + '/v1';
+        const openai = new OpenAI({ baseURL, apiKey: 'ollama' });
+        const completion = await openai.chat.completions.create({
+            messages: [
+                { role: "system", content: systemPrompt },
+                ...messages
+            ],
+            model: config.ai.model || "llama3.2",
+        });
+        return NextResponse.json({ role: 'assistant', content: completion.choices[0]?.message?.content || 'No response' });
+    }
+
     return NextResponse.json({ error: 'Invalid AI Provider' }, { status: 400 });
 
   } catch (error) {

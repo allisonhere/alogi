@@ -14,6 +14,7 @@ const existingConfig: AlogiConfig = {
     apiKey: 'gemini-secret',
     openaiApiKey: 'openai-secret',
     claudeApiKey: 'claude-secret',
+    ollamaBaseUrl: 'http://localhost:11434',
     model: 'gpt-4o',
   },
   hosts: [

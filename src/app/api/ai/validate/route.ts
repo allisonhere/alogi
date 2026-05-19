@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 
-type Provider = 'gemini' | 'openai' | 'claude';
+type Provider = 'gemini' | 'openai' | 'claude' | 'ollama';
 
 const extractHumanMessage = (error: unknown) => {
   if (!error) return 'Validation failed.';
@@ -49,16 +49,17 @@ export async function POST(request: Request) {
       provider?: Provider;
       apiKey?: string;
       model?: string;
+      baseUrl?: string;
     };
 
     const provider = body?.provider;
     const apiKey = typeof body?.apiKey === 'string' ? body.apiKey.trim() : '';
     const model = typeof body?.model === 'string' ? body.model.trim() : '';
 
-    if (!provider || (provider !== 'gemini' && provider !== 'openai' && provider !== 'claude')) {
+    if (!provider || (provider !== 'gemini' && provider !== 'openai' && provider !== 'claude' && provider !== 'ollama')) {
       return NextResponse.json({ error: 'Provider is required.' }, { status: 400 });
     }
-    if (!apiKey) {
+    if (provider !== 'ollama' && !apiKey) {
       return NextResponse.json({ error: 'API key is required.' }, { status: 400 });
     }
 
@@ -74,6 +75,13 @@ export async function POST(request: Request) {
 
     if (provider === 'openai') {
       const openai = new OpenAI({ apiKey });
+      await openai.models.list();
+      return NextResponse.json({ ok: true });
+    }
+
+    if (provider === 'ollama') {
+      const baseURL = (typeof body?.baseUrl === 'string' ? body.baseUrl.trim() : 'http://localhost:11434') + '/v1';
+      const openai = new OpenAI({ baseURL, apiKey: 'ollama' });
       await openai.models.list();
       return NextResponse.json({ ok: true });
     }

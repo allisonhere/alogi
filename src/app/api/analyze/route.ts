@@ -200,6 +200,26 @@ export async function POST(request: Request) {
         }
     }
 
+    // --- OLLAMA HANDLER ---
+    if (provider === 'ollama') {
+        const baseURL = (config.ai.ollamaBaseUrl || 'http://localhost:11434') + '/v1';
+        const openai = new OpenAI({ baseURL, apiKey: 'ollama' });
+        const completion = await openai.chat.completions.create({
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: processedContent }
+            ],
+            model: config.ai.model || "llama3.2",
+        });
+        const text = completion.choices[0]?.message?.content || "{}";
+        const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        try {
+            return NextResponse.json(JSON.parse(jsonStr));
+        } catch {
+            return NextResponse.json({ summary: jsonStr, key_findings: [], recommendation: '', severity: 'low' });
+        }
+    }
+
     return NextResponse.json({ error: 'Invalid AI Provider' }, { status: 400 });
 
   } catch (error) {

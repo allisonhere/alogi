@@ -28,10 +28,11 @@ export interface AlogiConfig {
   };
   ai: {
     enabled?: boolean;
-    provider: 'gemini' | 'openai' | 'claude';
+    provider: 'gemini' | 'openai' | 'claude' | 'ollama';
     apiKey: string;       // Gemini
     openaiApiKey: string; // OpenAI
     claudeApiKey: string; // Claude
+    ollamaBaseUrl: string; // Ollama
     model: string;
   };
   hosts: HostConfig[];
@@ -51,6 +52,7 @@ const DEFAULT_CONFIG: AlogiConfig = {
     apiKey: process.env.GEMINI_API_KEY || '',
     openaiApiKey: process.env.OPENAI_API_KEY || '',
     claudeApiKey: process.env.ANTHROPIC_API_KEY || '',
+    ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
     model: 'gemini-flash-latest',
   },
   hosts: [],
