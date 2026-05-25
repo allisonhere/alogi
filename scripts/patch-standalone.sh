@@ -5,6 +5,7 @@ set -e
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SOURCE_NEXT_PACKAGE="$PROJECT_DIR/node_modules/next"
+PUBLIC_DIR="$PROJECT_DIR/public"
 STANDALONE_ROOTS=(
     "$PROJECT_DIR/.next/standalone"
     "$PROJECT_DIR/.next/standalone/Projects/alogi"
@@ -49,6 +50,18 @@ copy_package() {
     fi
 }
 
+copy_public_assets() {
+    local standalone_root="$1"
+    local target_public="$standalone_root/public"
+
+    if [ ! -d "$PUBLIC_DIR" ]; then
+        return
+    fi
+
+    mkdir -p "$target_public"
+    cp -R "$PUBLIC_DIR"/. "$target_public/"
+}
+
 for standalone_root in "${STANDALONE_ROOTS[@]}"; do
     standalone_node_modules="$standalone_root/node_modules"
     standalone_next_package="$standalone_root/node_modules/next"
@@ -64,6 +77,7 @@ for standalone_root in "${STANDALONE_ROOTS[@]}"; do
     for package_name in "${NEXT_RUNTIME_PACKAGES[@]}"; do
         copy_package "$package_name" "$standalone_node_modules"
     done
+    copy_public_assets "$standalone_root"
 done
 
 if [ "$patched" -eq 0 ]; then

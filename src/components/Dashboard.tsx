@@ -385,17 +385,65 @@ export default function Dashboard() {
         }
     };
 
-    // Initial load
-    fetchContent(true);
-
-    let interval: NodeJS.Timeout | undefined;
     if (isLive) {
-        interval = setInterval(() => fetchContent(false), 2000);
+      setLoadingContent(true);
+      setContent('');
+      const params = new URLSearchParams({
+        host,
+        file,
+        live: '1',
+        t: String(Date.now()),
+      });
+      if (category) {
+        params.set('category', category);
+      }
+
+      let buffer = '';
+      const events = new EventSource(`/api/content?${params.toString()}`);
+      events.addEventListener('chunk', (event) => {
+        try {
+          buffer += JSON.parse((event as MessageEvent<string>).data) as string;
+        } catch {
+          buffer += (event as MessageEvent<string>).data;
+        }
+        setContent(buffer);
+        setLoadingContent(false);
+      });
+      const closeEvents = () => {
+        events.close();
+        setLoadingContent(false);
+      };
+      events.addEventListener('fatal', (event) => {
+        const message = (event as MessageEvent<string>).data;
+        if (message) {
+          try {
+            setContent(`Failed to stream content: ${JSON.parse(message)}`);
+          } catch {
+            setContent(`Failed to stream content: ${message}`);
+          }
+        }
+        closeEvents();
+      });
+      events.addEventListener('done', () => {
+        closeEvents();
+      });
+      events.onerror = () => {
+        // Do not let EventSource reconnect forever if the server-side follow
+        // command exits. The server sends `fatal`/`done` for intentional
+        // termination; this handles network/protocol failures.
+        closeEvents();
+      };
+
+      return () => {
+        controller.abort();
+        events.close();
+      };
     }
+
+    fetchContent(true);
 
     return () => {
       controller.abort();
-      clearInterval(interval);
     };
   }, [selectedHost, selectedFile, selectedCategory, isLive]);
 

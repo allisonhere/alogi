@@ -23,7 +23,6 @@ interface Capabilities {
 
 const DISCOVERY_SSH_OPTIONS = {
   commandTimeoutMs: 5000,
-  readyTimeoutMs: 5000,
 };
 
 async function probeJournal(config: SSHHostConfig): Promise<CategorizedFile[]> {
