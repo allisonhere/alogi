@@ -3,16 +3,30 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-T7B2LQ3RVT"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-T7B2LQ3RVT');
+    </script>
     <title>Alogi — AI Summary Log Viewer for Linux, Docker, SSH &amp; systemd</title>
     <meta name="description" content="Alogi is a local-first AI summary log viewer that tails logs, analyzes errors, explains root causes, and helps debug Linux, Docker, SSH, and systemd logs." />
+    <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://alliehere.com/alogi/" />
-    <meta property="og:title" content="Alogi — AI Summary Log Viewer" />
-    <meta property="og:description" content="Local-first AI log viewer for Linux, Docker, SSH, and systemd logs." />
+    <meta property="og:title" content="Alogi — AI Summary Log Viewer for Linux, Docker, SSH &amp; systemd" />
+    <meta property="og:description" content="Local-first AI log viewer that tails logs, analyzes errors, and explains root causes for Linux, Docker, SSH, and systemd." />
     <meta property="og:url" content="https://alliehere.com/alogi/" />
     <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://alliehere.com/alogi/screenshot.png" />
+    <meta property="og:image:alt" content="Alogi AI log viewer showing live log tailing with AI analysis panel" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Alogi — AI Summary Log Viewer" />
-    <meta name="twitter:description" content="Local-first AI log viewer for Linux, Docker, SSH, and systemd logs." />
+    <meta name="twitter:title" content="Alogi — AI Summary Log Viewer for Linux, Docker, SSH &amp; systemd" />
+    <meta name="twitter:description" content="Local-first AI log viewer that tails logs, analyzes errors, and explains root causes for Linux, Docker, SSH, and systemd." />
+    <meta name="twitter:image" content="https://alliehere.com/alogi/screenshot.png" />
+    <meta name="twitter:image:alt" content="Alogi AI log viewer showing live log tailing with AI analysis panel" />
+    <meta name="theme-color" content="#050507" />
     <link rel="icon" href="logo.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -25,7 +39,20 @@
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Linux",
         "url": "https://alliehere.com/alogi/",
-        "description": "Alogi is a local-first AI summary log viewer that tails logs, analyzes errors, explains root causes, and helps debug Linux, Docker, SSH, and systemd logs."
+        "description": "Alogi is a local-first AI summary log viewer that tails logs, analyzes errors, explains root causes, and helps debug Linux, Docker, SSH, and systemd logs.",
+        "downloadUrl": "https://github.com/allisonhere/alogi/releases/latest",
+        "screenshot": "https://alliehere.com/alogi/screenshot.png",
+        "featureList": "Live log tailing, AI log analysis, systemd journal browser, Docker log viewer, SSH remote logs, severity highlighting, JSON pretty-printing",
+        "author": {
+          "@type": "Person",
+          "name": "Allison",
+          "url": "https://github.com/allisonhere"
+        },
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
       }
     </script>
     <script type="application/ld+json">
@@ -356,10 +383,7 @@
         <div class="hero-badge">Open Source &middot; Linux Desktop</div>
         <h1>AI Summary Log Viewer for Linux, Docker, SSH, and systemd</h1>
         <p class="lead">
-          A local-first log viewer that connects to files, systemd journal, SSH hosts, and Docker &mdash; then uses AI to tell you what went wrong.
-        </p>
-        <p class="lead">
-          Alogi is an AI summary log viewer that turns noisy logs into plain-English explanations, root-cause hints, and actionable fixes. It works with local files, systemd journal, Docker logs, and remote SSH hosts.
+          Alogi connects to local files, systemd journal, Docker, and remote SSH hosts &mdash; then uses AI to turn noisy logs into plain-English explanations, root-cause hints, and actionable fixes.
         </p>
         <div class="hero-actions">
           <a class="btn btn-primary" href="https://github.com/allisonhere/alogi/releases/latest">Download Latest Release</a>

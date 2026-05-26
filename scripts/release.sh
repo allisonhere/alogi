@@ -881,6 +881,8 @@ publish_website() {
   chmod 755 "$stage_dir"
   cp "$source_dir/v2.html" "$stage_dir/index.html"
   cp "$source_dir/logo.svg" "$source_dir/screenshot.png" "$stage_dir/"
+  [ -f "$source_dir/robots.txt" ] && cp "$source_dir/robots.txt" "$stage_dir/"
+  [ -f "$source_dir/sitemap.xml" ] && cp "$source_dir/sitemap.xml" "$stage_dir/"
 
   print_substep "Publishing landing page to https://alliehere.com/alogi/..."
   if rsync -az --chmod=D755,F644 "$stage_dir/" "$WEBSITE_REMOTE:$WEBSITE_PATH/"; then
