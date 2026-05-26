@@ -16,6 +16,8 @@ PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DIST_DIR="$PROJECT_DIR/dist-electron"
 ARCH_DIR="$PROJECT_DIR/packaging/arch"
 AUR_DIR="$HOME/aur-alogi"
+WEBSITE_REMOTE="alliehere.com"
+WEBSITE_PATH="/home/allieher/www/alogi"
 
 # Timing
 STEP_START=0
@@ -841,12 +843,52 @@ PY
 }
 
 # ============================================================================
+# WEBSITE PUBLISHING
+# ============================================================================
+
+publish_website() {
+  local source_dir="$PROJECT_DIR/docs"
+  local stage_dir
+  local required_file
+
+  if ! command -v rsync &>/dev/null; then
+    print_error "rsync not installed"
+    return 1
+  fi
+
+  for required_file in v2.html logo.svg screenshot.png; do
+    if [ ! -f "$source_dir/$required_file" ]; then
+      print_error "Website source file not found: $source_dir/$required_file"
+      return 1
+    fi
+  done
+
+  stage_dir=$(mktemp -d)
+  chmod 755 "$stage_dir"
+  cp "$source_dir/v2.html" "$stage_dir/index.html"
+  cp "$source_dir/logo.svg" "$source_dir/screenshot.png" "$stage_dir/"
+
+  print_substep "Publishing landing page to https://alliehere.com/alogi/..."
+  if rsync -az --chmod=D755,F644 "$stage_dir/" "$WEBSITE_REMOTE:$WEBSITE_PATH/"; then
+    rm -rf "$stage_dir"
+    print_success "Website published"
+    echo -e "  ${GREEN}→${NC} https://alliehere.com/alogi/"
+    return 0
+  else
+    local exit_code=$?
+    rm -rf "$stage_dir"
+    print_error "Website publish failed"
+    return "$exit_code"
+  fi
+}
+
+# ============================================================================
 # FULL RELEASE WORKFLOW
 # ============================================================================
 
 full_release() {
   TOTAL_START=$(date +%s)
-  local total_steps=9
+  local total_steps=10
 
   print_step 1 $total_steps "Preflight checks"
   preflight_release
@@ -875,6 +917,9 @@ full_release() {
   print_step 9 $total_steps "Updating AUR"
   update_aur
 
+  print_step 10 $total_steps "Publishing website"
+  publish_website
+
   # Summary
   local total_time=$(($(date +%s) - TOTAL_START))
   echo ""
@@ -890,6 +935,7 @@ full_release() {
   echo -e "  ${BOLD}Links:${NC}"
   echo -e "  ${CYAN}→${NC} GitHub: https://github.com/allisonhere/alogi/releases/tag/v$VERSION"
   echo -e "  ${CYAN}→${NC} AUR:    https://aur.archlinux.org/packages/alogi"
+  echo -e "  ${CYAN}→${NC} Website: https://alliehere.com/alogi/"
   echo ""
 }
 
@@ -935,6 +981,7 @@ main_menu() {
     echo "   5) Build Arch only"
     echo "   6) Clean builds"
     echo "  10) Clear yay cache (alogi)"
+    echo "  11) Publish website"
     echo ""
     echo -e "  ${BOLD}${CYAN}Release${NC}"
     echo -e "  ${DIM}─────────────────────────────${NC}"
@@ -945,7 +992,7 @@ main_menu() {
     echo "   0) Exit"
     echo ""
 
-    read -p "  Choose [0-10]: " choice
+    read -p "  Choose [0-11]: " choice
 
     case $choice in
     1) bump_version ;;
@@ -972,6 +1019,7 @@ main_menu() {
       ;;
     6) clean_builds ;;
     10) clear_yay_cache ;;
+    11) publish_website ;;
     7) create_github_release ;;
     8) update_aur ;;
     9) full_release ;;

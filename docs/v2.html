@@ -3,11 +3,72 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Alogi — AI-Powered Log Viewer</title>
+    <title>Alogi — AI Summary Log Viewer for Linux, Docker, SSH &amp; systemd</title>
+    <meta name="description" content="Alogi is a local-first AI summary log viewer that tails logs, analyzes errors, explains root causes, and helps debug Linux, Docker, SSH, and systemd logs." />
+    <link rel="canonical" href="https://alliehere.com/alogi/" />
+    <meta property="og:title" content="Alogi — AI Summary Log Viewer" />
+    <meta property="og:description" content="Local-first AI log viewer for Linux, Docker, SSH, and systemd logs." />
+    <meta property="og:url" content="https://alliehere.com/alogi/" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Alogi — AI Summary Log Viewer" />
+    <meta name="twitter:description" content="Local-first AI log viewer for Linux, Docker, SSH, and systemd logs." />
     <link rel="icon" href="logo.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Alogi",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Linux",
+        "url": "https://alliehere.com/alogi/",
+        "description": "Alogi is a local-first AI summary log viewer that tails logs, analyzes errors, explains root causes, and helps debug Linux, Docker, SSH, and systemd logs."
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "url": "https://alliehere.com/alogi/",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is Alogi?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Alogi is a local-first AI summary log viewer for Linux and DevOps troubleshooting."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can Alogi summarize logs with AI?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Alogi can analyze selected log context and generate AI summaries, likely causes, and recommended next steps."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What logs does Alogi support?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Alogi supports local log files, systemd journal, Docker logs, and remote logs over SSH."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does Alogi require cloud log storage?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Alogi is local-first and is designed to help inspect and summarize logs without requiring hosted log storage."
+            }
+          }
+        ]
+      }
+    </script>
     <style>
       :root {
         --bg: #050507;
@@ -293,9 +354,12 @@
     <section class="hero">
       <div class="wrap">
         <div class="hero-badge">Open Source &middot; Linux Desktop</div>
-        <h1>Logs are noisy. Get answers instead.</h1>
+        <h1>AI Summary Log Viewer for Linux, Docker, SSH, and systemd</h1>
         <p class="lead">
           A local-first log viewer that connects to files, systemd journal, SSH hosts, and Docker &mdash; then uses AI to tell you what went wrong.
+        </p>
+        <p class="lead">
+          Alogi is an AI summary log viewer that turns noisy logs into plain-English explanations, root-cause hints, and actionable fixes. It works with local files, systemd journal, Docker logs, and remote SSH hosts.
         </p>
         <div class="hero-actions">
           <a class="btn btn-primary" href="https://github.com/allisonhere/alogi/releases/latest">Download Latest Release</a>
@@ -455,6 +519,33 @@ sudo pacman -U alogi-arch.pkg.tar.zst</code></pre>
             <p>Open an issue with your distro, architecture, and relevant logs.</p>
           </div>
           <a class="btn btn-sm" href="https://github.com/allisonhere/alogi/issues">Open an issue</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq">
+      <div class="wrap">
+        <div class="section-header">
+          <div class="section-label">FAQ</div>
+          <h2 class="section-title">Frequently Asked Questions</h2>
+        </div>
+        <div class="install-grid">
+          <div class="install-card">
+            <h3>What is Alogi?</h3>
+            <p>Alogi is a local-first AI summary log viewer for Linux and DevOps troubleshooting.</p>
+          </div>
+          <div class="install-card">
+            <h3>Can Alogi summarize logs with AI?</h3>
+            <p>Yes. Alogi can analyze selected log context and generate AI summaries, likely causes, and recommended next steps.</p>
+          </div>
+          <div class="install-card">
+            <h3>What logs does Alogi support?</h3>
+            <p>Alogi supports local log files, systemd journal, Docker logs, and remote logs over SSH.</p>
+          </div>
+          <div class="install-card">
+            <h3>Does Alogi require cloud log storage?</h3>
+            <p>No. Alogi is local-first and is designed to help inspect and summarize logs without requiring hosted log storage.</p>
+          </div>
         </div>
       </div>
     </section>

@@ -259,7 +259,7 @@ const createAppMenu = () => Menu.buildFromTemplate([
     submenu: [
       {
         label: 'Alogi Website',
-        click: () => openExternal('https://allisonhere.github.io/alogi/')
+        click: () => openExternal('https://alliehere.com/alogi/')
       }
     ]
   }

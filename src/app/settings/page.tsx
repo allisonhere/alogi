@@ -1393,7 +1393,7 @@ export default function SettingsPage() {
                         GitHub
                       </a>
                       <a
-                        href="https://allisonhere.github.io/alogi/"
+                        href="https://alliehere.com/alogi/"
                         target="_blank"
                         rel="noreferrer"
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"

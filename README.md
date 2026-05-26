@@ -42,7 +42,7 @@
 
 ### ✅ Prebuilt apps (recommended)
 
-- Install page: https://allisonhere.github.io/alogi/
+- Install page: https://alliehere.com/alogi/
 - Latest release assets: https://github.com/allisonhere/alogi/releases/latest
 - Direct downloads:
   - Ubuntu deb: https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb
