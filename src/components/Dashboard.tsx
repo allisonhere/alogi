@@ -7,6 +7,7 @@ import { LogViewer } from './LogViewer';
 import { OnboardingOverlay } from './OnboardingOverlay';
 import { useDialog } from './Dialog';
 import { debug } from '@/lib/debug';
+import { getContentRefreshMode } from '@/lib/contentRefreshMode';
 
 interface FileInfo {
   name: string;
@@ -345,6 +346,7 @@ export default function Dashboard() {
     const host = selectedHost;
     const file = selectedFile;
     const category = selectedCategory;
+    const refreshMode = getContentRefreshMode(host, isLive);
 
     const fetchContent = async (showLoading = true) => {
         if (showLoading) setLoadingContent(true);
@@ -385,7 +387,7 @@ export default function Dashboard() {
         }
     };
 
-    if (isLive) {
+    if (refreshMode === 'stream') {
       setLoadingContent(true);
       setContent('');
       const params = new URLSearchParams({
@@ -442,8 +444,14 @@ export default function Dashboard() {
 
     fetchContent(true);
 
+    let interval: NodeJS.Timeout | undefined;
+    if (refreshMode === 'poll') {
+      interval = setInterval(() => fetchContent(false), 2000);
+    }
+
     return () => {
       controller.abort();
+      clearInterval(interval);
     };
   }, [selectedHost, selectedFile, selectedCategory, isLive]);
 
