@@ -311,21 +311,31 @@ wait_for_release_workflow() {
   local tag="$1"
   local commit_sha
   commit_sha=$(git -C "$PROJECT_DIR" rev-list -n1 "$tag")
-  local timeout_seconds=1800
-  local poll_interval=10
+  local timeout_seconds="${RELEASE_WORKFLOW_TIMEOUT_SECONDS:-1800}"
+  local start_timeout_seconds="${RELEASE_WORKFLOW_START_TIMEOUT_SECONDS:-60}"
+  local poll_interval="${RELEASE_WORKFLOW_POLL_INTERVAL_SECONDS:-10}"
   local waited=0
+  local dispatched=0
 
   print_substep "Waiting for release workflow (tag: $tag, commit: ${commit_sha:0:8})..."
   while [ $waited -lt $timeout_seconds ]; do
     local run_meta
-    run_meta=$(gh run list \
+    local gh_error_file
+    gh_error_file=$(mktemp)
+    if ! run_meta=$(gh run list \
       --repo allisonhere/alogi \
       --workflow release.yml \
       --commit "$commit_sha" \
-      --event push \
       --limit 1 \
       --json databaseId,status,conclusion \
-      --jq 'if length == 0 then "" else "\(.[0].databaseId) \(.[0].status) \(.[0].conclusion)" end' 2>/dev/null || true)
+      --jq 'if length == 0 then "" else "\(.[0].databaseId) \(.[0].status) \(.[0].conclusion)" end' 2>"$gh_error_file"); then
+      print_error "Unable to query release workflow status"
+      sed -n '1,5p' "$gh_error_file"
+      rm -f "$gh_error_file"
+      return 1
+    fi
+    rm -f "$gh_error_file"
+
     local run_id=""
     local status=""
     local conclusion=""
@@ -341,6 +351,15 @@ wait_for_release_workflow() {
       print_error "Release workflow failed (run: $run_id, conclusion: $conclusion)"
       gh run view "$run_id" --repo allisonhere/alogi || true
       return 1
+    fi
+
+    if [ -z "$run_id" ] && [ "$dispatched" -eq 0 ] && [ "$waited" -ge "$start_timeout_seconds" ]; then
+      print_warning "No release workflow run appeared after ${start_timeout_seconds}s; dispatching $tag manually"
+      if ! gh workflow run release.yml --repo allisonhere/alogi --ref "$tag"; then
+        print_error "Failed to dispatch release workflow for $tag"
+        return 1
+      fi
+      dispatched=1
     fi
 
     sleep "$poll_interval"
