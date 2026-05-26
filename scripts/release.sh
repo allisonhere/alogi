@@ -28,11 +28,8 @@ TOTAL_START=0
 # ============================================================================
 
 print_header() {
-  clear
-  echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
-  echo -e "${BLUE}║${NC}             ${BOLD}${CYAN}Alogi Release Builder${NC}                          ${BLUE}║${NC}"
-  echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
-  echo ""
+  printf '\033[2J\033[H'
+  printf '\n  \033[1m\033[36mAlogi Release Builder\033[0m\n\n'
 }
 
 print_step() {
@@ -40,10 +37,12 @@ print_step() {
   local total=$2
   local msg=$3
   STEP_START=$(date +%s)
+  local sep
+  sep=$(make_separator '━')
   echo ""
-  echo -e "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo -e "${MAGENTA}${sep}${NC}"
   echo -e "${BOLD}${CYAN}[$step/$total]${NC} ${BOLD}$msg${NC}"
-  echo -e "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo -e "${MAGENTA}${sep}${NC}"
 }
 
 print_substep() {
@@ -51,8 +50,12 @@ print_substep() {
 }
 
 print_success() {
-  local elapsed=$(($(date +%s) - STEP_START))
-  echo -e "  ${GREEN}✓${NC} $1 ${DIM}(${elapsed}s)${NC}"
+  if [ "$STEP_START" -gt 0 ]; then
+    local elapsed=$(($(date +%s) - STEP_START))
+    echo -e "  ${GREEN}✓${NC} $1 ${DIM}(${elapsed}s)${NC}"
+  else
+    echo -e "  ${GREEN}✓${NC} $1"
+  fi
 }
 
 print_error() {
@@ -85,6 +88,16 @@ format_time() {
   else
     echo "${seconds}s"
   fi
+}
+
+make_separator() {
+  local char="${1:-━}"
+  local w
+  w=$(tput cols 2>/dev/null || echo 80)
+  [ "$w" -gt 80 ] && w=80
+  local sep="" i
+  for ((i = 0; i < w; i++)); do sep+="$char"; done
+  printf '%s' "$sep"
 }
 
 trim() {
@@ -850,6 +863,7 @@ publish_website() {
   local source_dir="$PROJECT_DIR/docs"
   local stage_dir
   local required_file
+  STEP_START=$(date +%s)
 
   if ! command -v rsync &>/dev/null; then
     print_error "rsync not installed"
@@ -923,9 +937,11 @@ full_release() {
   # Summary
   local total_time=$(($(date +%s) - TOTAL_START))
   echo ""
-  echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  local sep
+  sep=$(make_separator '━')
+  echo -e "${GREEN}${sep}${NC}"
   echo -e "${BOLD}${GREEN}  ✓ Release v$VERSION complete!${NC} ${DIM}($(format_time $total_time))${NC}"
-  echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo -e "${GREEN}${sep}${NC}"
   echo ""
   echo -e "  ${BOLD}Artifacts:${NC}"
   print_file_size "$DIST_DIR/Alogi-amd64.deb"
@@ -947,23 +963,22 @@ show_status() {
   read_version
   suggest_next_patch
 
-  echo -e "  ${BOLD}Version:${NC}  ${GREEN}v$VERSION${NC}"
-  [ -n "$NEXT_VERSION" ] && echo -e "  ${BOLD}Next:${NC}     ${DIM}v$NEXT_VERSION${NC}"
-
-  # Disk space
-  local avail=$(df -BG "$PROJECT_DIR" | tail -1 | awk '{print $4}' | sed 's/G//')
+  local avail
+  avail=$(df -BG "$PROJECT_DIR" | tail -1 | awk '{print $4}' | sed 's/G//')
   local disk_color=$GREEN
   [ "$avail" -lt 10 ] && disk_color=$YELLOW
   [ "$avail" -lt 5 ] && disk_color=$RED
-  echo -e "  ${BOLD}Disk:${NC}     ${disk_color}${avail}GB free${NC}"
 
-  # Git status
-  local changes=$(git -C "$PROJECT_DIR" status --porcelain | wc -l)
+  local changes
+  changes=$(git -C "$PROJECT_DIR" status --porcelain | wc -l)
+  local git_info
   if [ "$changes" -gt 0 ]; then
-    echo -e "  ${BOLD}Git:${NC}      ${YELLOW}$changes uncommitted change(s)${NC}"
+    git_info="${YELLOW}$changes change(s)${NC}"
   else
-    echo -e "  ${BOLD}Git:${NC}      ${GREEN}clean${NC}"
+    git_info="${GREEN}clean${NC}"
   fi
+
+  echo -e "  ${GREEN}v$VERSION${NC}  ${DIM}|${NC}  git: ${git_info}  ${DIM}|${NC}  disk: ${disk_color}${avail}GB${NC}"
   echo ""
 }
 
@@ -972,22 +987,18 @@ main_menu() {
     print_header
     show_status
 
-    echo -e "  ${BOLD}${CYAN}Actions${NC}"
-    echo -e "  ${DIM}─────────────────────────────${NC}"
     echo "   1) Bump version"
     echo "   2) Commit changes"
     echo "   3) Build all (deb + Arch)"
     echo "   4) Build deb only"
     echo "   5) Build Arch only"
     echo "   6) Clean builds"
-    echo "  10) Clear yay cache (alogi)"
-    echo "  11) Publish website"
+    echo "   7) Clear yay cache"
     echo ""
-    echo -e "  ${BOLD}${CYAN}Release${NC}"
-    echo -e "  ${DIM}─────────────────────────────${NC}"
-    echo "   7) GitHub release only"
-    echo "   8) AUR update only"
-    echo -e "   9) ${GREEN}Full release (recommended)${NC}"
+    echo "   8) GitHub release only"
+    echo "   9) AUR update only"
+    echo "  10) Full release"
+    echo "  11) Publish website"
     echo ""
     echo "   0) Exit"
     echo ""
@@ -1018,11 +1029,11 @@ main_menu() {
       build_arch
       ;;
     6) clean_builds ;;
-    10) clear_yay_cache ;;
+    7) clear_yay_cache ;;
     11) publish_website ;;
-    7) create_github_release ;;
-    8) update_aur ;;
-    9) full_release ;;
+    8) create_github_release ;;
+    9) update_aur ;;
+    10) full_release ;;
     0)
       echo -e "\n  ${DIM}Bye!${NC}\n"
       exit 0

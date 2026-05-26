@@ -90,4 +90,76 @@ describe('release.sh website publishing', () => {
     expect(result.status).toBe(23);
     expect(result.stdout).toContain('Website publish failed');
   });
+
+  it('starts a fresh timer for website publishing after an earlier menu action', () => {
+    const fixture = createReleaseFixture();
+
+    const result = spawnSync(
+      'bash',
+      ['-c', `source "${fixture.scriptPath}"; PROJECT_DIR="${fixture.projectDir}"; STEP_START=1; publish_website`],
+      {
+        cwd: fixture.projectDir,
+        encoding: 'utf-8',
+        env: {
+          ...process.env,
+          PATH: `${fixture.binDir}:${process.env.PATH}`,
+          RSYNC_LOG: fixture.rsyncLog,
+          UPLOAD_LIST: fixture.uploadList,
+          SOURCE_MODE_LOG: fixture.sourceModeLog,
+        },
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).not.toMatch(/\([1-9][0-9]{3,}s\)/);
+  });
+
+  it('does not show an invalid elapsed time when publishing directly from the menu', () => {
+    const fixture = createReleaseFixture();
+
+    const result = spawnSync(
+      'bash',
+      ['-c', `source "${fixture.scriptPath}"; STEP_START=0; print_success "Website published"`],
+      { cwd: fixture.projectDir, encoding: 'utf-8' },
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('Website published');
+    expect(result.stdout).not.toMatch(/\([0-9]+s\)/);
+  });
+
+  it('shows menu choices in numeric order', () => {
+    const fixture = createReleaseFixture();
+    writeFileSync(fixture.scriptPath, readFileSync(path.resolve('scripts/release.sh'), 'utf-8'));
+    writeFileSync(path.join(fixture.projectDir, 'package.json'), '{"version":"0.0.0"}\n');
+
+    const result = spawnSync('bash', [fixture.scriptPath], {
+      cwd: fixture.projectDir,
+      encoding: 'utf-8',
+      input: '0\n',
+      env: { ...process.env, TERM: 'xterm' },
+    });
+
+    expect(result.status).toBe(0);
+    const output = result.stdout.replace(/\u001b\[[0-9;]*m/g, '');
+    const labels = [
+      '1) Bump version',
+      '2) Commit changes',
+      '3) Build all (deb + Arch)',
+      '4) Build deb only',
+      '5) Build Arch only',
+      '6) Clean builds',
+      '7) Clear yay cache (alogi)',
+      '8) GitHub release only',
+      '9) AUR update only',
+      '10) Full release (recommended)',
+      '11) Publish website',
+    ];
+    let previousIndex = -1;
+    for (const label of labels) {
+      const currentIndex = output.indexOf(label);
+      expect(currentIndex).toBeGreaterThan(previousIndex);
+      previousIndex = currentIndex;
+    }
+  });
 });
