@@ -119,6 +119,38 @@ Answer the user's questions based strictly on these logs. Be technical, precise,
         return NextResponse.json({ role: 'assistant', content: completion.choices[0]?.message?.content || 'No response' });
     }
 
+    // --- DEEPSEEK HANDLER (OpenAI-compatible) ---
+    if (provider === 'deepseek') {
+        const apiKey = config.ai.deepseekApiKey || process.env.DEEPSEEK_API_KEY;
+        if (!apiKey) throw new Error("DeepSeek API Key missing");
+
+        const openai = new OpenAI({ baseURL: 'https://api.deepseek.com', apiKey });
+        const completion = await openai.chat.completions.create({
+            messages: [
+                { role: "system", content: systemPrompt },
+                ...messages
+            ],
+            model: config.ai.model || "deepseek-v4-flash",
+        });
+        return NextResponse.json({ role: 'assistant', content: completion.choices[0]?.message?.content || 'No response' });
+    }
+
+    // --- OPENROUTER HANDLER (OpenAI-compatible) ---
+    if (provider === 'openrouter') {
+        const apiKey = config.ai.openrouterApiKey || process.env.OPENROUTER_API_KEY;
+        if (!apiKey) throw new Error("OpenRouter API Key missing");
+
+        const openai = new OpenAI({ baseURL: 'https://openrouter.ai/api/v1', apiKey });
+        const completion = await openai.chat.completions.create({
+            messages: [
+                { role: "system", content: systemPrompt },
+                ...messages
+            ],
+            model: config.ai.model || "deepseek/deepseek-v4-flash",
+        });
+        return NextResponse.json({ role: 'assistant', content: completion.choices[0]?.message?.content || 'No response' });
+    }
+
     return NextResponse.json({ error: 'Invalid AI Provider' }, { status: 400 });
 
   } catch (error) {

@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 
-type Provider = 'gemini' | 'openai' | 'claude' | 'ollama';
+type Provider = 'gemini' | 'openai' | 'claude' | 'ollama' | 'deepseek' | 'openrouter';
 
 const extractHumanMessage = (error: unknown) => {
   if (!error) return 'Validation failed.';
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     const apiKey = typeof body?.apiKey === 'string' ? body.apiKey.trim() : '';
     const model = typeof body?.model === 'string' ? body.model.trim() : '';
 
-    if (!provider || (provider !== 'gemini' && provider !== 'openai' && provider !== 'claude' && provider !== 'ollama')) {
+    if (!provider || (provider !== 'gemini' && provider !== 'openai' && provider !== 'claude' && provider !== 'ollama' && provider !== 'deepseek' && provider !== 'openrouter')) {
       return NextResponse.json({ error: 'Provider is required.' }, { status: 400 });
     }
     if (provider !== 'ollama' && !apiKey) {
@@ -82,6 +82,18 @@ export async function POST(request: Request) {
     if (provider === 'ollama') {
       const baseURL = (typeof body?.baseUrl === 'string' ? body.baseUrl.trim() : 'http://localhost:11434') + '/v1';
       const openai = new OpenAI({ baseURL, apiKey: 'ollama' });
+      await openai.models.list();
+      return NextResponse.json({ ok: true });
+    }
+
+    if (provider === 'deepseek') {
+      const openai = new OpenAI({ baseURL: 'https://api.deepseek.com', apiKey });
+      await openai.models.list();
+      return NextResponse.json({ ok: true });
+    }
+
+    if (provider === 'openrouter') {
+      const openai = new OpenAI({ baseURL: 'https://openrouter.ai/api/v1', apiKey });
       await openai.models.list();
       return NextResponse.json({ ok: true });
     }

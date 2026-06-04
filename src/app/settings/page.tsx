@@ -300,7 +300,7 @@ export default function SettingsPage() {
   const handleTestKey = async () => {
     if (!config) return;
     const provider = config.ai.provider || 'gemini';
-    const apiKey = provider === 'openai' ? (config.ai.openaiApiKey || '') : provider === 'claude' ? (config.ai.claudeApiKey || '') : (config.ai.apiKey || '');
+    const apiKey = provider === 'openai' ? (config.ai.openaiApiKey || '') : provider === 'claude' ? (config.ai.claudeApiKey || '') : provider === 'deepseek' ? (config.ai.deepseekApiKey || '') : provider === 'openrouter' ? (config.ai.openrouterApiKey || '') : (config.ai.apiKey || '');
     if (provider !== 'ollama' && !apiKey.trim()) {
       setAiTestStatus({ state: 'error', message: 'Paste an API key first.' });
       return;
@@ -432,6 +432,8 @@ export default function SettingsPage() {
       case 'openai': return config.ai.openaiApiKey || '';
       case 'claude': return config.ai.claudeApiKey || '';
       case 'ollama': return config.ai.ollamaBaseUrl || '';
+      case 'deepseek': return config.ai.deepseekApiKey || '';
+      case 'openrouter': return config.ai.openrouterApiKey || '';
       default: return config.ai.apiKey || '';
     }
   }, [config]);
@@ -449,6 +451,12 @@ export default function SettingsPage() {
       case 'ollama':
         setConfig({ ...config, ai: { ...config.ai, ollamaBaseUrl: value } });
         break;
+      case 'deepseek':
+        setConfig({ ...config, ai: { ...config.ai, deepseekApiKey: value } });
+        break;
+      case 'openrouter':
+        setConfig({ ...config, ai: { ...config.ai, openrouterApiKey: value } });
+        break;
       default:
         setConfig({ ...config, ai: { ...config.ai, apiKey: value } });
     }
@@ -461,6 +469,8 @@ export default function SettingsPage() {
       case 'openai': return 'sk-...';
       case 'claude': return 'sk-ant-...';
       case 'ollama': return 'http://localhost:11434';
+      case 'deepseek': return 'sk-...';
+      case 'openrouter': return 'sk-or-...';
       default: return 'AIza...';
     }
   }, [config]);
@@ -472,13 +482,15 @@ export default function SettingsPage() {
       case 'openai': return 'OpenAI API Key';
       case 'claude': return 'Claude API Key';
       case 'ollama': return 'Ollama Base URL';
+      case 'deepseek': return 'DeepSeek API Key';
+      case 'openrouter': return 'OpenRouter API Key';
       default: return 'Gemini API Key';
     }
   }, [config]);
 
   useEffect(() => {
     setAiTestStatus({ state: 'idle' });
-  }, [config?.ai?.provider, config?.ai?.apiKey, config?.ai?.openaiApiKey, config?.ai?.claudeApiKey, config?.ai?.ollamaBaseUrl, config?.ai?.model]);
+  }, [config?.ai?.provider, config?.ai?.apiKey, config?.ai?.openaiApiKey, config?.ai?.claudeApiKey, config?.ai?.ollamaBaseUrl, config?.ai?.deepseekApiKey, config?.ai?.openrouterApiKey, config?.ai?.model]);
 
   // Reset host test status when host config changes significantly
   useEffect(() => {
@@ -654,6 +666,22 @@ export default function SettingsPage() {
                   >
                     Get Claude API key
                   </a>
+                  <a
+                    href="https://platform.deepseek.com/api_keys"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs px-3 py-1 rounded-full border border-indigo-200 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100/60 dark:hover:bg-indigo-500/10 transition-colors"
+                  >
+                    Get DeepSeek API key
+                  </a>
+                  <a
+                    href="https://openrouter.ai/keys"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs px-3 py-1 rounded-full border border-indigo-200 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100/60 dark:hover:bg-indigo-500/10 transition-colors"
+                  >
+                    Get OpenRouter API key
+                  </a>
                 </div>
               </div>
 
@@ -680,8 +708,8 @@ export default function SettingsPage() {
                 <select
                   value={provider}
                   onChange={(e) => {
-                    const newProvider = e.target.value as 'gemini' | 'openai' | 'claude' | 'ollama';
-                    const model = newProvider === 'openai' ? 'gpt-4o' : newProvider === 'claude' ? 'claude-sonnet-4-20250514' : newProvider === 'ollama' ? 'llama3.2' : 'gemini-flash-latest';
+                    const newProvider = e.target.value as 'gemini' | 'openai' | 'claude' | 'ollama' | 'deepseek' | 'openrouter';
+                    const model = newProvider === 'openai' ? 'gpt-4o' : newProvider === 'claude' ? 'claude-sonnet-4-20250514' : newProvider === 'ollama' ? 'llama3.2' : newProvider === 'deepseek' ? 'deepseek-v4-flash' : newProvider === 'openrouter' ? 'deepseek/deepseek-v4-flash' : 'gemini-flash-latest';
                     setConfig({
                       ...config,
                       ai: {
@@ -696,6 +724,8 @@ export default function SettingsPage() {
                   <option value="gemini">Google Gemini</option>
                   <option value="openai">OpenAI</option>
                   <option value="claude">Anthropic Claude</option>
+                  <option value="deepseek">DeepSeek</option>
+                  <option value="openrouter">OpenRouter</option>
                   <option value="ollama">Ollama (Local)</option>
                 </select>
               </div>
@@ -783,6 +813,27 @@ export default function SettingsPage() {
                         <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
                       </optgroup>
                     </>
+                  )}
+                  {provider === 'deepseek' && (
+                    <>
+                      <optgroup label="Recommended">
+                        <option value="deepseek-v4-flash">DeepSeek V4 Flash (Fast & Economical)</option>
+                        <option value="deepseek-v4-pro">DeepSeek V4 Pro (Most Capable)</option>
+                      </optgroup>
+                      <optgroup label="Legacy (aliases, deprecated 2026-07-24)">
+                        <option value="deepseek-chat">deepseek-chat (alias)</option>
+                        <option value="deepseek-reasoner">deepseek-reasoner (alias)</option>
+                      </optgroup>
+                    </>
+                  )}
+                  {provider === 'openrouter' && (
+                    <optgroup label="Popular Routes (vendor/model)">
+                      <option value="deepseek/deepseek-v4-flash">deepseek/deepseek-v4-flash</option>
+                      <option value="deepseek/deepseek-v4-pro">deepseek/deepseek-v4-pro</option>
+                      <option value="anthropic/claude-3.5-sonnet">anthropic/claude-3.5-sonnet</option>
+                      <option value="openai/gpt-4o">openai/gpt-4o</option>
+                      <option value="meta-llama/llama-3.1-70b-instruct">meta-llama/llama-3.1-70b-instruct</option>
+                    </optgroup>
                   )}
                   {provider === 'ollama' && (
                     <optgroup label="Popular Models (must be pulled locally)">

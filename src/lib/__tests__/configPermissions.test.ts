@@ -43,6 +43,8 @@ describe('saveConfig permissions', () => {
         openaiApiKey: '',
         claudeApiKey: '',
         ollamaBaseUrl: 'http://localhost:11434',
+        deepseekApiKey: '',
+        openrouterApiKey: '',
         model: 'gemini-flash-latest',
       },
     };

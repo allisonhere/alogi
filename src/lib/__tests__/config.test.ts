@@ -15,6 +15,8 @@ const existingConfig: AlogiConfig = {
     openaiApiKey: 'openai-secret',
     claudeApiKey: 'claude-secret',
     ollamaBaseUrl: 'http://localhost:11434',
+    deepseekApiKey: 'deepseek-secret',
+    openrouterApiKey: 'openrouter-secret',
     model: 'gpt-4o',
   },
   hosts: [
@@ -38,6 +40,8 @@ describe('config client sanitization', () => {
     expect(sanitized.ai.apiKey).toBe(SECRET_PLACEHOLDER);
     expect(sanitized.ai.openaiApiKey).toBe(SECRET_PLACEHOLDER);
     expect(sanitized.ai.claudeApiKey).toBe(SECRET_PLACEHOLDER);
+    expect(sanitized.ai.deepseekApiKey).toBe(SECRET_PLACEHOLDER);
+    expect(sanitized.ai.openrouterApiKey).toBe(SECRET_PLACEHOLDER);
     expect(sanitized.hosts[0].password).toBe(SECRET_PLACEHOLDER);
   });
 
@@ -48,6 +52,8 @@ describe('config client sanitization', () => {
     expect(merged.ai?.apiKey).toBe('gemini-secret');
     expect(merged.ai?.openaiApiKey).toBe('openai-secret');
     expect(merged.ai?.claudeApiKey).toBe('claude-secret');
+    expect(merged.ai?.deepseekApiKey).toBe('deepseek-secret');
+    expect(merged.ai?.openrouterApiKey).toBe('openrouter-secret');
     expect(merged.hosts?.[0].password).toBe('ssh-secret');
   });
 });

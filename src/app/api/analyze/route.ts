@@ -220,6 +220,50 @@ export async function POST(request: Request) {
         }
     }
 
+    // --- DEEPSEEK HANDLER (OpenAI-compatible) ---
+    if (provider === 'deepseek') {
+        const apiKey = config.ai.deepseekApiKey || process.env.DEEPSEEK_API_KEY;
+        if (!apiKey) throw new Error("DeepSeek API Key missing");
+
+        const openai = new OpenAI({ baseURL: 'https://api.deepseek.com', apiKey });
+        const completion = await openai.chat.completions.create({
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: processedContent }
+            ],
+            model: config.ai.model || "deepseek-v4-flash",
+        });
+        const text = completion.choices[0]?.message?.content || "{}";
+        const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        try {
+            return NextResponse.json(JSON.parse(jsonStr));
+        } catch {
+            return NextResponse.json({ summary: jsonStr, key_findings: [], recommendation: '', severity: 'low' });
+        }
+    }
+
+    // --- OPENROUTER HANDLER (OpenAI-compatible) ---
+    if (provider === 'openrouter') {
+        const apiKey = config.ai.openrouterApiKey || process.env.OPENROUTER_API_KEY;
+        if (!apiKey) throw new Error("OpenRouter API Key missing");
+
+        const openai = new OpenAI({ baseURL: 'https://openrouter.ai/api/v1', apiKey });
+        const completion = await openai.chat.completions.create({
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: processedContent }
+            ],
+            model: config.ai.model || "deepseek/deepseek-v4-flash",
+        });
+        const text = completion.choices[0]?.message?.content || "{}";
+        const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        try {
+            return NextResponse.json(JSON.parse(jsonStr));
+        } catch {
+            return NextResponse.json({ summary: jsonStr, key_findings: [], recommendation: '', severity: 'low' });
+        }
+    }
+
     return NextResponse.json({ error: 'Invalid AI Provider' }, { status: 400 });
 
   } catch (error) {

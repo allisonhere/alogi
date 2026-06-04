@@ -28,11 +28,13 @@ export interface AlogiConfig {
   };
   ai: {
     enabled?: boolean;
-    provider: 'gemini' | 'openai' | 'claude' | 'ollama';
+    provider: 'gemini' | 'openai' | 'claude' | 'ollama' | 'deepseek' | 'openrouter';
     apiKey: string;       // Gemini
     openaiApiKey: string; // OpenAI
     claudeApiKey: string; // Claude
     ollamaBaseUrl: string; // Ollama
+    deepseekApiKey: string; // DeepSeek
+    openrouterApiKey: string; // OpenRouter
     model: string;
   };
   hosts: HostConfig[];
@@ -53,6 +55,8 @@ const DEFAULT_CONFIG: AlogiConfig = {
     openaiApiKey: process.env.OPENAI_API_KEY || '',
     claudeApiKey: process.env.ANTHROPIC_API_KEY || '',
     ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
+    deepseekApiKey: process.env.DEEPSEEK_API_KEY || '',
+    openrouterApiKey: process.env.OPENROUTER_API_KEY || '',
     model: 'gemini-flash-latest',
   },
   hosts: [],
@@ -87,6 +91,8 @@ export function sanitizeConfigForClient(config: AlogiConfig): AlogiConfig {
       apiKey: redactSecret(config.ai.apiKey),
       openaiApiKey: redactSecret(config.ai.openaiApiKey),
       claudeApiKey: redactSecret(config.ai.claudeApiKey),
+      deepseekApiKey: redactSecret(config.ai.deepseekApiKey),
+      openrouterApiKey: redactSecret(config.ai.openrouterApiKey),
     },
     hosts: config.hosts.map((host) => ({
       ...host,
@@ -115,6 +121,8 @@ export function preserveSecretPlaceholders(
       apiKey: config.ai.apiKey === SECRET_PLACEHOLDER ? existing.ai.apiKey : config.ai.apiKey,
       openaiApiKey: config.ai.openaiApiKey === SECRET_PLACEHOLDER ? existing.ai.openaiApiKey : config.ai.openaiApiKey,
       claudeApiKey: config.ai.claudeApiKey === SECRET_PLACEHOLDER ? existing.ai.claudeApiKey : config.ai.claudeApiKey,
+      deepseekApiKey: config.ai.deepseekApiKey === SECRET_PLACEHOLDER ? existing.ai.deepseekApiKey : config.ai.deepseekApiKey,
+      openrouterApiKey: config.ai.openrouterApiKey === SECRET_PLACEHOLDER ? existing.ai.openrouterApiKey : config.ai.openrouterApiKey,
     };
   }
 
