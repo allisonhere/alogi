@@ -149,10 +149,10 @@ describe('release.sh website publishing', () => {
       '4) Build deb only',
       '5) Build Arch only',
       '6) Clean builds',
-      '7) Clear yay cache (alogi)',
+      '7) Clear yay cache',
       '8) GitHub release only',
       '9) AUR update only',
-      '10) Full release (recommended)',
+      '10) Full release',
       '11) Publish website',
     ];
     let previousIndex = -1;

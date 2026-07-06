@@ -36,7 +36,8 @@ const parseArgs = (argv) => {
     host: null,
     port: null,
     open: false,
-    help: false
+    help: false,
+    version: false
   };
 
   for (let i = 0; i < args.length; i += 1) {
@@ -55,6 +56,10 @@ const parseArgs = (argv) => {
     }
     if (arg === '--help' || arg === '-h') {
       result.help = true;
+      continue;
+    }
+    if (arg === '--version' || arg === '-v') {
+      result.version = true;
       continue;
     }
     if (arg === '--host' && args[i + 1]) {
@@ -118,6 +123,7 @@ Options:
   --host <host> Bind host for web mode (default: 127.0.0.1)
   --port <port> Bind port for web mode (default: 3000)
   --open        Open the browser after starting in web mode
+  --version, -v Print the app version
   --help, -h    Show help
 `);
 };
@@ -197,74 +203,6 @@ const attachExternalLinkHandlers = (win, appOrigin) => {
   });
 };
 
-const createAppMenu = () => Menu.buildFromTemplate([
-  ...(process.platform === 'darwin'
-    ? [{
-      label: app.name,
-      submenu: [
-        { role: 'about' },
-        { type: 'separator' },
-        { role: 'services' },
-        { type: 'separator' },
-        { role: 'hide' },
-        { role: 'hideOthers' },
-        { role: 'unhide' },
-        { type: 'separator' },
-        { role: 'quit' }
-      ]
-    }]
-    : []),
-  {
-    label: 'File',
-    submenu: [
-      process.platform === 'darwin' ? { role: 'close' } : { role: 'quit' }
-    ]
-  },
-  {
-    label: 'Edit',
-    submenu: [
-      { role: 'undo' },
-      { role: 'redo' },
-      { type: 'separator' },
-      { role: 'cut' },
-      { role: 'copy' },
-      { role: 'paste' },
-      { role: 'selectAll' }
-    ]
-  },
-  {
-    label: 'View',
-    submenu: [
-      { role: 'reload' },
-      { role: 'forceReload' },
-      { role: 'toggleDevTools' },
-      { type: 'separator' },
-      { role: 'resetZoom' },
-      { role: 'zoomIn' },
-      { role: 'zoomOut' },
-      { type: 'separator' },
-      { role: 'togglefullscreen' }
-    ]
-  },
-  {
-    label: 'Window',
-    submenu: [
-      { role: 'minimize' },
-      { role: 'zoom' },
-      ...(process.platform === 'darwin' ? [{ type: 'separator' }, { role: 'front' }] : [{ role: 'close' }])
-    ]
-  },
-  {
-    label: 'Help',
-    submenu: [
-      {
-        label: 'Alogi Website',
-        click: () => openExternal('https://alliehere.com/alogi/')
-      }
-    ]
-  }
-]);
-
 const createWindow = async () => {
   const win = new BrowserWindow({
     width: 1440,
@@ -323,17 +261,22 @@ const runWebMode = async (cli) => {
 
 const cli = parseArgs(process.argv);
 
+// Handle informational flags before Electron spins up any UI.
+if (cli.help || cli.version) {
+  if (cli.help) {
+    printHelp();
+  } else {
+    console.log(app.getVersion());
+  }
+  app.exit(0);
+  return;
+}
+
 ipcMain.handle('app:quit', () => {
   app.quit();
 });
 
 app.whenReady().then(async () => {
-  if (cli.help) {
-    printHelp();
-    app.quit();
-    return;
-  }
-
   if (cli.web && cli.desktop) {
     console.error('Choose either --web or --desktop (not both).');
     app.exit(1);

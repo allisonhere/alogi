@@ -11,6 +11,7 @@
   "private": true,
   "license": "MIT",
   "main": "electron/main.cjs",
+  "desktopName": "alogi.desktop",
   "scripts": {
     "dev": "next dev",
     "dev:desktop": "concurrently -k \"next dev\" \"wait-on http://127.0.0.1:3000 && ELECTRON_START_URL=http://127.0.0.1:3000 electron .\"",
@@ -30,7 +31,7 @@
     "@types/ssh2": "^1.15.5",
     "clsx": "^2.1.1",
     "lucide-react": "^0.563.0",
-    "next": "16.2.4",
+    "next": "^16.2.10",
     "next-themes": "^0.4.6",
     "openai": "^6.17.0",
     "react": "19.2.3",
@@ -47,10 +48,10 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5.1.2",
     "concurrently": "^9.2.0",
-    "electron": "^32.3.0",
-    "electron-builder": "^24.13.3",
+    "electron": "^43.0.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^9",
-    "eslint-config-next": "16.2.4",
+    "eslint-config-next": "^16.2.10",
     "jsdom": "^27.4.0",
     "tailwindcss": "^4",
     "typescript": "^5",
@@ -64,14 +65,17 @@
   },
   "build": {
     "appId": "com.allisonhere.alogi",
+    "npmRebuild": false,
     "productName": "Alogi",
     "executableName": "alogi",
     "directories": {
       "output": "dist-electron"
     },
     "files": [
-      "electron/**"
+      "electron/**",
+      "!node_modules/**"
     ],
+    "afterPack": "scripts/after-pack.cjs",
     "extraResources": [
       {
         "from": ".next/standalone",
@@ -84,6 +88,7 @@
     ],
     "linux": {
       "artifactName": "Alogi-${arch}.${ext}",
+      "syncDesktopName": true,
       "maintainer": "allisonhere <allisonhere@users.noreply.github.com>",
       "target": [
         "deb"

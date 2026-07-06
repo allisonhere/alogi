@@ -972,7 +972,7 @@ show_status() {
   [ "$avail" -lt 5 ] && disk_color=$RED
 
   local changes
-  changes=$(git -C "$PROJECT_DIR" status --porcelain | wc -l)
+  changes=$(git -C "$PROJECT_DIR" status --porcelain 2>/dev/null | wc -l) || changes=0
   local git_info
   if [ "$changes" -gt 0 ]; then
     git_info="${YELLOW}$changes change(s)${NC}"
