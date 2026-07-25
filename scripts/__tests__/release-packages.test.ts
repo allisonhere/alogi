@@ -96,6 +96,7 @@ printf 'package\n' > "$MOCK_PROJECT_DIR/packaging/arch/alogi-0.1.71-1-x86_64.pkg
     expect(command).toContain('run --rm --userns=keep-id --user 0 --security-opt label=disable');
     expect(command).toContain(`-v ${projectDir}:/repo`);
     expect(command).toContain('archlinux:latest');
+    expect(command).toContain('BUILD_USER=$(getent passwd "$HOST_UID"');
     expect(command).toContain('makepkg -f --noconfirm --needed');
     expect(existsSync(path.join(distDir, 'alogi-0.1.71-1-x86_64.pkg.tar.zst'))).toBe(true);
   });

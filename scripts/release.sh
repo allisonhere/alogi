@@ -745,12 +745,16 @@ build_arch() {
         libxrandr libxkbcommon libxcomposite libxdamage libxfixes libxi \
         libxrender libxcursor at-spi2-core libdrm mesa libnotify libcups \
         pango cairo dbus glib2
-      getent group "$HOST_GID" >/dev/null || groupadd -g "$HOST_GID" builder
-      id -u builder >/dev/null 2>&1 || useradd -m -u "$HOST_UID" -g "$HOST_GID" builder
+      BUILD_USER=$(getent passwd "$HOST_UID" | cut -d: -f1)
+      if [ -z "$BUILD_USER" ]; then
+        getent group "$HOST_GID" >/dev/null || groupadd -g "$HOST_GID" builder
+        useradd -m -u "$HOST_UID" -g "$HOST_GID" builder
+        BUILD_USER=builder
+      fi
       if [ "$NEEDS_CHOWN" = "1" ]; then
         chown -R "$HOST_UID:$HOST_GID" /repo
       fi
-      su - builder -c "cd /repo/packaging/arch && makepkg -f --noconfirm --needed"
+      su -s /bin/bash "$BUILD_USER" -c "cd /repo/packaging/arch && makepkg -f --noconfirm --needed"
     ' >/tmp/makepkg.log 2>&1 &
   local pid=$!
   spinner $pid "Building Arch package in $container_runtime..."
