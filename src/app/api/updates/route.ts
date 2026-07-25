@@ -3,11 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { spawnSync } from 'child_process';
 import { debug } from '@/lib/debug';
-
-type CommandOption = {
-  label: string;
-  command: string;
-};
+import { buildCommands } from '@/lib/updateCommands';
 
 type ReleaseAsset = {
   name?: string;
@@ -57,52 +53,11 @@ function isPacmanPackageInstalled(name: string): boolean {
   return result.status === 0;
 }
 
-function buildDirectInstallCommand(archPackageUrl: string): CommandOption {
-  const filename = archPackageUrl.split('/').pop() || 'alogi.pkg.tar.zst';
-  const targetPath = `/tmp/${filename}`;
-
-  return {
-    label: 'Direct package install',
-    command: `curl -L "${archPackageUrl}" -o "${targetPath}" && sudo pacman -U "${targetPath}"`,
-  };
-}
-
-function buildCommands(archPackageUrl: string | null, environment: {
-  hasPacman: boolean;
-  hasParu: boolean;
-  hasYay: boolean;
-}): { primary: CommandOption | null; alternatives: CommandOption[] } {
-  const alternatives: CommandOption[] = [];
-
-  if (!environment.hasPacman) {
-    return { primary: null, alternatives };
-  }
-
-  const directCommand = archPackageUrl ? buildDirectInstallCommand(archPackageUrl) : null;
-
-  if (environment.hasParu) {
-    if (directCommand) alternatives.push(directCommand);
-    if (environment.hasYay) {
-      alternatives.push({ label: 'Use yay', command: 'yay -S alogi' });
-    }
-    return {
-      primary: { label: 'Use paru', command: 'paru -S alogi' },
-      alternatives,
-    };
-  }
-
-  if (environment.hasYay) {
-    if (directCommand) alternatives.push(directCommand);
-    return {
-      primary: { label: 'Use yay', command: 'yay -S alogi' },
-      alternatives,
-    };
-  }
-
-  return {
-    primary: directCommand,
-    alternatives,
-  };
+function isRpmPackageInstalled(name: string): boolean {
+  const result = spawnSync('rpm', ['-q', name], {
+    stdio: 'ignore',
+  });
+  return result.status === 0;
 }
 
 function getCurrentVersion(): string {
@@ -123,11 +78,14 @@ export async function GET() {
     hasPacman: hasCommand('pacman'),
     hasParu: hasCommand('paru'),
     hasYay: hasCommand('yay'),
+    hasDnf: hasCommand('dnf'),
     isAlogiInstalled: false,
   };
 
   if (environment.hasPacman) {
     environment.isAlogiInstalled = isPacmanPackageInstalled('alogi');
+  } else if (environment.hasDnf) {
+    environment.isAlogiInstalled = isRpmPackageInstalled('alogi');
   }
 
   try {
@@ -146,9 +104,11 @@ export async function GET() {
     const release = await response.json() as GitHubRelease;
     const latestVersion = normalizeVersion(release.tag_name);
     const archAsset = release.assets?.find((asset) => asset.name?.endsWith('.pkg.tar.zst')) ?? null;
+    const rpmAsset = release.assets?.find((asset) => asset.name?.endsWith('.rpm')) ?? null;
     const archPackageUrl = archAsset?.browser_download_url ?? null;
+    const rpmPackageUrl = rpmAsset?.browser_download_url ?? null;
     const notes = release.body?.trim().slice(0, 1200) ?? null;
-    const commands = buildCommands(archPackageUrl, environment);
+    const commands = buildCommands({ archPackageUrl, rpmPackageUrl }, environment);
     const updateAvailable = latestVersion ? compareVersions(latestVersion, currentVersion) > 0 : false;
 
     return NextResponse.json({
@@ -158,6 +118,7 @@ export async function GET() {
       publishedAt: release.published_at ?? null,
       releaseUrl: release.html_url ?? null,
       archPackageUrl,
+      rpmPackageUrl,
       notes,
       environment,
       commands,
@@ -172,6 +133,7 @@ export async function GET() {
         publishedAt: null,
         releaseUrl: null,
         archPackageUrl: null,
+        rpmPackageUrl: null,
         notes: null,
         environment,
         commands: { primary: null, alternatives: [] },

@@ -25,12 +25,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install RPM tooling
+        run: sudo apt-get update && sudo apt-get install -y rpm libcrypt1
+
       - name: Build Linux artifacts
         run: npm run dist:linux:all
 
       - name: Smoke check linux-unpacked
         run: |
           test -f dist-electron/linux-unpacked/resources/.next/standalone/server.js
+
+      - name: Smoke check RPM package
+        run: |
+          RPM=$(find dist-electron -maxdepth 1 -name '*.rpm' -print -quit)
+          test -n "$RPM"
+          rpm -qpl "$RPM" | grep -q '/resources/.next/standalone/server.js$'
+          rpm -qp --scripts "$RPM" | grep -q 'rm -f /usr/bin/alogi'
 
       - name: Pack linux-unpacked
         run: |
@@ -72,5 +82,6 @@ jobs:
           generate_release_notes: true
           files: |
             dist-electron/*.deb
+            dist-electron/*.rpm
             alogi-*-linux-unpacked.tar.gz
             alogi-arch.pkg.tar.zst

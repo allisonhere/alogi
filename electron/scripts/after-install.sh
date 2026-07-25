@@ -1,5 +1,5 @@
 #!/bin/bash
-# After-install script for .deb package
+# After-install script for .deb and .rpm packages
 # Creates a wrapper script that detaches from terminal
 
 INSTALL_DIR="/opt/alogi"

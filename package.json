@@ -1,6 +1,6 @@
 {
   "name": "alogi",
-  "version": "0.1.66",
+  "version": "0.1.71",
   "description": "AI-powered log viewer for local and remote logs",
   "author": "allisonhere <allisonhere@users.noreply.github.com>",
   "homepage": "https://alliehere.com/alogi/",
@@ -19,9 +19,11 @@
     "build:desktop": "next build --webpack && ./scripts/patch-standalone.sh",
     "start": "next start",
     "lint": "eslint",
-    "dist:linux": "npm run build:desktop && electron-builder --linux deb --publish never",
+    "dist:linux": "npm run build:desktop && electron-builder --linux deb rpm --publish never",
+    "dist:linux:deb": "npm run build:desktop && electron-builder --linux deb --publish never",
+    "dist:linux:rpm": "npm run build:desktop && electron-builder --linux rpm --publish never",
     "dist:linux:dir": "npm run build:desktop && electron-builder --linux dir --publish never",
-    "dist:linux:all": "npm run build:desktop && electron-builder --linux deb dir --publish never"
+    "dist:linux:all": "npm run build:desktop && electron-builder --linux deb rpm dir --publish never"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.1",
@@ -59,8 +61,9 @@
     "wait-on": "^7.2.0"
   },
   "overrides": {
+    "postcss": "8.5.23",
     "next": {
-      "postcss": "8.5.10"
+      "sharp": "0.35.3"
     }
   },
   "build": {
@@ -91,12 +94,18 @@
       "syncDesktopName": true,
       "maintainer": "allisonhere <allisonhere@users.noreply.github.com>",
       "target": [
-        "deb"
+        "deb",
+        "rpm"
       ],
       "category": "Utility"
     },
     "deb": {
-      "afterInstall": "electron/scripts/after-install.sh"
+      "afterInstall": "electron/scripts/after-install.sh",
+      "afterRemove": "electron/scripts/after-remove.sh"
+    },
+    "rpm": {
+      "afterInstall": "electron/scripts/after-install.sh",
+      "afterRemove": "electron/scripts/after-remove.sh"
     }
   }
 }

@@ -21,11 +21,13 @@ type UpdateCheckResponse = {
   publishedAt: string | null;
   releaseUrl: string | null;
   archPackageUrl: string | null;
+  rpmPackageUrl: string | null;
   notes: string | null;
   environment: {
     hasPacman: boolean;
     hasParu: boolean;
     hasYay: boolean;
+    hasDnf: boolean;
     isAlogiInstalled: boolean;
   };
   commands: {
@@ -1378,7 +1380,7 @@ export default function SettingsPage() {
 
                 {updateInfo && !updateInfo.commands.primary && (
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    No Arch install command could be detected on this system. Use the release link above to download the latest build.
+                    No compatible package install command could be detected on this system. Use the release link above to download the latest build.
                   </p>
                 )}
 

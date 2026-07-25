@@ -46,6 +46,7 @@
 - Latest release assets: https://github.com/allisonhere/alogi/releases/latest
 - Direct downloads:
   - Ubuntu deb: https://github.com/allisonhere/alogi/releases/latest/download/Alogi-amd64.deb
+  - Fedora/RHEL RPM: https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x86_64.rpm
   - Arch pkg: https://github.com/allisonhere/alogi/releases/latest/download/alogi-arch.pkg.tar.zst
 
 ### 🧑‍💻 Build from source (dev)
@@ -137,15 +138,30 @@ You can also prefill values via environment variables:
 
 For releases, use the install page above. The steps below are for building artifacts locally.
 
-### Debian (.deb)
+### Debian (.deb) and Fedora/RHEL (.rpm)
 
-Build Linux desktop artifacts (.deb):
+Build both DPKG/APT and RPM/DNF desktop packages:
 
 ```bash
 npm run dist:linux
 ```
 
 Output is placed in `dist-electron/`.
+
+Build only one package format:
+
+```bash
+npm run dist:linux:deb
+npm run dist:linux:rpm
+```
+
+Install the local RPM build on Fedora or another DNF-based distribution:
+
+```bash
+sudo dnf install dist-electron/Alogi-x86_64.rpm
+```
+
+On Arch/CachyOS build hosts, electron-builder's bundled FPM may require `libxcrypt-compat` to provide `libcrypt.so.1`.
 
 ### Arch / CachyOS (pacman)
 
@@ -182,7 +198,7 @@ Notes:
 Release flow is deterministic to keep AUR checksums correct:
 
 1. `scripts/release.sh` creates and pushes tag `vX.Y.Z`.
-2. `.github/workflows/release.yml` builds and uploads release assets.
+2. `.github/workflows/release.yml` builds and uploads `.deb`, `.rpm`, Arch, and unpacked release assets.
 3. `.github/workflows/aur.yml` runs after the release workflow succeeds, downloads the published tarball, computes SHA256, and updates AUR.
 
 Notes:

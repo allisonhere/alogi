@@ -41,6 +41,7 @@ yarn-error.log*
 next-env.d.ts
 dist/
 dist-electron/
+/aur-alogi/
 
 # packaging artifacts
 packaging/arch/pkg/

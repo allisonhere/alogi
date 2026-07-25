@@ -66,8 +66,12 @@ describe('release.sh website publishing', () => {
     expect(readFileSync(fixture.uploadList, 'utf-8')).toBe('index.html\nlogo.svg\nscreenshot.png\n');
     expect(readFileSync(fixture.sourceModeLog, 'utf-8')).toBe('755\n');
     const command = readFileSync(fixture.rsyncLog, 'utf-8');
-    expect(command).toContain('alliehere.com:/home/allieher/www/alogi/');
+    expect(command).toContain('allieher@alliehere.com:/home/allieher/www/alogi/');
     expect(command).toContain('--chmod=D755,F644');
+    expect(command).toContain('--timeout=30');
+    expect(command).toContain('ssh -p 1157');
+    expect(command).toContain('BatchMode=yes');
+    expect(command).toContain('ConnectTimeout=15');
     expect(command).not.toContain('--delete');
   });
 
@@ -145,15 +149,16 @@ describe('release.sh website publishing', () => {
     const labels = [
       '1) Bump version',
       '2) Commit changes',
-      '3) Build all (deb + Arch)',
+      '3) Build all (deb + RPM + Arch)',
       '4) Build deb only',
-      '5) Build Arch only',
-      '6) Clean builds',
-      '7) Clear yay cache',
-      '8) GitHub release only',
-      '9) AUR update only',
-      '10) Full release',
-      '11) Publish website',
+      '5) Build RPM only',
+      '6) Build Arch only',
+      '7) Clean builds',
+      '8) Clear yay cache',
+      '9) GitHub release only',
+      '10) AUR update only',
+      '11) Full release',
+      '12) Publish website',
     ];
     let previousIndex = -1;
     for (const label of labels) {

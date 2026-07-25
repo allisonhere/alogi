@@ -52,6 +52,12 @@ wget -O /tmp/Alogi-amd64.deb https://github.com/allisonhere/alogi/releases/lates
 sudo apt install /tmp/Alogi-amd64.deb
 ```
 
+**Fedora/RHEL and other DNF-based distributions:**
+```bash
+curl -L -o /tmp/Alogi-x86_64.rpm https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x86_64.rpm
+sudo dnf install /tmp/Alogi-x86_64.rpm
+```
+
 **Arch Linux:**
 ```bash
 yay -S alogi

@@ -15,8 +15,10 @@ NC='\033[0m'
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DIST_DIR="$PROJECT_DIR/dist-electron"
 ARCH_DIR="$PROJECT_DIR/packaging/arch"
-AUR_DIR="$HOME/aur-alogi"
-WEBSITE_REMOTE="alliehere.com"
+AUR_DIR="$PROJECT_DIR/aur-alogi"
+AUR_REMOTE="ssh://aur@aur.archlinux.org/alogi.git"
+WEBSITE_REMOTE="allieher@alliehere.com"
+WEBSITE_SSH_PORT="1157"
 WEBSITE_PATH="/home/allieher/www/alogi"
 
 # Timing
@@ -389,6 +391,75 @@ wait_for_release_workflow() {
 # PREFLIGHT CHECKS
 # ============================================================================
 
+ensure_aur_repo() {
+  if [ -d "$AUR_DIR/.git" ]; then
+    return 0
+  fi
+
+  if [ -e "$AUR_DIR" ]; then
+    print_error "AUR path exists but is not a Git repository: $AUR_DIR"
+    return 1
+  fi
+
+  print_substep "AUR repo not found; cloning into $AUR_DIR..."
+  if ! git clone "$AUR_REMOTE" "$AUR_DIR"; then
+    print_error "Failed to clone AUR repo from $AUR_REMOTE"
+    return 1
+  fi
+  print_success "AUR repo cloned"
+}
+
+get_container_runtime() {
+  if command -v podman &>/dev/null; then
+    printf 'podman'
+  elif command -v docker &>/dev/null; then
+    printf 'docker'
+  else
+    return 1
+  fi
+}
+
+check_packaging_runtime() {
+  local libcrypt_path
+  local missing=0
+  libcrypt_path=$(ldconfig -p 2>/dev/null | awk '$1 == "libcrypt.so.1" { print $NF; exit }')
+  if [ -z "$libcrypt_path" ]; then
+    print_error "electron-builder packaging requires libcrypt.so.1"
+    if command -v dnf &>/dev/null; then
+      print_info "Install it with: sudo dnf install libxcrypt-compat"
+    elif command -v pacman &>/dev/null; then
+      print_info "Install it with: sudo pacman -S libxcrypt-compat"
+    elif command -v apt-get &>/dev/null; then
+      print_info "Install it with: sudo apt-get install libcrypt1"
+    else
+      print_info "Install the compatibility package that provides libcrypt.so.1"
+    fi
+    missing=1
+  fi
+
+  if ! command -v rpmbuild &>/dev/null; then
+    print_error "RPM packaging requires the rpmbuild executable"
+    if command -v dnf &>/dev/null; then
+      print_info "Install it with: sudo dnf install rpm-build"
+    elif command -v pacman &>/dev/null; then
+      print_info "Install it with: sudo pacman -S rpm-tools"
+    elif command -v apt-get &>/dev/null; then
+      print_info "Install it with: sudo apt-get install rpm"
+    else
+      print_info "Install the package that provides rpmbuild"
+    fi
+    missing=1
+  fi
+
+  if ! get_container_runtime &>/dev/null; then
+    print_error "Arch packaging requires Podman or Docker"
+    print_info "Install a container runtime to build the Arch package in an Arch environment"
+    missing=1
+  fi
+
+  return "$missing"
+}
+
 check_wrapper_script() {
   local script="$PROJECT_DIR/electron/scripts/after-install.sh"
   if [ ! -f "$script" ]; then
@@ -410,6 +481,10 @@ preflight_release() {
   print_substep "Checking wrapper script..."
   check_wrapper_script
 
+  print_substep "Checking electron-builder packaging runtime..."
+  check_packaging_runtime
+  print_success "Packaging runtime dependencies found"
+
   print_substep "Checking GitHub CLI auth..."
   if ! command -v gh &>/dev/null; then
     print_error "GitHub CLI (gh) not installed"
@@ -422,11 +497,7 @@ preflight_release() {
   print_success "GitHub CLI authenticated"
 
   print_substep "Checking AUR repo..."
-  if [ ! -d "$AUR_DIR" ]; then
-    print_error "AUR directory not found at $AUR_DIR"
-    print_info "Clone it first: git clone ssh://aur@aur.archlinux.org/alogi.git $AUR_DIR"
-    return 1
-  fi
+  ensure_aur_repo
   print_success "AUR repo found"
 }
 
@@ -547,6 +618,7 @@ clean_builds() {
   print_substep "Removing old build artifacts..."
   rm -rf "$DIST_DIR/linux-unpacked"
   rm -f "$DIST_DIR"/*.deb
+  rm -f "$DIST_DIR"/*.rpm
   rm -f "$DIST_DIR"/alogi-*-linux-unpacked.tar.gz
   rm -f "$DIST_DIR"/*.tar.gz
   rm -f "$DIST_DIR"/*.pkg.tar.zst
@@ -600,6 +672,28 @@ build_deb() {
   print_file_size "$DIST_DIR/Alogi-amd64.deb"
 }
 
+build_rpm() {
+  print_substep "Building .rpm package..."
+  cd "$PROJECT_DIR"
+
+  local eb_cmd="$PROJECT_DIR/node_modules/.bin/electron-builder"
+  [ ! -x "$eb_cmd" ] && {
+    print_error "electron-builder not found"
+    return 1
+  }
+
+  "$eb_cmd" --linux rpm --publish never >/tmp/rpm_build.log 2>&1 &
+  local pid=$!
+  spinner $pid "Packaging .rpm..."
+  wait $pid || {
+    print_error "RPM build failed"
+    tail -20 /tmp/rpm_build.log
+    return 1
+  }
+
+  print_file_size "$DIST_DIR/Alogi-x86_64.rpm"
+}
+
 build_arch() {
   print_substep "Building linux-unpacked directory..."
   cd "$PROJECT_DIR"
@@ -624,15 +718,44 @@ build_arch() {
   sed -i "s/^pkgver=.*/pkgver=$VERSION/" "$ARCH_DIR/PKGBUILD"
   print_success "PKGBUILD updated to v$VERSION"
 
-  print_substep "Running makepkg..."
-  rm -rf "$ARCH_DIR/pkg" "$ARCH_DIR/src"
-  cd "$ARCH_DIR"
+  local container_runtime
+  container_runtime=$(get_container_runtime) || {
+    print_error "Podman or Docker is required to build the Arch package"
+    return 1
+  }
+  local container_args=(run --rm)
+  local needs_chown=1
+  if [ "$container_runtime" = "podman" ]; then
+    container_args+=(--userns=keep-id --user 0 --security-opt label=disable)
+    needs_chown=0
+  fi
 
-  makepkg -f >/tmp/makepkg.log 2>&1 &
+  print_substep "Running makepkg in Arch Linux with $container_runtime..."
+  rm -rf "$ARCH_DIR/pkg" "$ARCH_DIR/src"
+  cd "$PROJECT_DIR"
+
+  "$container_runtime" "${container_args[@]}" \
+    -e HOST_UID="$(id -u)" \
+    -e HOST_GID="$(id -g)" \
+    -e NEEDS_CHOWN="$needs_chown" \
+    -v "$PROJECT_DIR:/repo" \
+    archlinux:latest /bin/bash -c '
+      set -e
+      pacman -Sy --noconfirm base-devel gtk3 nss libxss libxtst alsa-lib \
+        libxrandr libxkbcommon libxcomposite libxdamage libxfixes libxi \
+        libxrender libxcursor at-spi2-core libdrm mesa libnotify libcups \
+        pango cairo dbus glib2
+      getent group "$HOST_GID" >/dev/null || groupadd -g "$HOST_GID" builder
+      id -u builder >/dev/null 2>&1 || useradd -m -u "$HOST_UID" -g "$HOST_GID" builder
+      if [ "$NEEDS_CHOWN" = "1" ]; then
+        chown -R "$HOST_UID:$HOST_GID" /repo
+      fi
+      su - builder -c "cd /repo/packaging/arch && makepkg -f --noconfirm --needed"
+    ' >/tmp/makepkg.log 2>&1 &
   local pid=$!
-  spinner $pid "Building Arch package..."
+  spinner $pid "Building Arch package in $container_runtime..."
   wait $pid || {
-    print_error "makepkg failed"
+    print_error "Containerized makepkg failed"
     tail -20 /tmp/makepkg.log
     return 1
   }
@@ -746,11 +869,7 @@ create_github_release() {
 }
 
 update_aur() {
-  if [ ! -d "$AUR_DIR" ]; then
-    print_error "AUR directory not found at $AUR_DIR"
-    print_info "Clone it first: git clone ssh://aur@aur.archlinux.org/alogi.git ~/aur-alogi"
-    return 1
-  fi
+  ensure_aur_repo
 
   # Always fetch SHA from GitHub to ensure consistency (handles CI-built tarballs)
   local GITHUB_TARBALL="https://github.com/allisonhere/alogi/releases/download/v${VERSION}/alogi-${VERSION}-linux-unpacked.tar.gz"
@@ -885,7 +1004,11 @@ publish_website() {
   [ -f "$source_dir/sitemap.xml" ] && cp "$source_dir/sitemap.xml" "$stage_dir/"
 
   print_substep "Publishing landing page to https://alliehere.com/alogi/..."
-  if rsync -az --chmod=D755,F644 "$stage_dir/" "$WEBSITE_REMOTE:$WEBSITE_PATH/"; then
+  if rsync -az \
+    --chmod=D755,F644 \
+    --timeout=30 \
+    -e "ssh -p $WEBSITE_SSH_PORT -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3" \
+    "$stage_dir/" "$WEBSITE_REMOTE:$WEBSITE_PATH/"; then
     rm -rf "$stage_dir"
     print_success "Website published"
     echo -e "  ${GREEN}→${NC} https://alliehere.com/alogi/"
@@ -904,7 +1027,7 @@ publish_website() {
 
 full_release() {
   TOTAL_START=$(date +%s)
-  local total_steps=10
+  local total_steps=11
 
   print_step 1 $total_steps "Preflight checks"
   preflight_release
@@ -921,19 +1044,22 @@ full_release() {
   print_step 5 $total_steps "Building .deb package"
   build_deb
 
-  print_step 6 $total_steps "Building Arch package"
+  print_step 6 $total_steps "Building .rpm package"
+  build_rpm
+
+  print_step 7 $total_steps "Building Arch package"
   build_arch
 
-  print_step 7 $total_steps "Committing & pushing"
+  print_step 8 $total_steps "Committing & pushing"
   auto_commit_and_push
 
-  print_step 8 $total_steps "Creating GitHub release"
+  print_step 9 $total_steps "Creating GitHub release"
   create_github_release
 
-  print_step 9 $total_steps "Updating AUR"
+  print_step 10 $total_steps "Updating AUR"
   update_aur
 
-  print_step 10 $total_steps "Publishing website"
+  print_step 11 $total_steps "Publishing website"
   publish_website
 
   # Summary
@@ -947,6 +1073,7 @@ full_release() {
   echo ""
   echo -e "  ${BOLD}Artifacts:${NC}"
   print_file_size "$DIST_DIR/Alogi-amd64.deb"
+  print_file_size "$DIST_DIR/Alogi-x86_64.rpm"
   print_file_size "$DIST_DIR/alogi-$VERSION-linux-unpacked.tar.gz"
   ls "$DIST_DIR"/alogi-*.pkg.tar.zst 2>/dev/null | while read f; do print_file_size "$f"; done
   echo ""
@@ -991,21 +1118,22 @@ main_menu() {
 
     echo "   1) Bump version"
     echo "   2) Commit changes"
-    echo "   3) Build all (deb + Arch)"
+    echo "   3) Build all (deb + RPM + Arch)"
     echo "   4) Build deb only"
-    echo "   5) Build Arch only"
-    echo "   6) Clean builds"
-    echo "   7) Clear yay cache"
+    echo "   5) Build RPM only"
+    echo "   6) Build Arch only"
+    echo "   7) Clean builds"
+    echo "   8) Clear yay cache"
     echo ""
-    echo "   8) GitHub release only"
-    echo "   9) AUR update only"
-    echo "  10) Full release"
-    echo "  11) Publish website"
+    echo "   9) GitHub release only"
+    echo "  10) AUR update only"
+    echo "  11) Full release"
+    echo "  12) Publish website"
     echo ""
     echo "   0) Exit"
     echo ""
 
-    read -p "  Choose [0-11]: " choice
+    read -p "  Choose [0-12]: " choice
 
     case $choice in
     1) bump_version ;;
@@ -1017,6 +1145,7 @@ main_menu() {
       build_nextjs
       print_step 3 3 "Building packages"
       build_deb
+      build_rpm
       build_arch
       ;;
     4)
@@ -1027,15 +1156,22 @@ main_menu() {
       build_deb
       ;;
     5)
+      print_step 1 2 "Cleaning"
+      clean_builds
+      print_step 2 2 "Building"
+      build_nextjs
+      build_rpm
+      ;;
+    6)
       print_step 1 1 "Building Arch"
       build_arch
       ;;
-    6) clean_builds ;;
-    7) clear_yay_cache ;;
-    11) publish_website ;;
-    8) create_github_release ;;
-    9) update_aur ;;
-    10) full_release ;;
+    7) clean_builds ;;
+    8) clear_yay_cache ;;
+    9) create_github_release ;;
+    10) update_aur ;;
+    11) full_release ;;
+    12) publish_website ;;
     0)
       echo -e "\n  ${DIM}Bye!${NC}\n"
       exit 0

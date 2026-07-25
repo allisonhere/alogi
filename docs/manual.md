@@ -45,6 +45,13 @@ sudo apt install /tmp/Alogi-amd64.deb
 
 Using `/tmp` avoids apt sandbox warnings when your home directory isn't world-readable.
 
+### Fedora / RHEL / Rocky Linux / AlmaLinux
+
+```bash
+curl -L -o /tmp/Alogi-x86_64.rpm https://github.com/allisonhere/alogi/releases/latest/download/Alogi-x86_64.rpm
+sudo dnf install /tmp/Alogi-x86_64.rpm
+```
+
 ### Arch Linux / CachyOS
 
 ```bash
